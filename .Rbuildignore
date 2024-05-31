@@ -1,0 +1,16 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+.travis.yml
+rebuild.sh
+.*\.tar\.gz
+^local
+^benchmark_results
+rticle
+.Rhistory
+src/ZSTD/LICENSCE.txt
+aclocal.m4
+Makefile
+^.vscode
+README.html
+^.github
+^revdep$

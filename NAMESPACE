@@ -1,0 +1,7 @@
+export(qs_save)
+export(qs_read)
+export(qd_save)
+export(qd_read)
+import(stringfish)
+importFrom(Rcpp,evalCpp)
+useDynLib(qs2, .registration = TRUE)
