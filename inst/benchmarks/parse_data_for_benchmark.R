@@ -29,6 +29,3 @@ con <- unz(download_path, "enwik8")
 data <- data.frame(text=readLines(con))
 close(con)
 fwrite(data, DATA_PATH & "/enwik8.csv.gz")
-
-
-

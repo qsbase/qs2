@@ -1,12 +1,11 @@
-#ifndef _QS_QD_UNSERIALIZER_H_
-#define _QS_QD_UNSERIALIZER_H_
+#ifndef _QS_QD_DESERIALIZER_H_
+#define _QS_QD_DESERIALIZER_H_
 
 
 #include <Rcpp.h>
 #include <tbb/global_control.h>
 
-#include "io.h"
-#include "qs_qd_file_headers.h"
+#include "qx_file_headers.h"
 #include "qd_constants.h"
 
 #include "sf_external.h"
@@ -16,12 +15,12 @@ using namespace Rcpp;
 #define FILE_READ_ERR_MSG "Failed to open for reading. Does the file exist? Do you have file permissions? Is the file name long? (>255 chars)"
 
 template<typename block_compress_reader>
-struct QdataUnserializer {
+struct QdataDeserializer {
     block_compress_reader & reader;
     const bool use_alt_rep;
     // std::vector<uint8_t> shuffleblock;
     // const bool shuffle;
-    QdataUnserializer(block_compress_reader & reader, const bool use_alt_rep) : 
+    QdataDeserializer(block_compress_reader & reader, const bool use_alt_rep) : 
     reader(reader), use_alt_rep(use_alt_rep) {}
 
     private:
@@ -138,7 +137,7 @@ struct QdataUnserializer {
                     len = reader.template get_pod_contiguous<uint32_t>();
                     return;
                 default:
-                    throw std::runtime_error("Unknown header type");
+                    reader.cleanup_and_throw("Unknown header type");
             }
         } else { // h5
             len = header_byte & bitmask_length_5;
@@ -162,7 +161,7 @@ struct QdataUnserializer {
                     type = qstype::ATTRIBUTE;
                     return;
                 default:
-                    throw std::runtime_error("Unknown header type");
+                    reader.cleanup_and_throw("Unknown header type");
             }
         }
     }
@@ -187,7 +186,7 @@ struct QdataUnserializer {
             read_header_impl(header_byte, type, object_length);
             // if the first header_byte is attribute, the next header_byte must be a real object type
             if(type == qstype::ATTRIBUTE) {
-                throw std::runtime_error("Unknown header type");
+                reader.cleanup_and_throw("Unknown header type");
             }
         }
     }
@@ -256,8 +255,10 @@ struct QdataUnserializer {
             SETCAR(aptr, aobj);
             // setting class name also sets object bit
             // can also be set using Rf_classgets
-            if((Rf_isString(aobj)) & (Rf_xlength(aobj) >= 1)) {
-                SET_OBJECT(object, 1);
+            if( strcmp(attr_name.c_str(), "class") == 0 ) {
+                if((Rf_isString(aobj)) & (Rf_xlength(aobj) >= 1)) {
+                    SET_OBJECT(object, 1);
+                }
             }
             aptr = CDR(aptr);
         }
@@ -291,6 +292,7 @@ struct QdataUnserializer {
                 object = PROTECT(Rf_allocVector(CPLXSXP, object_length));
                 read_and_assign_attributes(object, attr_length);
                 reader.get_data( reinterpret_cast<char*>(COMPLEX(object)), object_length*16 );
+                break;
             case qstype::CHARACTER:
             {
                 if(use_alt_rep) {
@@ -337,12 +339,10 @@ struct QdataUnserializer {
                                 reader.get_data(string_buffer.data(), string_length);
                                 SET_STRING_ELT(object, i, Rf_mkCharLenCE(string_buffer.data(), string_length, string_encoding));
                             }
-
                         }
                     }
-                    break;
                 }
-
+                break;
             }
             case qstype::LIST:
             {
@@ -360,7 +360,7 @@ struct QdataUnserializer {
                 break;
             default:
                 // this statement is unreachable
-                throw std::runtime_error("something went wrong (reading object type)");
+                reader.cleanup_and_throw("something went wrong (reading object type)");
         }
         UNPROTECT(1);
         return object;

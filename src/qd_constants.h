@@ -2,7 +2,6 @@
 #define _QS_QD_CONSTANTS_H_
 
 #include <cstdint>
-#include "u8_literal.h"
 
 static constexpr uint32_t NA_STRING_LENGTH = 4294967295UL; // 2^32-1 -- length used to signify NA value; note maximum string size is defined by `int` in mkCharLen, so this value is safe
 static constexpr uint64_t MAX_SAFE_INTEGER = 9007199254740991ULL; // 2^53-1 -- the largest integer that can be "safely" represented as a double ~ (about 9000 terabytes)

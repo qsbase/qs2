@@ -1,18 +1,15 @@
 #ifndef _QS_SERIALIZER_H_
 #define _QS_SERIALIZER_H_
 
-
 #include <Rcpp.h>
-#include "io.h"
 #include <tbb/global_control.h>
-#include "qs_qd_file_headers.h"
-#include "unwind_protect_implentation.h"
+#include "qx_file_headers.h"
   
 using namespace Rcpp;
 
 #define FILE_SAVE_ERR_MSG "Failed to open for writing. Does the directory exist? Do you have file permissions? Is the file name long? (>255 chars)"
 
-struct qs_save_impl_args {
+struct qsSaveImplArgs {
     SEXP object;
     R_outpstream_t out;
 };
@@ -43,9 +40,14 @@ void R_SerializeInit(R_outpstream_t stream, block_compress_writer & writer) {
 
 template<typename block_compress_writer>
 SEXP qs_save_impl(void * _args) {
-    qs_save_impl_args * args = reinterpret_cast<qs_save_impl_args*>(_args);
+    qsSaveImplArgs * args = reinterpret_cast<qsSaveImplArgs*>(_args);
     R_Serialize(args->object, args->out);
-    reinterpret_cast<block_compress_writer*>(args->out->data)->finish();
+    block_compress_writer* writer = reinterpret_cast<block_compress_writer*>(args->out->data);
+    uint64_t hash = writer->finish();
+
+    // it would be more consistent with the layered module approach to write outside of this implementation
+    // but its easier to do here, as we don't have to smuggle the hash out, since we are forced to return a SEXP
+    write_qx_hash(writer->myFile, hash);
     return R_NilValue;
 }
 

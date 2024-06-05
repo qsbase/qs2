@@ -10,22 +10,21 @@ Authors@R: c(
     person("Reichardt", "Tino", role = c("ctb", "cph"), comment = "Contributor/copyright holder of zstd bundled code"),
     person("Skibinski", "Przemyslaw", role = c("ctb", "cph"), comment = "Contributor/copyright holder of zstd bundled code"),
     person("Mori", "Yuta", role = c("ctb", "cph"), comment = "Contributor/copyright holder of zstd bundled code"),
-    person("Francesc", "Alted", role = c("ctb", "cph"), comment = "Shuffling routines derived from Blosc library"),
-    person("Bryce", "Chamberlain", email = "superchordate@gmail.com", role = c("ctb"), comment = "qsavem and qload functions"),
-    person("Salim", "Brüggemann", email = "salim-b@pm.me", role = c("ctb"), comment = c(ORCID = "0000-0002-5329-5987", contributions = "documentation")))
+    person("Francesc", "Alted", role = c("ctb", "cph"), comment = "Shuffling routines derived from Blosc library"))
 Maintainer: Travers Ching <traversc@gmail.com>
 Description: Provides functions for quickly writing and reading any R object to and from disk. Successor to the original 'qs' package.
 License: GPL-3
 LazyData: true
 Biarch: true
-Depends: R (>= 3.0.2)
+Depends: R (>= 3.5.0)
 Imports: 
-    Rcpp, RApiSerialize (>= 0.1.3), stringfish (>= 0.15.1)
-LinkingTo: Rcpp, RApiSerialize, stringfish, BH, RcppParallel
+    Rcpp, stringfish (>= 0.15.1)
+LinkingTo: Rcpp, stringfish, RcppParallel
+Suggests: knitr, rmarkdown, dplyr, data.table
+SystemRequirements: GNU make
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.1
-Suggests: knitr, rmarkdown, testthat, dplyr, data.table
 VignetteBuilder: knitr
 Copyright: This package includes code from the 'zstd' library owned by Facebook, Inc. and created by Yann Collet; and code derived from the 'Blosc' library created and owned by Francesc Alted.  
 URL: https://github.com/traversc/qs2

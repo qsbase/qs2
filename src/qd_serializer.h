@@ -5,8 +5,7 @@
 #include <Rcpp.h>
 #include <tbb/global_control.h>
 
-#include "io.h"
-#include "qs_qd_file_headers.h"
+#include "qx_file_headers.h"
 #include "qd_constants.h"
 
 #include "sf_external.h"

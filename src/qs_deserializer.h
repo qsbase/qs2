@@ -1,11 +1,9 @@
-#ifndef _QS_UNSERIALIZER_H_
-#define _QS_UNSERIALIZER_H_
+#ifndef _QS2_QS_DESERIALIZER_H_
+#define _QS2_QS_DESERIALIZER_H_
 
 #include <Rcpp.h>
-#include "io.h"
 #include <tbb/global_control.h>
-#include "qs_qd_file_headers.h"
-#include "unwind_protect_implentation.h"
+#include "qx_file_headers.h"
 
 using namespace Rcpp;
 

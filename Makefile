@@ -52,7 +52,6 @@ install:
 	find . -iname "*.so" -exec rm {} \;
 	R CMD build . # --no-build-vignettes
 	R CMD INSTALL $(BUILD) --configure-args="--with-simd=AVX2"
-	# R CMD INSTALL $(BUILD) --configure-args="--with-simd=AVX2 --with-lz4-force-compile"
 
 vignette:
 	Rscript -e "rmarkdown::render(input='vignettes/vignette.rmd', output_format='html_vignette')"
@@ -61,14 +60,4 @@ vignette:
 	# sed -r -i 's/\((.+)\.png/\(vignettes\/\1\.png/' README.md
 
 test:
-	Rscript tests/qsavemload_testing.R
-	Rscript tests/correctness_testing.R filestream 3
-	Rscript tests/correctness_testing.R fd 3
-	Rscript tests/correctness_testing.R memory 3
-	Rscript inst/extra_tests/regression_testing.R
-
-testext:
-	Rscript inst/extra_tests/correctness_testing_extended.R
-
-bench:
-	Rscript inst/extra_tests/benchmark_testing.R
+	Rscript tests/correctness_testing.R

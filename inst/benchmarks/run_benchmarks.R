@@ -39,7 +39,8 @@ grid <- rbind(expand.grid(algo = "qs-legacy", compress_level = compress_levels, 
               expand.grid(algo = "fst", compress_level = fst_compress_levels, nthreads=c(1,4), rep = reps, stringsAsFactors = FALSE),
               expand.grid(algo = "parquet", compress_level = compress_levels, nthreads=c(1,4), rep=reps, stringsAsFactors = FALSE)) %>% sample_n(nrow(.))
 
-if(DATASET == "mnist") grid <- filter(grid, algo %in% c("qs-legacy", "qs2", "qdata"))
+grid <- filter(grid, algo %in% c("qs-legacy", "qs2", "qdata"))
+# if(DATASET == "mnist") grid <- filter(grid, algo %in% c("qs-legacy", "qs2", "qdata"))
 
 res <- lapply(1:nrow(grid), function(i) {
   print(i)
@@ -55,9 +56,9 @@ res <- lapply(1:nrow(grid), function(i) {
   if(algo == "qs-legacy") {
     qs::qsave(DATA, file = output_file, preset = "custom", algorithm = "zstd", compress_level = cl, nthreads = nthreads, check_hash = FALSE)
   } else if(algo == "qs2") {
-    qs2::qsave(DATA, file = output_file, compress_level = cl, nthreads = nthreads)
+    qs2::qs_save(DATA, file = output_file, compress_level = cl, nthreads = nthreads)
   } else if(algo == "qdata") {
-    qs2::qdsave(DATA, file = output_file, compress_level = cl, nthreads = nthreads)
+    qs2::qd_save(DATA, file = output_file, compress_level = cl, nthreads = nthreads)
   } else if(algo == "fst") {
     fst::threads_fst(nr_of_threads = nthreads)
     fst::write_fst(DATA, path = output_file, compress = cl)
