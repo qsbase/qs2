@@ -4,7 +4,7 @@
 \alias{qs_read}
 \title{qs_read}
 \usage{
-qs_read(file, validate_checksum=FALSE, nthreads = 1L)
+qs_read(file, validate_checksum=TRUE, nthreads = 1L)
 }
 \arguments{
 \item{file}{The file name/path.}

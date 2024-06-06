@@ -29,7 +29,7 @@
     DO_UNWIND_PROTECT(qs_save_impl, decltype(block_io), args)
 
 // [[Rcpp::export(rng = false, invisible = true)]]
-SEXP qs_save(SEXP object, const std::string & file, const int compress_level = 3, const bool shuffle = true, const bool store_checksum = false, const int nthreads = 1) {
+SEXP qs_save(SEXP object, const std::string & file, const int compress_level = 3, const bool shuffle = true, const bool store_checksum = true, const int nthreads = 1) {
     UNWIND_PROTECT_BEGIN()
 
     #if RCPP_PARALLEL_USE_TBB == 0
@@ -81,7 +81,6 @@ SEXP qs_save(SEXP object, const std::string & file, const int compress_level = 3
             }
         }
     }
-
     UNWIND_PROTECT_END();
 }
 
@@ -90,11 +89,10 @@ SEXP qs_save(SEXP object, const std::string & file, const int compress_level = 3
     _BASE_CLASS_ <IfStreamReader, _DECOMPRESSOR_, ErrorType::r_error> block_io(myFile); \
     R_UnserializeInit< _BASE_CLASS_ <IfStreamReader, _DECOMPRESSOR_, ErrorType::r_error>>(&in, (R_pstream_data_t)(&block_io)); \
     DO_JMPBUF(); \
-    DO_UNWIND_PROTECT(qs_read_impl, decltype(block_io), in); \
-    return output
+    DO_UNWIND_PROTECT(qs_read_impl, decltype(block_io), in);
 
 // [[Rcpp::export(rng = false)]]
-SEXP qs_read(const std::string & file, const bool validate_checksum = false, const int nthreads = 1) {
+SEXP qs_read(const std::string & file, const bool validate_checksum = true, const int nthreads = 1) {
     UNWIND_PROTECT_BEGIN()
 
     #if RCPP_PARALLEL_USE_TBB == 0
@@ -141,10 +139,11 @@ SEXP qs_read(const std::string & file, const bool validate_checksum = false, con
     QdataSerializer<_BASE_CLASS_<OfStreamWriter, _COMPRESSOR_, _HASHER_, ErrorType::cpp_error>> serializer(writer, warn_unsupported_types); \
     serializer.write_object(object); \
     uint64_t hash = writer.finish(); \
-    write_qx_hash(myFile, hash);
+    write_qx_hash(myFile, hash); \
+    return R_NilValue
 
 // [[Rcpp::export(rng = false, invisible = true)]]
-SEXP qd_save(SEXP object, const std::string & file, const int compress_level = 3, const bool shuffle = true, const bool store_checksum = false, const bool warn_unsupported_types = true, const int nthreads = 1) {
+SEXP qd_save(SEXP object, const std::string & file, const int compress_level = 3, const bool shuffle = true, const bool store_checksum = true, const bool warn_unsupported_types = true, const int nthreads = 1) {
 
     #if RCPP_PARALLEL_USE_TBB == 0
     if(nthreads > 1) throw std::runtime_error("nthreads > 1 requires TBB");
@@ -204,7 +203,7 @@ SEXP qd_save(SEXP object, const std::string & file, const int compress_level = 3
     return output
 
 // [[Rcpp::export(rng = false)]]
-SEXP qd_read(const std::string & file, const bool use_alt_rep = false, const bool validate_checksum = false, const int nthreads = 1) {
+SEXP qd_read(const std::string & file, const bool use_alt_rep = false, const bool validate_checksum = true, const int nthreads = 1) {
 
     #if RCPP_PARALLEL_USE_TBB == 0
     if(nthreads > 1) throw std::runtime_error("nthreads > 1 requires TBB");

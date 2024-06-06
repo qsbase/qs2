@@ -5,7 +5,7 @@
 \title{qs_save}
 \usage{
 qs_save(object, file, compress_level = 3L,
-shuffle = TRUE, store_checksum=FALSE, nthreads = 1L)
+shuffle = TRUE, store_checksum=TRUE, nthreads = 1L)
 }
 \arguments{
 \item{object}{The object to save.}
@@ -20,7 +20,7 @@ of speed and compression.}
 
 \item{shuffle}{Whether to allow byte shuffling when compressing data (default: \code{TRUE}). See section \emph{Byte shuffling} in the vignette or readme for details.}
 
-\item{store_checksum}{Whether to store the checksum in the saved object (Default \code{FALSE}) which can be used to verify file integrity during read. There is a minor performance penalty when enabled.}
+\item{store_checksum}{Whether to store the checksum in the saved object (Default \code{TRUE}) which can be used to verify file integrity during read. There is a minor performance penalty when enabled.}
 
 \item{nthreads}{The number of threads to use when compressing data (default: \code{1}).}
 }

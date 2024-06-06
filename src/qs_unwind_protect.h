@@ -54,7 +54,8 @@ struct RerrorUnwind {
         if (jump == TRUE) { \
             longjmp(*static_cast<std::jmp_buf*>(jmpbuf), 1); \
         } \
-    }, &jmpbuf, static_cast<SEXP>(cont_token))
+    }, &jmpbuf, static_cast<SEXP>(cont_token)); \
+    return output
 
 #endif
 
