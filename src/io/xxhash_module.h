@@ -6,7 +6,7 @@
 struct xxHashEnv {
     XXH3_state_t* state;
     xxHashEnv() : state(XXH3_createState()) {
-        XXH_errorcode ret = XXH3_64bits_reset(state);
+        XXH3_64bits_reset(state);
     }
     ~xxHashEnv() {
         XXH3_freeState(state);

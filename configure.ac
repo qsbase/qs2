@@ -23,15 +23,13 @@ AC_ARG_WITH([zstd-lib],
             AS_HELP_STRING([--with-zstd-lib=LIB_PATH],[the location of zstd library files]),
             [zstd_lib_path=$withval])
 
+AC_ARG_WITH([TBB],
+            AS_HELP_STRING([--with-TBB],[Manually select TBB support]),
+            [using_tbb="true"])
+
 AC_ARG_WITH([simd],
             AS_HELP_STRING([--with-simd],[Manually select SIMD support (options: AVX2, SSE2)]),
             [with_simd=$withval])
-
-
-# This doesn't seem to be very portable, so we won't use it
-# AX_CHECK_COMPILE_FLAG([-msse2], [SSE2_SUPPORTED=1], [SSE2_SUPPORTED=0])
-# AX_CHECK_COMPILE_FLAG([-mavx2], [AVX2_SUPPORTED=1], [AVX2_SUPPORTED=0])
-# AX_EXT()
 
 ########################################################
 #### Version value function
@@ -75,7 +73,7 @@ else
 fi
 
 ########################################################
-#### Compile ZSTD/LZ4/SIMD checks
+#### Compile ZSTD checks
 
 ZSTD_INCLUDE_PATH=""
 ZSTD_LIBS=""
@@ -120,6 +118,21 @@ if test xx$COMPILE_ZSTD = "xxtrue"; then
   ZSTD_CLEAN="\$(LIBZSTD) libQSZSTD.a"
 fi
 
+########################################################
+#### Compile TBB checks
+
+# disable TBB by default
+if test xx$using_tbb = "xxtrue"; then
+  echo "Using TBB"
+  TBB_FLAG=""
+else
+  echo "Not using TBB"
+  TBB_FLAG="-DRCPP_PARALLEL_USE_TBB=0"
+fi
+
+########################################################
+#### Compile SIMD checks
+
 if test xx$with_simd = "xxAVX2"; then
   echo "Using AVX2"
   SIMD_FLAG="-mavx2"
@@ -128,11 +141,14 @@ elif test xx$with_simd = "xxSSE2"; then
   SIMD_FLAG="-msse2"
 fi
 
+########################################################
+
 AC_SUBST([COMPILER_SPECIFIC_LIBS], $COMPILER_SPECIFIC_LIBS)
 AC_SUBST([ZSTD_INCLUDE_PATH], $ZSTD_INCLUDE_PATH)
 AC_SUBST([ZSTD_LIBS], $ZSTD_LIBS)
 AC_SUBST([ZSTD_SHLIB], $ZSTD_SHLIB)
 AC_SUBST([ZSTD_CLEAN], $ZSTD_CLEAN)
+AC_SUBST([TBB_FLAG], $TBB_FLAG)
 AC_SUBST([SIMD_FLAG], $SIMD_FLAG)
 
 AC_CONFIG_FILES([src/Makevars])

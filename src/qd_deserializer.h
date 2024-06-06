@@ -265,7 +265,7 @@ struct QdataDeserializer {
     }
 
     SEXP read_object() {
-        SEXP object;
+        SEXP object = nullptr; // initialize to null value to hush compiler warnings
         qstype type;
         uint64_t object_length = 0;
         uint32_t attr_length = 0;
@@ -359,7 +359,7 @@ struct QdataDeserializer {
                 reader.get_data( reinterpret_cast<char*>(RAW(object)), object_length );
                 break;
             default:
-                // this statement is unreachable
+                // this statement should be unreachable
                 reader.cleanup_and_throw("something went wrong (reading object type)");
         }
         UNPROTECT(1);

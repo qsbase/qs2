@@ -26,3 +26,4 @@ src/Makevars
 /src/.vscode
 README.html
 revdep/*
+configure~

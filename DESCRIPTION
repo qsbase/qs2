@@ -14,7 +14,6 @@ Authors@R: c(
 Maintainer: Travers Ching <traversc@gmail.com>
 Description: Provides functions for quickly writing and reading any R object to and from disk. Successor to the original 'qs' package.
 License: GPL-3
-LazyData: true
 Biarch: true
 Depends: R (>= 3.5.0)
 Imports: 

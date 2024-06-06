@@ -51,7 +51,7 @@ install:
 	find . -iname "*.o" -exec rm {} \;
 	find . -iname "*.so" -exec rm {} \;
 	R CMD build . # --no-build-vignettes
-	R CMD INSTALL $(BUILD) --configure-args="--with-simd=AVX2"
+	R CMD INSTALL $(BUILD) --configure-args="--with-simd=AVX2 --with-TBB"
 
 vignette:
 	Rscript -e "rmarkdown::render(input='vignettes/vignette.rmd', output_format='html_vignette')"
