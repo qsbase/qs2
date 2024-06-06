@@ -10,7 +10,6 @@ args <- commandArgs(trailingOnly = TRUE)
 algo <- args[1]
 nthreads <- args[2] %>% as.numeric
 file_path <- args[3] # must be full path not relative
-# copy_path <- args[4] # path to copy file to, full path not relative
 output_temp_file <- args[4] # write results to here
 
 now <- function() assign(".time", Sys.time(), envir = globalenv())

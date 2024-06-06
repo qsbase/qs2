@@ -31,6 +31,10 @@ AC_ARG_WITH([simd],
             AS_HELP_STRING([--with-simd],[Manually select SIMD support (options: AVX2, SSE2)]),
             [with_simd=$withval])
 
+AC_ARG_WITH([qsblocksize],
+            AS_HELP_STRING([--with-qsblocksize],[Internal testing only DO NOT USE]),
+            [with_qsblocksize=$withval])
+
 ########################################################
 #### Version value function
 
@@ -79,7 +83,6 @@ ZSTD_INCLUDE_PATH=""
 ZSTD_LIBS=""
 ZSTD_SHLIB=""
 ZSTD_CLEAN=""
-SIMD_FLAG=""
 
 if test xx$zstd_force_compile = "xxtrue"; then
   echo "Compiling zstd from source due to --with-zstd-force-compile"
@@ -119,9 +122,8 @@ if test xx$COMPILE_ZSTD = "xxtrue"; then
 fi
 
 ########################################################
-#### Compile TBB checks
+#### Compile TBB checks, disable TBB by default
 
-# disable TBB by default
 if test xx$using_tbb = "xxtrue"; then
   echo "Using TBB"
   TBB_FLAG=""
@@ -133,12 +135,24 @@ fi
 ########################################################
 #### Compile SIMD checks
 
+SIMD_FLAG=""
+
 if test xx$with_simd = "xxAVX2"; then
   echo "Using AVX2"
   SIMD_FLAG="-mavx2"
 elif test xx$with_simd = "xxSSE2"; then
   echo "Using SSE2"
   SIMD_FLAG="-msse2"
+fi
+
+########################################################
+#### Internal testing for blocksize optimization
+
+QSBLOCKSIZE=""
+
+if test xx$with_qsblocksize != "xx"; then
+echo "Using blocksize ${with_qsblocksize}"
+  QSBLOCKSIZE=-DQS2_BLOCKSIZE_TESTING_ONLY_DO_NOT_USE=${with_qsblocksize}
 fi
 
 ########################################################
@@ -150,6 +164,7 @@ AC_SUBST([ZSTD_SHLIB], $ZSTD_SHLIB)
 AC_SUBST([ZSTD_CLEAN], $ZSTD_CLEAN)
 AC_SUBST([TBB_FLAG], $TBB_FLAG)
 AC_SUBST([SIMD_FLAG], $SIMD_FLAG)
+AC_SUBST([QSBLOCKSIZE], $QSBLOCKSIZE)
 
 AC_CONFIG_FILES([src/Makevars])
 AC_OUTPUT
