@@ -41,7 +41,7 @@ x2 <- qd_read(myfile)
 identical(x, x2) # returns true
 
 # qdata support multithreading
-qd_save(x, myfile, nthreads=2)
-x2 <- qd_read(myfile, nthreads=2)
+qd_save(x, myfile, nthreads=1)
+x2 <- qd_read(myfile, nthreads=1)
 identical(x, x2) # returns true
 }

@@ -21,6 +21,8 @@
 #include "qx_dump.h"
 #include "qx_read_hash.h"
 
+#define NTHREADS_ERROR_MSG "nthreads > 1 requires TBB, see the readme and vignette for details"
+
 #define DO_QS_SAVE(_BASE_CLASS_, _COMPRESSOR_, _HASHER_) \
     _BASE_CLASS_ <OfStreamWriter, _COMPRESSOR_, _HASHER_, ErrorType::r_error> block_io(myFile, compress_level); \
     R_SerializeInit(&out, block_io); \
@@ -33,7 +35,7 @@ SEXP qs_save(SEXP object, const std::string & file, const int compress_level = 3
     UNWIND_PROTECT_BEGIN()
 
     #if RCPP_PARALLEL_USE_TBB == 0
-    if(nthreads > 1) throw_error<ErrorType::r_error>("nthreads > 1 requires TBB");
+    if(nthreads > 1) throw_error<ErrorType::r_error>(NTHREADS_ERROR_MSG);
     #endif
 
     if(compress_level > ZSTD_maxCLevel() || compress_level < ZSTD_minCLevel()) {
@@ -96,7 +98,7 @@ SEXP qs_read(const std::string & file, const bool validate_checksum = true, cons
     UNWIND_PROTECT_BEGIN()
 
     #if RCPP_PARALLEL_USE_TBB == 0
-    if(nthreads > 1) throw_error<ErrorType::r_error>("nthreads > 1 requires TBB");
+    if(nthreads > 1) throw_error<ErrorType::r_error>(NTHREADS_ERROR_MSG);
     #endif
 
     IfStreamReader myFile(R_ExpandFileName(file.c_str()));
@@ -146,7 +148,7 @@ SEXP qs_read(const std::string & file, const bool validate_checksum = true, cons
 SEXP qd_save(SEXP object, const std::string & file, const int compress_level = 3, const bool shuffle = true, const bool store_checksum = true, const bool warn_unsupported_types = true, const int nthreads = 1) {
 
     #if RCPP_PARALLEL_USE_TBB == 0
-    if(nthreads > 1) throw std::runtime_error("nthreads > 1 requires TBB");
+    if(nthreads > 1) throw std::runtime_error(NTHREADS_ERROR_MSG);
     #endif
 
     if(compress_level > ZSTD_maxCLevel() || compress_level < ZSTD_minCLevel()) {
@@ -206,7 +208,7 @@ SEXP qd_save(SEXP object, const std::string & file, const int compress_level = 3
 SEXP qd_read(const std::string & file, const bool use_alt_rep = false, const bool validate_checksum = true, const int nthreads = 1) {
 
     #if RCPP_PARALLEL_USE_TBB == 0
-    if(nthreads > 1) throw std::runtime_error("nthreads > 1 requires TBB");
+    if(nthreads > 1) throw std::runtime_error(NTHREADS_ERROR_MSG);
     #endif
 
     IfStreamReader myFile(R_ExpandFileName(file.c_str()));
