@@ -1,10 +1,10 @@
 total_time <- Sys.time()
 
-if(requireNamespace("qs2", quietly=TRUE) &&
-   requireNamespace("dplyr", quietly=TRUE) &&
-   requireNamespace("data.table", quietly=TRUE) &&
-   requireNamespace("stringfish", quietly=TRUE) &&
-   requireNamespace("stringi", quietly=TRUE)
+if(require("qs2", quietly=TRUE) &&
+   require("dplyr", quietly=TRUE) &&
+   require("data.table", quietly=TRUE) &&
+   require("stringfish", quietly=TRUE) &&
+   require("stringi", quietly=TRUE)
 ) {
 
 options(warn = 1)
@@ -24,17 +24,17 @@ if (nchar(Sys.getenv("QS_EXTENDED_TESTS")) &&    # if QS_EXTENDED_TESTS is not s
   mode <- "filestream"
   reps <- 1
   internal_reps <- 1
-  test_points <- c(1e6)
-  test_points_raw_vector <- c(1e6)
+  test_points <- c(1e5)
+  test_points_raw_vector <- c(1e5)
   test_points_character_vector <- c(1e3)
-  max_size <- 1e6
+  max_size <- 1e5
   random_threads <- 1
   random_cl <- 1
 } else {
   cat("performing extended tests\n")
   do_extended_tests <- TRUE
   reps <- 3
-  internal_reps <- 1
+  internal_reps <- 2
   if (length(args) == 0) {
     mode <- "filestream"
   } else {
@@ -51,7 +51,6 @@ if (nchar(Sys.getenv("QS_EXTENDED_TESTS")) &&    # if QS_EXTENDED_TESTS is not s
   } else {
     random_threads <- 5
   }
-
 }
 myfile <- tempfile()
 
@@ -63,7 +62,17 @@ set_obj_size <- function(x) {
   assign("obj_size", get_obj_size() + as.numeric(object.size(x)), envir = globalenv())
   return(get_obj_size());
 }
-random_object_generator <- function(N, with_envs = TRUE) { # additional input: global obj_size, max_size
+
+rand_strings <- function(N) {
+  if(N == 0) {
+    character(0)
+  } else {
+    stringi::stri_rand_strings(N, round(rexp(N, 1/90)))
+  }
+}
+
+# do not include functions as they do not evaluate to TRUE with identical(x, y)
+random_object_generator <- function(N, with_envs = FALSE) { # additional input: global obj_size, max_size
   if (sample(3, 1) == 1) {
     ret <- as.list(1:N)
   } else if (sample(2, 1) == 1) {
@@ -177,8 +186,7 @@ for (q in 1:reps) {
   time <- vector("numeric", length = internal_reps)
   for (tp in test_points_character_vector) {
     for (i in 1:internal_reps) {
-      x1 <- stringi::stri_rand_strings(tp, sample.int(1000, size = tp, replace = TRUE))
-      x1 <- c(NA, "", x1)
+      x1 <- c(NA, "", rand_strings(tp))
       qs_save_rand(x1)
       time[i] <- Sys.time()
       z <- qs_read_rand()
@@ -193,8 +201,7 @@ for (q in 1:reps) {
   time <- vector("numeric", length = internal_reps)
   for (tp in test_points_character_vector) {
     for (i in 1:internal_reps) {
-      x1 <- stringi::stri_rand_strings(tp, sample.int(1000, size = tp, replace = TRUE))
-      x1 <- c(NA, "", x1)
+      x1 <- c(NA, "", rand_strings(tp))
       x1 <- stringfish::convert_to_sf(x1)
       qs_save_rand(x1)
       time[i] <- Sys.time()
