@@ -19,7 +19,7 @@ Depends: R (>= 3.5.0)
 Imports: 
     Rcpp, stringfish (>= 0.15.1)
 LinkingTo: Rcpp, stringfish, RcppParallel
-Suggests: knitr, rmarkdown, dplyr, data.table
+Suggests: knitr, rmarkdown, dplyr, data.table, stringi
 SystemRequirements: GNU make
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

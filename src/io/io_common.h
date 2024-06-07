@@ -22,7 +22,9 @@ static constexpr uint64_t MAX_BLOCKSIZE = QS2_BLOCKSIZE_TESTING_ONLY_DO_NOT_USE;
 static constexpr uint64_t BLOCK_RESERVE = 64ULL;
 static constexpr uint64_t MIN_BLOCKSIZE = MAX_BLOCKSIZE - BLOCK_RESERVE; // smallest allowable block size, except for last block
 static const uint64_t MAX_ZBLOCKSIZE = ZSTD_compressBound(MAX_BLOCKSIZE);
-static constexpr uint32_t BLOCK_METADATA = 0xFFF00000;  // 11111111 11110000 00000000 00000000 in binary, First 12 MSBs can be used for metadata in either zblock or block
+// 11111111 11110000 00000000 00000000 in binary, First 12 MSBs can be used for metadata in either zblock or block
+// currently only using the first bit for metadata
+static constexpr uint32_t BLOCK_METADATA = 0x80000000; // 10000000 00000000 00000000 00000000
 
 static constexpr uint64_t SHUFFLE_ELEMSIZE = 8ULL;
 static constexpr uint32_t SHUFFLE_MASK = (1ULL << 31);
