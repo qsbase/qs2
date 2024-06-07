@@ -77,4 +77,4 @@ vignette:
 	# sed -r -i 's/\((.+)\.png/\(vignettes\/\1\.png/' README.md
 
 test:
-	Rscript tests/correctness_testing.R
+	QS_EXTENDED_TESTS=1 Rscript tests/correctness_testing.R; unset QS_EXTENDED_TESTS

@@ -18,8 +18,7 @@ do_gc <- function() {
 }
 
 args <- commandArgs(TRUE)
-if (nchar(Sys.getenv("QS_EXTENDED_TESTS")) &&    # if QS_EXTENDED_TESTS is not set
-   (length(args) > 0) && (args[1] == "check")) { # R CMD check
+if (nchar(Sys.getenv("QS_EXTENDED_TESTS")) == 0) {
   do_extended_tests <- FALSE
   mode <- "filestream"
   reps <- 1
@@ -307,7 +306,7 @@ for (q in 1:reps) {
 
   # reserve below section for extended tests
   if(!do_extended_tests) {
-    continue;
+    next;
   }
 
   if(format == "qs2") {
