@@ -29,12 +29,20 @@ check_TBB <- function() {
     .Call(`_qs2_check_TBB`)
 }
 
+check_internal_blocksize <- function() {
+    .Call(`_qs2_check_internal_blocksize`)
+}
+
 zstd_compress_raw <- function(data, compress_level) {
     .Call(`_qs2_zstd_compress_raw`, data, compress_level)
 }
 
 zstd_decompress_raw <- function(data) {
     .Call(`_qs2_zstd_decompress_raw`, data)
+}
+
+zstd_compress_bound <- function(size) {
+    .Call(`_qs2_zstd_compress_bound`, size)
 }
 
 blosc_shuffle_raw <- function(data, bytesofsize) {

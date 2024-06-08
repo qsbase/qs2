@@ -148,7 +148,8 @@ qs_read_rand <- function() {
 for(format in c("qdata", "qs2")) {
 for(check in c(TRUE, FALSE)) {
 for (q in 1:reps) {
-  cat("format", format, "rep",  q, "of", reps, "\n")
+  cat("########################################")
+  cat("Format", format, "using checksum", check, "rep",  q, "of", reps, "\n")
 
   time <- vector("numeric", length = internal_reps)
   for (tp in test_points) {

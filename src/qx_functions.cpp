@@ -291,6 +291,11 @@ bool check_TBB() {
 }
 
 // [[Rcpp::export(rng = false)]]
+int check_internal_blocksize() {
+    return MAX_BLOCKSIZE;
+}
+
+// [[Rcpp::export(rng = false)]]
 std::vector<unsigned char> zstd_compress_raw(SEXP const data, const int compress_level) {
     if(compress_level > ZSTD_maxCLevel() || compress_level < ZSTD_minCLevel()) {
         throw_error<ErrorType::r_error>("compress_level must be an integer between " + 
@@ -316,6 +321,11 @@ RawVector zstd_decompress_raw(SEXP const data) {
   char* retdata = reinterpret_cast<char*>(RAW(ret));
   ZSTD_decompress(retdata, retsize, xdata, zsize);
   return ret;
+}
+
+// [[Rcpp::export(rng = false)]]
+int zstd_compress_bound(const int size) {
+  return ZSTD_compressBound(size);
 }
 
 // [[Rcpp::export(rng = false)]]

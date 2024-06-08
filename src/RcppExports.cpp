@@ -94,6 +94,15 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// check_internal_blocksize
+int check_internal_blocksize();
+RcppExport SEXP _qs2_check_internal_blocksize() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    rcpp_result_gen = Rcpp::wrap(check_internal_blocksize());
+    return rcpp_result_gen;
+END_RCPP
+}
 // zstd_compress_raw
 std::vector<unsigned char> zstd_compress_raw(SEXP const data, const int compress_level);
 RcppExport SEXP _qs2_zstd_compress_raw(SEXP dataSEXP, SEXP compress_levelSEXP) {
@@ -112,6 +121,16 @@ BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< SEXP const >::type data(dataSEXP);
     rcpp_result_gen = Rcpp::wrap(zstd_decompress_raw(data));
+    return rcpp_result_gen;
+END_RCPP
+}
+// zstd_compress_bound
+int zstd_compress_bound(const int size);
+RcppExport SEXP _qs2_zstd_compress_bound(SEXP sizeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< const int >::type size(sizeSEXP);
+    rcpp_result_gen = Rcpp::wrap(zstd_compress_bound(size));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -146,8 +165,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"_qs2_qx_dump", (DL_FUNC) &_qs2_qx_dump, 1},
     {"_qs2_check_SIMD", (DL_FUNC) &_qs2_check_SIMD, 0},
     {"_qs2_check_TBB", (DL_FUNC) &_qs2_check_TBB, 0},
+    {"_qs2_check_internal_blocksize", (DL_FUNC) &_qs2_check_internal_blocksize, 0},
     {"_qs2_zstd_compress_raw", (DL_FUNC) &_qs2_zstd_compress_raw, 2},
     {"_qs2_zstd_decompress_raw", (DL_FUNC) &_qs2_zstd_decompress_raw, 1},
+    {"_qs2_zstd_compress_bound", (DL_FUNC) &_qs2_zstd_compress_bound, 1},
     {"_qs2_blosc_shuffle_raw", (DL_FUNC) &_qs2_blosc_shuffle_raw, 2},
     {"_qs2_blosc_unshuffle_raw", (DL_FUNC) &_qs2_blosc_unshuffle_raw, 2},
     {NULL, NULL, 0}

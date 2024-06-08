@@ -55,7 +55,7 @@ qs_to_rds <- function(input_file, output_file, compress_level = 6) {
 #' stopifnot(identical(x, x2))
 #' @export
 rds_to_qs <- function(input_file, output_file, compress_level = 3) {
-  MAX_BLOCKSIZE <- 524288 # defined in io/io_common.h
+  MAX_BLOCKSIZE <- check_internal_blocksize() # defined in io/io_common.h
   HEADER_SIZE <- 24 # defined in qx_file_headers.h
   tmp_output <- tempfile()
   qs_save(NULL, tmp_output, compress_level = compress_level, store_checksum = FALSE, shuffle = FALSE)

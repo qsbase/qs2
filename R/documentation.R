@@ -190,6 +190,24 @@ NULL
 #' xrecovered <- unserialize(zstd_decompress_raw(xcompressed))
 NULL
 
+#' Zstd compress bound
+#'
+#' Exports the compress bound function from the zstd library. Returns the maximum potential compressed size of an object of length `size`.
+#'
+#' @usage zstd_compress_bound(size)
+#'
+#' @param size An integer size
+#'
+#' @return maximum compressed size
+#' @export
+#' @name zstd_compress_bound
+#'
+#' @examples
+#' zstd_compress_bound(100000)
+#' zstd_compress_bound(1e9)
+NULL
+
+
 #' Shuffle a raw vector
 #'
 #' Shuffles a raw vector using BLOSC shuffle routines.
