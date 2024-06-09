@@ -17,7 +17,7 @@ rds_to_qs(input_file, output_file, compress_level = 3)
 Converts a file saved in the \code{RDS} format to the \code{qs2} format.
 }
 \details{
-\code{shuffle} and \code{store_checksum} parameters are currently not supported when converting from \code{RDS} to \code{qs2}.
+The \code{shuffle} parameters is currently not supported when converting from \code{RDS} to \code{qs2}.
 When reading the resulting \code{qs2} file, \code{validate_checksum} must be set to \code{FALSE}.
 }
 \examples{

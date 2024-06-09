@@ -130,9 +130,9 @@ qs_save_rand <- function(x) {
   nt <- sample.int(random_threads, 1)
   cl <- sample.int(random_cl,1)
   if(format == "qs2") {
-    qs2::qs_save(x, file = myfile, compress_level = cl, store_checksum = check, nthreads = nt)
+    qs2::qs_save(x, file = myfile, compress_level = cl, nthreads = nt)
   } else if(format == "qdata") {
-    qs2::qd_save(x, file = myfile, compress_level = cl, store_checksum = check, nthreads = nt)
+    qs2::qd_save(x, file = myfile, compress_level = cl, nthreads = nt)
   }
 }
 

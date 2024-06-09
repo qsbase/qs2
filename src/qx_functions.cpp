@@ -175,7 +175,7 @@ SEXP qd_save(SEXP object, const std::string & file, const int compress_level = 3
     return output
 
 // [[Rcpp::export(rng = false)]]
-SEXP qd_read(const std::string & file, const bool use_alt_rep = false, const bool validate_checksum = true, const int nthreads = 1) {
+SEXP qd_read(const std::string & file, const bool use_alt_rep = false, const bool validate_checksum = false, const int nthreads = 1) {
 
     #if RCPP_PARALLEL_USE_TBB == 0
     if(nthreads > 1) throw std::runtime_error(NTHREADS_ERROR_MSG);
@@ -188,7 +188,6 @@ SEXP qd_read(const std::string & file, const bool use_alt_rep = false, const boo
     bool shuffle;
     uint64_t stored_hash;
     read_qdata_header(myFile, shuffle, stored_hash);
-    read_qs2_header(myFile, shuffle, stored_hash);
     if(stored_hash == 0) {
         throw std::runtime_error("For file " + file + ": hash not stored, save file may be incomplete");
     }

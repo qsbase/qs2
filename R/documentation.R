@@ -50,7 +50,7 @@ NULL
 #'
 #' Reads an object that was saved to disk in the `qs2` format.
 #'
-#' @usage qs_read(file, validate_checksum=TRUE, nthreads = 1L)
+#' @usage qs_read(file, validate_checksum=FALSE, nthreads = 1L)
 #'
 #' @eval shared_params_read()
 #' @return The object stored in `file`.
@@ -105,7 +105,7 @@ NULL
 #'
 #' Reads an object that was saved to disk in the `qdata` format.
 #'
-#' @usage qd_read(file, use_alt_rep = FALSE, validate_checksum=TRUE, nthreads = 1L)
+#' @usage qd_read(file, use_alt_rep = FALSE, validate_checksum=FALSE, nthreads = 1L)
 #'
 #' @eval shared_params_read(use_alt_rep = TRUE)
 #' @return The object stored in `file`.

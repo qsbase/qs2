@@ -41,7 +41,7 @@ qs_to_rds <- function(input_file, output_file, compress_level = 6) {
 #' @param output_file The `qs2` file to write.
 #' @param compress_level The zstd compression level to use when writing the `qs2` file. See the `qs_save` help file for more details on this parameter.
 #' 
-#' @details `shuffle` and `store_checksum` parameters are currently not supported when converting from `RDS` to `qs2`.
+#' @details The `shuffle` parameters is currently not supported when converting from `RDS` to `qs2`.
 #' When reading the resulting `qs2` file, `validate_checksum` must be set to `FALSE`.
 #' 
 #' @examples
@@ -58,7 +58,7 @@ rds_to_qs <- function(input_file, output_file, compress_level = 3) {
   MAX_BLOCKSIZE <- check_internal_blocksize() # defined in io/io_common.h
   HEADER_SIZE <- 24 # defined in qx_file_headers.h
   tmp_output <- tempfile()
-  qs_save(NULL, tmp_output, compress_level = compress_level, store_checksum = FALSE, shuffle = FALSE)
+  qs_save(NULL, tmp_output, compress_level = compress_level, shuffle = FALSE)
   header_bytes <- readBin(tmp_output, "raw", n = HEADER_SIZE)
   in_con <- gzfile(input_file, "rb")
   out_con <- file(output_file, "wb")

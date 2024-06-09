@@ -13,7 +13,7 @@ qd_save <- function(object, file, compress_level = 3L, shuffle = TRUE, warn_unsu
     invisible(.Call(`_qs2_qd_save`, object, file, compress_level, shuffle, warn_unsupported_types, nthreads))
 }
 
-qd_read <- function(file, use_alt_rep = FALSE, validate_checksum = TRUE, nthreads = 1L) {
+qd_read <- function(file, use_alt_rep = FALSE, validate_checksum = FALSE, nthreads = 1L) {
     .Call(`_qs2_qd_read`, file, use_alt_rep, validate_checksum, nthreads)
 }
 

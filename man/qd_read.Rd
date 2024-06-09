@@ -4,7 +4,7 @@
 \alias{qd_read}
 \title{qd_read}
 \usage{
-qd_read(file, use_alt_rep = FALSE, validate_checksum=TRUE, nthreads = 1L)
+qd_read(file, use_alt_rep = FALSE, validate_checksum=FALSE, nthreads = 1L)
 }
 \arguments{
 \item{file}{The file name/path.}
