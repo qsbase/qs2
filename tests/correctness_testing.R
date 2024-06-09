@@ -46,8 +46,10 @@ if (nchar(Sys.getenv("QS_EXTENDED_TESTS")) == 0) {
   max_size <- 1e7
   random_cl <- 10
   if(qs2:::check_TBB() == FALSE) {
+    cat("TBB not detected\n")
     random_threads <- 1 # no TBB support
   } else {
+    cat("TBB detected\n")
     random_threads <- 5
   }
 }

@@ -9,8 +9,8 @@ set_string_ops("&", "|")
 
 
 algo_subset <- c("qs-legacy", "qs2", "qdata")
-for(DATASET in c("enwik8", "gaia", "mnist")) {
-df <- fread("~/GoogleDrive/qs2/inst/benchmarks/%s_serialization_benchmarks.csv" | DATASET) #%>%
+for(DATASET in c("enwik8", "gaia", "mnist", "tcell")) {
+df <- fread("~/GoogleDrive/qs2/inst/benchmarks/results/ubuntu_serialization_benchmarks_%s.csv" | DATASET) %>%
   filter(algo %in% algo_subset)
 df$algo <- factor(df$algo, levels = algo_subset)
 
@@ -22,7 +22,8 @@ filter(dfs, sapply(file_size, length) > 1) %>% as.data.frame
 g1 <- ggplot(df, aes(x = file_size, y = save_time, color = algo, shape = factor(nthreads))) + 
   geom_point() + 
   geom_line(data = dfs, aes(lty = factor(nthreads))) + 
-  scale_x_log10() + scale_y_log10() + 
+  # scale_x_log10() + 
+  scale_y_log10() + 
   scale_color_manual(values = palette.colors(palette = "Okabe-Ito")) +
   labs(color = "Format", lty = "Threads", pch = "Threads",
        x = "File Size (MB)", y = "Save Time (s)") + 
@@ -35,7 +36,7 @@ g1 <- ggplot(df, aes(x = file_size, y = save_time, color = algo, shape = factor(
 g2 <- ggplot(df, aes(x = save_time, y = read_time, color = algo, shape = factor(nthreads))) + 
   geom_point() + 
   geom_line(data = dfs, aes(lty = factor(nthreads))) + 
-  scale_x_log10() + scale_y_log10() + 
+  scale_x_log10() + scale_y_log10() +
   scale_color_manual(values = palette.colors(palette = "Okabe-Ito")) +
   labs(color = "Format", lty = "Threads", pch = "Threads",
        y = "Read Time (s)", x = "Save Time (s)") + 

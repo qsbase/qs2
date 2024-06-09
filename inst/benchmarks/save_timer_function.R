@@ -11,14 +11,19 @@ args <- commandArgs(trailingOnly = TRUE)
 algo <- args[1]
 nthreads <- args[2] %>% as.numeric
 cl <- args[3] %>% as.numeric
-input_path <- args[4] # must be full path not relative; must be csv.gz read in by data.table
+input_path <- args[4] # must be full path not relative; must be RDS or tabular dataframe
 output_path <- args[5] # save data to here
 results_path <- args[6] # write results to here
 
 now <- function() assign(".time", Sys.time(), envir = globalenv())
 later <- function() { as.numeric(Sys.time() - get(".time", envir = globalenv()), units = "secs") }
 
-DATA <- data.table::fread(input_path, sep = ",", data.table=FALSE)
+# grep case insensitive for RDS
+if(grepl(".rds", input_path, ignore.case = TRUE)) {
+  DATA <- readRDS(input_path)
+} else {
+  DATA <- data.table::fread(input_path, data.table=FALSE)
+}
 
 if(algo == "qs-legacy") {
   suppressPackageStartupMessages( library(qs, quietly=TRUE) )

@@ -22,7 +22,13 @@ struct xxHashEnv {
         XXH3_64bits_update(state, &value, sizeof(POD));
     }
     uint64_t digest() {
-        return XXH3_64bits_digest(state);
+        uint64_t hash = XXH3_64bits_digest(state);
+        // there is a 1/2^64 chance that the hash is zero
+        // but we use it as a sentinel value so we need to make sure it's not zero
+        if(hash == 0) {
+            hash = 1;
+        }
+        return hash;
     }
 };
 

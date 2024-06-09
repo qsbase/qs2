@@ -7,7 +7,7 @@ shared_params_save <- function(warn_unsupported_types=FALSE) {
     'As of ZSTD 1.5.6 the maximum compression level is 22, and the minimum is -131072. Usually, values in the low positive range offer very good performance in terms',
     'of speed and compression.',
     '@param shuffle Whether to allow byte shuffling when compressing data (default: `TRUE`). See section *Byte shuffling* in the vignette or readme for details.',
-    '@param store_checksum Whether to store the checksum in the saved object (Default `TRUE`) which can be used to verify file integrity during read. There is a minor performance penalty when enabled.',
+    # '@param store_checksum Whether to store the checksum in the saved object (Default `TRUE`) which is used to verify file integrity during read. There is a performance penalty when enabled and a checksum is not at all necessary so you may want to disable it.',
     '@param warn_unsupported_types Whether to warn when saving an object with an unsupported type (default `TRUE`).'[warn_unsupported_types],
     '@param nthreads The number of threads to use when compressing data (default: `1`).')
 }
@@ -15,7 +15,7 @@ shared_params_save <- function(warn_unsupported_types=FALSE) {
 shared_params_read <- function(use_alt_rep=FALSE) {
   c('@param file The file name/path.',
   '@param use_alt_rep Use ALTREP when reading in string data (default `FALSE`).'[use_alt_rep],
-  '@param validate_checksum Whether to validate the checksum in the file (default `TRUE`).',
+  '@param validate_checksum Whether to validate the stored checksum in the file (default `FALSE`). This can be used to test for file corruption but has a performance penality.',
   '@param nthreads The number of threads to use when reading data (default: `1`).')
 }
 
@@ -24,7 +24,7 @@ shared_params_read <- function(use_alt_rep=FALSE) {
 #' Saves an object to disk using the `qs2` format.
 #'
 #' @usage qs_save(object, file, compress_level = 3L,
-#' shuffle = TRUE, store_checksum=TRUE, nthreads = 1L)
+#' shuffle = TRUE, nthreads = 1L)
 #'
 #' @eval shared_params_save()
 #' @export
@@ -78,7 +78,7 @@ NULL
 #' Saves an object to disk using the `qdata` format.
 #'
 #' @usage qd_save(object, file, compress_level = 3L,
-#' shuffle = TRUE, store_checksum=TRUE, warn_unsupported_types=TRUE,
+#' shuffle = TRUE, warn_unsupported_types=TRUE,
 #' nthreads = 1L)
 #'
 #' @eval shared_params_save(warn_unsupported_types = TRUE)

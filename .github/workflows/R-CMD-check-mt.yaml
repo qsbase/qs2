@@ -10,7 +10,7 @@ on:
   pull_request:
     branches: [main, master]
 
-name: R-CMD-check
+name: R-CMD-check-mt
 
 jobs:
   R-CMD-check:
@@ -23,10 +23,6 @@ jobs:
       matrix:
         config:
           - {os: macOS-latest,   r: 'release'}
-
-          - {os: windows-latest, r: 'release'}
-          # Use 3.6 to trigger usage of RTools35
-          # - {os: windows-latest, r: '3.6'}
 
           - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release'}
           - {os: ubuntu-latest,   r: 'release'}
@@ -61,4 +57,5 @@ jobs:
 
       - uses: r-lib/actions/check-r-package@v2
         with:
+          args: 'c("--no-manual", "--as-cran", "--install-args=--configure-args=\"--with-TBB\"")'
           upload-snapshots: true

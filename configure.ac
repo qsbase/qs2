@@ -48,35 +48,6 @@ echo $(($MAJOR*100000+$MINOR*100+$RELEASE))
 }
 
 ########################################################
-#### Compiler specific flags
-
-# Check if simple C++ program using atomic header can compile using AC_COMPILE_IFELSE
-AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
-#include <atomic>
-#include <cstdint>
-std::atomic<std::uint64_t> x1{0};
-std::atomic<std::uint8_t> x2{0};
-std::atomic<char*> x3{nullptr};
-std::atomic<bool> x4{false};
-int main() {
-  x1.fetch_add(1);
-  x2.fetch_add(1);
-  char temp = 'a';
-  x3.store(&temp);
-  x4.store(true);
-  return 0;
-}
-]])], [NEED_LIBATOMIC="no"], [NEED_LIBATOMIC="yes"])
-
-if test xx$NEED_LIBATOMIC = "xxyes"; then
-  echo "Requires -latomic flag"
-  COMPILER_SPECIFIC_LIBS="-latomic"
-else
-  echo "Does not require -latomic flag"
-  COMPILER_SPECIFIC_LIBS=""
-fi
-
-########################################################
 #### Compile ZSTD checks
 
 ZSTD_INCLUDE_PATH=""
@@ -130,6 +101,39 @@ if test xx$using_tbb = "xxtrue"; then
 else
   echo "Not using TBB"
   TBB_FLAG="-DRCPP_PARALLEL_USE_TBB=0"
+fi
+
+########################################################
+#### Check if -latomic flag is needed, only necessary if using TBB
+
+if test xx$using_tbb = "xxtrue"; then
+  # Check if simple C++ program using atomic header can compile using AC_COMPILE_IFELSE
+  AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
+  #include <atomic>
+  #include <cstdint>
+  std::atomic<std::uint64_t> x1{0};
+  std::atomic<std::uint8_t> x2{0};
+  std::atomic<char*> x3{nullptr};
+  std::atomic<bool> x4{false};
+  int main() {
+    x1.fetch_add(1);
+    x2.fetch_add(1);
+    char temp = 'a';
+    x3.store(&temp);
+    x4.store(true);
+    return 0;
+  }
+  ]])], [NEED_LIBATOMIC="no"], [NEED_LIBATOMIC="yes"])
+
+  if test xx$NEED_LIBATOMIC = "xxyes"; then
+    echo "Requires -latomic flag"
+    COMPILER_SPECIFIC_LIBS="-latomic"
+  else
+    echo "Does not require -latomic flag"
+    COMPILER_SPECIFIC_LIBS=""
+  fi
+else
+  COMPILER_SPECIFIC_LIBS=""
 fi
 
 ########################################################

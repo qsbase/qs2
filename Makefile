@@ -67,8 +67,25 @@ install-blocktest:
 	find . -iname "*.a" -exec rm {} \;
 	find . -iname "*.o" -exec rm {} \;
 	find . -iname "*.so" -exec rm {} \;
-	R CMD build . # --no-build-vignettes
+	R CMD build . --no-build-vignettes
 	R CMD INSTALL $(BUILD) --configure-args="--with-simd=AVX2 --with-TBB --with-qsblocksize=$(BLOCKSIZE)"
+
+install-compile-zstd:
+	find . -type f -exec chmod 644 {} \;
+	find . -type d -exec chmod 755 {} \;
+	chmod 755 cleanup
+	chmod 755 configure
+	# find src/ -type f -exec chmod 644 {} \;
+	# chmod 644 ChangeLog DESCRIPTION Makefile NAMESPACE README.md
+	./configure
+	./cleanup
+	Rscript -e "library(Rcpp); compileAttributes('.');"
+	Rscript -e "devtools::load_all(); roxygen2::roxygenise('.');"
+	find . -iname "*.a" -exec rm {} \;
+	find . -iname "*.o" -exec rm {} \;
+	find . -iname "*.so" -exec rm {} \;
+	R CMD build . --no-build-vignettes
+	R CMD INSTALL $(BUILD) --configure-args="--with-zstd-force-compile"
 
 vignette:
 	Rscript -e "rmarkdown::render(input='vignettes/vignette.rmd', output_format='html_vignette')"

@@ -9,7 +9,7 @@ qs_read(file, validate_checksum=TRUE, nthreads = 1L)
 \arguments{
 \item{file}{The file name/path.}
 
-\item{validate_checksum}{Whether to validate the checksum in the file (default \code{TRUE}).}
+\item{validate_checksum}{Whether to validate the stored checksum in the file (default \code{FALSE}). This can be used to test for file corruption but has a performance penality.}
 
 \item{nthreads}{The number of threads to use when reading data (default: \code{1}).}
 }

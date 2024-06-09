@@ -15,12 +15,18 @@ library(arrow)
 now <- function() assign(".time", Sys.time(), envir = globalenv())
 later <- function() { as.numeric(Sys.time() - get(".time", envir = globalenv()), units = "secs") }
 
-# Datasets for benchmarking
-DATA_PATH <- "/mnt/n/R_stuff"
-TMP_RESULTS_PATH <- tempfile()
-OUTPUT_PATH <- "/mnt/n/temp_qs2_bench_results"
+setwd(this.dir())
 
-for(DATASET in c("enwik8", "gaia", "mnist")) {
+PLATFORM <- "ubuntu" # for results naming purposes
+
+DATA_PATH <- "../../local"
+OUTPUT_PATH <- "../../local/TEMP"
+TMP_RESULTS_PATH <- tempfile()
+
+tests_datasets <- c("enwik8", "gaia", "tcell", "mnist")
+# test_algos <- c("qs-legacy", "qs2", "qdata", "fst", "parquet")
+test_algos <- c("qs-legacy", "qs2", "qdata")
+for(DATASET in tests_datasets) {
 if(DATASET == "enwik8") {
   DATA <- fread(DATA_PATH & "/enwik8.csv.gz", sep = ",", data.table=FALSE, colClasses = "character")
 } else if(DATASET == "gaia") {
@@ -28,9 +34,17 @@ if(DATASET == "enwik8") {
 } else if(DATASET == "mnist") {
   library(dslabs)
   DATA <- dslabs::read_mnist()
+} else if(DATASET == "tcell") {
+  DATA <- readRDS(DATA_PATH & "/T_cell_ADIRP0000010.rds")
 }
+  
+# object.size(DATA)
+# enwik8: 146242320
+# gaia: 288986496
+# mnist: 219801584
+# tcell: 293786648
 
-reps <- 1:3
+reps <- 1:5
 compress_levels <- c(1,3,5,7,9,11)
 fst_compress_levels <- seq(10,85,by=15)
 grid <- rbind(expand.grid(algo = "qs-legacy", compress_level = compress_levels, nthreads=c(1,4), rep=reps, stringsAsFactors = FALSE),
@@ -39,8 +53,8 @@ grid <- rbind(expand.grid(algo = "qs-legacy", compress_level = compress_levels, 
               expand.grid(algo = "fst", compress_level = fst_compress_levels, nthreads=c(1,4), rep = reps, stringsAsFactors = FALSE),
               expand.grid(algo = "parquet", compress_level = compress_levels, nthreads=c(1,4), rep=reps, stringsAsFactors = FALSE)) %>% sample_n(nrow(.))
 
-grid <- filter(grid, algo %in% c("qs-legacy", "qs2", "qdata"))
-# if(DATASET == "mnist") grid <- filter(grid, algo %in% c("qs-legacy", "qs2", "qdata"))
+grid <- filter(grid, algo %in% test_algos)
+if(DATASET == "mnist") grid <- filter(grid, algo %in% c("qs-legacy", "qs2", "qdata"))
 
 res <- lapply(1:nrow(grid), function(i) {
   print(i)
@@ -50,7 +64,8 @@ res <- lapply(1:nrow(grid), function(i) {
   nthreads <- grid$nthreads[i]
   rep <- grid$rep[i]
   
-  output_file <- "%s/%s_%s_cl%s_nt%s_rep%s.out" | c(OUTPUT_PATH, DATASET, algo, cl, nthreads, rep)
+  # output_file <- "%s/%s_%s_cl%s_nt%s_rep%s.out" | c(OUTPUT_PATH, DATASET, algo, cl, nthreads, rep)
+  output_file <- OUTPUT_PATH & "/tempsavefile"
   
   now()
   if(algo == "qs-legacy") {
@@ -71,13 +86,13 @@ res <- lapply(1:nrow(grid), function(i) {
   
   system("Rscript %s/read_timer_function.R %s %s %s %s" | c(this.dir(), algo, nthreads, output_file, TMP_RESULTS_PATH))
   rctime <- readLines(TMP_RESULTS_PATH) %>% as.numeric
-  # invisible(file.remove(OUTPUT_PATH))
   invisible(file.remove(TMP_RESULTS_PATH))
   
   data.frame(save_time, read_time = rctime[1], file_size = fsize)
 }) %>% rbindlist
 res <- cbind(grid, res)
 
-fwrite(res, file = this.dir() & "/" & DATASET & "_serialization_benchmarks.csv", sep = ",")
+output_file <- "%s/results/%s_serialization_benchmarks_%s.csv" | c(this.dir(), PLATFORM, DATASET)
+fwrite(res, file = output_file, sep = ",")
 
 }

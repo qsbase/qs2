@@ -26,12 +26,12 @@ if(algo == "qs-legacy") {
 } else if(algo == "qs2") {
   suppressPackageStartupMessages( library(qs2, quietly=TRUE) )
   now()
-  x <- qs2::qs_read(file_path, nthreads = nthreads)
+  x <- qs2::qs_read(file_path, validate_checksum = FALSE, nthreads = nthreads)
   read_time <- later()
 } else if(algo == "qdata") {
   suppressPackageStartupMessages( library(qs2, quietly=TRUE) )
   now()
-  x <- qs2::qd_read(file_path, nthreads = nthreads)
+  x <- qs2::qd_read(file_path, validate_checksum = FALSE, nthreads = nthreads)
   read_time <- later()
 } else if(algo == "fst") {
   suppressPackageStartupMessages( library(fst, quietly=TRUE) )

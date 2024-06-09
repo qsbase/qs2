@@ -14,7 +14,9 @@
 #include "BLOSC/unshuffle_routines.h"
 
 #ifndef QS2_BLOCKSIZE_TESTING_ONLY_DO_NOT_USE
-static constexpr uint64_t MAX_BLOCKSIZE = 524288ULL; // 2^19 ... we save blocksize as uint32_t, so the last 13 MSBs can be used to store metadata
+static constexpr uint64_t MAX_BLOCKSIZE = 786432ULL;
+// 2^19 * 1.5 ... we save blocksize as uint32_t, so the last 12 MSBs can be used to store metadata
+// This blocksize is 50% larger than `qs` and seems to be a better tradeoff overall in benchmarks
 #else
 static constexpr uint64_t MAX_BLOCKSIZE = QS2_BLOCKSIZE_TESTING_ONLY_DO_NOT_USE;
 #endif

@@ -31,7 +31,7 @@
     DO_UNWIND_PROTECT(qs_save_impl, decltype(block_io), args)
 
 // [[Rcpp::export(rng = false, invisible = true)]]
-SEXP qs_save(SEXP object, const std::string & file, const int compress_level = 3, const bool shuffle = true, const bool store_checksum = true, const int nthreads = 1) {
+SEXP qs_save(SEXP object, const std::string & file, const int compress_level = 3, const bool shuffle = true, const int nthreads = 1) {
     UNWIND_PROTECT_BEGIN()
 
     #if RCPP_PARALLEL_USE_TBB == 0
@@ -54,33 +54,16 @@ SEXP qs_save(SEXP object, const std::string & file, const int compress_level = 3
         #if RCPP_PARALLEL_USE_TBB
         tbb::global_control gc(tbb::global_control::parameter::max_allowed_parallelism, nthreads);
         if(shuffle) {
-            if(store_checksum) {
-                DO_QS_SAVE(BlockCompressWriterMT, ZstdShuffleCompressor, xxHashEnv);
-            } else {
-                DO_QS_SAVE(BlockCompressWriterMT, ZstdShuffleCompressor, noHashEnv);
-            }
+            DO_QS_SAVE(BlockCompressWriterMT, ZstdShuffleCompressor, xxHashEnv);
         } else {
-            if(store_checksum) {
-                DO_QS_SAVE(BlockCompressWriterMT, ZstdCompressor, xxHashEnv);
-            } else {
-                DO_QS_SAVE(BlockCompressWriterMT, ZstdCompressor, noHashEnv);
-            }
+            DO_QS_SAVE(BlockCompressWriterMT, ZstdCompressor, xxHashEnv);
         }
         #endif
     } else {
         if(shuffle) {
-            if(store_checksum) {
-                DO_QS_SAVE(BlockCompressWriter, ZstdShuffleCompressor, xxHashEnv);
-            } else {
-                DO_QS_SAVE(BlockCompressWriter, ZstdShuffleCompressor, noHashEnv);
-            }
-
+            DO_QS_SAVE(BlockCompressWriter, ZstdShuffleCompressor, xxHashEnv);
         } else {
-            if(store_checksum) {
-                DO_QS_SAVE(BlockCompressWriter, ZstdCompressor, xxHashEnv);
-            } else {
-                DO_QS_SAVE(BlockCompressWriter, ZstdCompressor, noHashEnv);
-            }
+            DO_QS_SAVE(BlockCompressWriter, ZstdCompressor, xxHashEnv);
         }
     }
     UNWIND_PROTECT_END();
@@ -94,13 +77,13 @@ SEXP qs_save(SEXP object, const std::string & file, const int compress_level = 3
     DO_UNWIND_PROTECT(qs_read_impl, decltype(block_io), in);
 
 // [[Rcpp::export(rng = false)]]
-SEXP qs_read(const std::string & file, const bool validate_checksum = true, const int nthreads = 1) {
+SEXP qs_read(const std::string & file, const bool validate_checksum = false, const int nthreads = 1) {
     UNWIND_PROTECT_BEGIN()
 
     #if RCPP_PARALLEL_USE_TBB == 0
     if(nthreads > 1) throw_error<ErrorType::r_error>(NTHREADS_ERROR_MSG);
     #endif
-
+    
     IfStreamReader myFile(R_ExpandFileName(file.c_str()));
     if(! myFile.isValid()) {
         throw_error<ErrorType::r_error>("For file " + file + ": " + FILE_READ_ERR_MSG);
@@ -108,8 +91,11 @@ SEXP qs_read(const std::string & file, const bool validate_checksum = true, cons
 
     bool shuffle; uint64_t stored_hash;
     read_qs2_header(myFile, shuffle, stored_hash);
+    if(stored_hash == 0) {
+        throw_error<ErrorType::r_error>("For file " + file + ": hash not stored, save file may be incomplete");
+    }
     if(validate_checksum) {
-        if(stored_hash == 0) throw_error<ErrorType::r_error>("For file " + file + ": hash not stored");
+        // to do: instead of reading through the file twice, keep data in memory and serialize from memory
         uint64_t computed_hash = read_qx_hash(myFile);
         if(computed_hash != stored_hash) {
             throw_error<ErrorType::r_error>("For file " + file + ": hash mismatch");
@@ -145,7 +131,7 @@ SEXP qs_read(const std::string & file, const bool validate_checksum = true, cons
     return R_NilValue
 
 // [[Rcpp::export(rng = false, invisible = true)]]
-SEXP qd_save(SEXP object, const std::string & file, const int compress_level = 3, const bool shuffle = true, const bool store_checksum = true, const bool warn_unsupported_types = true, const int nthreads = 1) {
+SEXP qd_save(SEXP object, const std::string & file, const int compress_level = 3, const bool shuffle = true, const bool warn_unsupported_types = true, const int nthreads = 1) {
 
     #if RCPP_PARALLEL_USE_TBB == 0
     if(nthreads > 1) throw std::runtime_error(NTHREADS_ERROR_MSG);
@@ -166,32 +152,16 @@ SEXP qd_save(SEXP object, const std::string & file, const int compress_level = 3
         #if RCPP_PARALLEL_USE_TBB
         tbb::global_control gc(tbb::global_control::parameter::max_allowed_parallelism, nthreads);
         if(shuffle) {
-            if(store_checksum) {
-                DO_QD_SAVE(BlockCompressWriterMT, ZstdShuffleCompressor, xxHashEnv);
-            } else {
-                DO_QD_SAVE(BlockCompressWriterMT, ZstdShuffleCompressor, noHashEnv);
-            }
+            DO_QD_SAVE(BlockCompressWriterMT, ZstdShuffleCompressor, xxHashEnv);
         } else {
-            if(store_checksum) {
-                DO_QD_SAVE(BlockCompressWriterMT, ZstdCompressor, xxHashEnv);
-            } else {
-                DO_QD_SAVE(BlockCompressWriterMT, ZstdCompressor, noHashEnv);
-            }
+            DO_QD_SAVE(BlockCompressWriterMT, ZstdCompressor, xxHashEnv);
         }
         #endif
     } else {
         if(shuffle) {
-            if(store_checksum) {
-                DO_QD_SAVE(BlockCompressWriter, ZstdShuffleCompressor, xxHashEnv);
-            } else {
-                DO_QD_SAVE(BlockCompressWriter, ZstdShuffleCompressor, noHashEnv);
-            }
+            DO_QD_SAVE(BlockCompressWriter, ZstdShuffleCompressor, xxHashEnv);
         } else {
-            if(store_checksum) {
-                DO_QD_SAVE(BlockCompressWriter, ZstdCompressor, xxHashEnv);
-            } else {
-                DO_QD_SAVE(BlockCompressWriter, ZstdCompressor, noHashEnv);
-            }
+            DO_QD_SAVE(BlockCompressWriter, ZstdCompressor, xxHashEnv);
         }
     }
     return R_NilValue; // unreachable
@@ -218,12 +188,14 @@ SEXP qd_read(const std::string & file, const bool use_alt_rep = false, const boo
     bool shuffle;
     uint64_t stored_hash;
     read_qdata_header(myFile, shuffle, stored_hash);
-
+    read_qs2_header(myFile, shuffle, stored_hash);
+    if(stored_hash == 0) {
+        throw std::runtime_error("For file " + file + ": hash not stored, save file may be incomplete");
+    }
     if(validate_checksum) {
-        if(stored_hash == 0) throw_error<ErrorType::r_error>("For file " + file + ": hash not stored");
         uint64_t computed_hash = read_qx_hash(myFile);
         if(computed_hash != stored_hash) {
-            throw_error<ErrorType::r_error>("For file " + file + ": hash mismatch");
+            throw std::runtime_error("For file " + file + ": hash mismatch");
         }
     }
 
