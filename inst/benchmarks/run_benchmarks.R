@@ -17,7 +17,7 @@ later <- function() { as.numeric(Sys.time() - get(".time", envir = globalenv()),
 
 setwd(this.dir())
 
-PLATFORM <- "ubuntu" # for results naming purposes
+PLATFORM <- "mac" # for results naming purposes
 
 DATA_PATH <- "../../local"
 OUTPUT_PATH <- "../../local/TEMP"
