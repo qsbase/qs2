@@ -7,9 +7,12 @@ library(this.path)
 library(stringplus)
 set_string_ops("&", "|")
 
+options(warn=1)
+
 PLATFORM <- "mac"
 algo_subset <- c("qs-legacy", "qs2", "qdata")
 for(DATASET in c("enwik8", "gaia", "mnist", "tcell")) {
+print(DATASET)
 df <- fread("%s/results/%s_serialization_benchmarks_%s.csv" | c(this.dir(), PLATFORM, DATASET)) %>%
   filter(algo %in% algo_subset)
 df$algo <- factor(df$algo, levels = algo_subset)
@@ -51,6 +54,7 @@ ggsave(g, file = "%s/plots/%s_%s_benchmark_plot.png" | c(this.dir(), PLATFORM, D
 
 ################################################################################
 # total across 4 datasets
+
 df <- lapply(c("enwik8", "gaia", "mnist", "tcell"), function(DATASET) {
   fread("%s/results/%s_serialization_benchmarks_%s.csv" | c(this.dir(), PLATFORM, DATASET)) %>%
     filter(algo %in% algo_subset) %>%
@@ -97,3 +101,48 @@ g <- g1 + g2 + patchwork::plot_layout(guides = "collect")
 
 ggsave(g, file = "%s/plots/%s_combined_benchmark_plot.png" | c(this.dir(), PLATFORM), width = 8, height = 3.75)
 
+################################################################################
+# Summary table
+
+# object.size(DATA)
+# enwik8: 146242320
+# gaia: 288986496
+# mnist: 219801584
+# tcell: 293786648
+
+# obj_size <- data.frame(dataset = c("enwik8", "gaia", "mnist", "tcell"), 
+#                        object_size = c(146242320, 288986496, 219801584, 293786648)) %>%
+#   mutate(object_size = object_size / 1048576)
+
+total_size <- (146242320 + 288986496 + 293786648) / 1048576
+
+algo_subset <- c("qs2", "qdata","qs-legacy", "rds", "base_serialize", "fst", "parquet")
+df <- lapply( c("enwik8", "gaia", "tcell"), function(DATASET) {
+  fread("%s/results/%s_serialization_benchmarks_%s.csv" | c(this.dir(), PLATFORM, DATASET)) %>%
+    filter(algo %in% algo_subset) %>%
+    # filter for defaults
+    filter( (algo %like% "^q" & compress_level == 5) |
+            (algo == "rds") | 
+            (algo == "base_serialize") | 
+            (algo == "fst" & compress_level  == 55) |
+            (algo == "parquet" & compress_level == 5)) %>%
+    mutate(dataset = DATASET)
+}) %>% rbindlist
+
+df <- df %>% 
+  group_by(algo, nthreads, rep) %>%
+  summarize(file_size = sum(file_size), save_time = sum(save_time), read_time = sum(read_time))
+
+df <- df %>%
+  mutate(algo = factor(algo, levels = algo_subset))
+
+dfs <- df %>%
+  group_by(algo, nthreads) %>%
+  summarize(file_size = unique(file_size), save_time = median(save_time), read_time = median(read_time)) %>%
+  ungroup %>%
+  mutate(compression = total_size / file_size) %>%
+  arrange(nthreads, algo) %>%
+  mutate(compression = total_size / file_size) %>%
+  transmute(algorithm=algo, nthreads, save_time, read_time, compression)
+
+fwrite(dfs, file = "results/%s_benchmark_summary_table.csv" | PLATFORM, sep = ",")

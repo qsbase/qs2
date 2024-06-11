@@ -25,7 +25,18 @@ if(grepl(".rds", input_path, ignore.case = TRUE)) {
   DATA <- data.table::fread(input_path, data.table=FALSE)
 }
 
-if(algo == "qs-legacy") {
+
+if(algo == "base_serialize") {
+  now()
+  con <- file(output_path, "wb")
+  serialize(DATA, con, ascii = FALSE, xdr = FALSE)
+  close(con)
+  save_time <- later()
+} else if(algo == "rds") {
+  now()
+  saveRDS(DATA, file = output_path)
+  save_time <- later()
+} else if(algo == "qs-legacy") {
   suppressPackageStartupMessages( library(qs, quietly=TRUE) )
   now()
   qs::qsave(DATA, file = output_path, preset = "custom", algorithm = "zstd", compress_level = cl, nthreads = nthreads, check_hash = FALSE)

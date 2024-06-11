@@ -23,22 +23,23 @@ cat('
 ')
 ```
 
-# Still in development
-
 *qs2: a framework for efficient serialization*
 
-`qs2` is the successor to the `qs` package. The goal is to have cutting edge performance for serialization in R.
+`qs2` is the successor to the `qs` package. The goal is to have cutting edge performance for saving and loading objects in R.
 
-The package introduces a new, independent format for saving objects to disk. 
+The package introduces a new format for saving objects to disk. 
 
 ```{r eval=FALSE}
 qs_save(data, "myfile.qs2")
 data <- qs_read("myfile.qs2")
 ```
 
-This is a drop in replacement for `qs::qsave` or `saveRDS`. The `qs2` format directly uses R serialization, 
-so it should be fully compatible with future versions of R. On top of R serialization, we add multithreading, 
-block compression and byte shuffling as in the `qs` package to make it fast. 
+The `qs2` format directly uses R serialization and is a drop in replacement for `saveRDS`. 
+If you are familiar with the `qs` package, the 
+benefits of `qs2` are the same. Compared to `saveRDS` it can be an order of magnitude faster
+while having similar levels of compression.
+
+Use the file extension `qs2` to distinguish it from the original `qs` package. It is not compatible with the original `qs` format.
 
 # Installation
 
@@ -46,21 +47,20 @@ block compression and byte shuffling as in the `qs` package to make it fast.
 install.packages("qs2")
 ```
 
-To enable multithreading on mac or linux, compile from source. 
+To enable multithreading on Mac or Linux, compile from source. It is enabled by default on Windows. 
 
 ```{r eval=FALSE}
 remotes::install_cran("qs2", type = "source", configure.args = " --with-TBB --with-simd=AVX2")
 ```
 
-Multithreading uses `Intel Thread Building Blocks` via the `RcppParallel` package. Compared to multithreading in the `qs` package,
-this improves performance and safety. 
+Multithreading uses `Intel Thread Building Blocks` via the `RcppParallel` package.
 
 # The qdata format
 
-This package also introduces the `qdata` format which has its own layout and works with only R data types (vectors, lists, data frames, matrices). 
-It will replace internal types (functions, promises, external pointers, environments, objects) with NULL. 
-This has slightly better performance but is not general. If you have clean data and understand the caveats, you may want to choose this. 
-The eventual goal for `qdata` is to also have interoperability with other languages like `Python`. 
+This package also introduces the `qdata` format which has its own layout and works with only R data types (vectors, lists, data frames, matrices). It will replace internal types (functions, promises, external pointers, environments, objects) with NULL. 
+
+This has slightly better performance but is not general. If you have clean data and understand the caveats, you may want to use it. 
+The eventual goal of `qdata` is to also have interoperability with other languages, particularly `Python`. 
 
 ```{r eval=FALSE}
 qd_save(data, "myfile.qs2")
@@ -69,7 +69,7 @@ data <- qd_read("myfile.qs2")
 
 # Converting qs2 to RDS
 
-Because the `qs2` format directly uses R serialization, you can convert it to RDS and vice versa.
+Because the `qs2` format directly uses R serialization you can convert it to RDS and vice versa.
 
 ```{r eval=FALSE}
 file_qs2 <- tempfile(fileext = ".qs2")
@@ -80,7 +80,7 @@ x <- runif(1e6)
 qs_save(x, file_qs2)
 
 # convert the file to RDS
-rds_to_qs(input_file = file_qs2, output_file = file_rds)
+qs_to_rds(input_file = file_qs2, output_file = file_rds)
 
 # read `x` back in with `readRDS`
 xrds <- readRDS(file_rds)
@@ -89,33 +89,37 @@ stopifnot(identical(x, xrds))
 
 ## Benchmarks
 
-TO DO: description of datasets used.
+A summary table across 3 datasets is presented below. You may draw your own conclusions or run your own benchmarks. 
 
-See `inst/benchmarks` for more details and a comparison to other libraries.
+| Algorithm       | nthreads | Save Time | Read Time | Compression |
+|-----------------|----------|-----------|-----------|-------------|
+| qs2             | 1        | 4.41      | 3.32      | 2.56        |
+| qdata           | 1        | 4.08      | 3.11      | 2.58        |
+| qs-legacy       | 1        | 4.24      | 3.17      | 2.51        |
+| saveRDS         | 1        | 27.21     | 6.84      | 2.32        |
+| base::serialize | 1        | 10.17     | 11.51     | 1.10        |
+| fst             | 1        | 2.76      | 3.80      | 1.59        |
+| parquet         | 1        | 4.99      | 3.47      | 2.33        |
+| qs2             | 4        | 1.36      | 2.73      | 2.56        |
+| qdata           | 4        | 1.28      | 2.51      | 2.58        |
+| qs              | 4        | 1.84      | 2.64      | 2.51        |
+| fst             | 4        | 2.66      | 3.76      | 1.59        |
+| parquet         | 4        | 4.93      | 3.08      | 2.33        |
 
-### enwik8
-```{r echo=FALSE, results='asis'}
-if(IS_GITHUB) {
-  cat('![](inst/benchmarks/plots/enwik8_benchmark_plot.png "enwik8_bench"){width=487px}')
-} else {
-  cat('![](../inst/benchmarks/plots/enwik8_benchmark_plot.png "enwik8_bench"){width=487px}')
-}
-```
+**Notes on running each algorithm**
 
-### mnist
-```{r echo=FALSE, results='asis'}
-if(IS_GITHUB) {
-  cat('![](inst/benchmarks/plots/mnist_benchmark_plot.png "mnist_bench"){width=487px}')
-} else {
-  cat('![](../inst/benchmarks/plots/mnist_benchmark_plot.png "mnist_bench"){width=487px}')
-}
-```
+* `qs2`, `qdata` and `qs` used `compress_level = 5`
+* `parquet` (from the `arrow` package) were run with `compression = zstd` and `compress_level = 5`
+* `fst` used `compress_level = 55`
+* `base::serialize` was run with `ascii = FALSE` and `xdr = FALSE`
 
-### gaia
-```{r echo=FALSE, results='asis'}
-if(IS_GITHUB) {
-  cat('![](inst/benchmarks/plots/gaia_benchmark_plot.png "gaia_bench"){width=487px}')
-} else {
-  cat('![](../inst/benchmarks/plots/gaia_benchmark_plot.png "gaia_bench"){width=487px}')
-}
-```
+**Datasets**
+
+* `enwik8` the first 1E8 lines of English Wikipedia
+* `gaia` galactic coordinates and color of 7.2 million stars
+* `tcell` the genomic sequencing of a COVID patient's immune system
+
+These datasets are openly licensed and represent a combination of numeric and textual data across multiple domains. 
+
+See `inst/benchmarks` on Github for comprehensive comparisons, reproducibility and data sources.
+

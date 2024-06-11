@@ -18,7 +18,17 @@ later <- function() { as.numeric(Sys.time() - get(".time", envir = globalenv()),
 # now()
 # x <- file.copy(file_path, copy_path)
 # copy_time <- later()
-if(algo == "qs-legacy") {
+if(algo == "base_serialize") {
+  now()
+  con <- file(file_path, "rb")
+  unserialize(con)
+  close(con)
+  read_time <- later()
+} else if(algo == "rds") {
+  now()
+  x <- readRDS(file = file_path)
+  read_time <- later()
+} else if(algo == "qs-legacy") {
   suppressPackageStartupMessages( library(qs, quietly=TRUE) )
   now()
   x <- qs::qread(file_path, nthreads = nthreads)
