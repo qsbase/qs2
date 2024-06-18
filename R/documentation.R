@@ -1,3 +1,4 @@
+
 shared_params_save <- function(warn_unsupported_types=FALSE) {
   c('@param object The object to save.',
     '@param file The file name/path.',

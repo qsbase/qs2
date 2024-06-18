@@ -1,6 +1,6 @@
 Package: qs2
 Type: Package
-Title: Quick Serialization of R Objects
+Title: A framework for Efficient Serialization
 Version: 0.1.0
 Date: 2024-05-18
 Authors@R: c(

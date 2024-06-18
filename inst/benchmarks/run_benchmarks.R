@@ -20,7 +20,7 @@ setwd(this.dir())
 PLATFORM <- "ubuntu" # for results naming purposes
 
 DATA_PATH <- "../../local"
-OUTPUT_PATH <- "../../local/TEMP"
+OUTPUT_PATH <- tempdir()
 TMP_RESULTS_PATH <- tempfile()
 
 tests_datasets <- c("enwik8") #, "gaia", "tcell", "mnist")
@@ -68,7 +68,6 @@ res <- lapply(1:nrow(grid), function(i) {
   rep <- grid$rep[i]
   
   output_file <- "%s/%s_%s_cl%s_nt%s_rep%s.out" | c(OUTPUT_PATH, DATASET, algo, cl, nthreads, rep)
-  # output_file <- OUTPUT_PATH & "/tempsavefile"
   
   now()
   if(algo == "base_serialize") {

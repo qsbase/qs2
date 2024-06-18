@@ -13,6 +13,10 @@ static constexpr uint64_t MAX_8_BIT_LENGTH = 256; // exclusive of max value
 static constexpr uint64_t MAX_16_BIT_LENGTH = 65536; // exclusive of max value
 static constexpr uint64_t MAX_32_BIT_LENGTH = 4294967296; // exclusive of max value
 
+// masks for 5-bit length headers
+static constexpr uint8_t bitmask_type_5 = 0xE0_u8;
+static constexpr uint8_t bitmask_length_5 = 0x1F_u8;
+
 static constexpr uint8_t list_header_5 = 0x20_u8;
 static constexpr uint8_t list_header_8 = 0x01_u8;
 static constexpr uint8_t list_header_16 = 0x02_u8;
@@ -56,32 +60,24 @@ static constexpr uint8_t attribute_header_5 = 0xE0_u8;
 static constexpr uint8_t attribute_header_8 = 0x1E_u8;
 static constexpr uint8_t attribute_header_32 = 0x1F_u8;
 
+// String header 0b XXLL LLLL
+// high 2 bits indicate encoding
+static constexpr uint8_t string_enc_native = 0x00_u8; // 0b 00LL LLLL
+static constexpr uint8_t string_enc_utf8 = 0x40_u8; // 0b 01LL LLLL
+static constexpr uint8_t string_enc_latin1 = 0x80_u8; // 0b 10LL LLLL
+static constexpr uint8_t string_enc_bytes = 0xC0_u8; // 0b 11LL LLLL
 
-// strings with encoding
-static constexpr uint8_t string_header_NA = 0x0F_u8;
-static constexpr uint8_t string_header_5 = 0x20_u8;
-static constexpr uint8_t string_header_8 = 0x01_u8;
-static constexpr uint8_t string_header_16 = 0x02_u8;
-static constexpr uint8_t string_header_32 = 0x03_u8;
+static constexpr uint8_t string_enc_mask = 0xC0_u8;
 
-static constexpr uint8_t string_enc_native = 0x00_u8;
-static constexpr uint8_t string_enc_utf8 = 0x40_u8;
-static constexpr uint8_t string_enc_latin1 = 0x80_u8;
-static constexpr uint8_t string_enc_bytes = 0xC0_u8;
+// low 6 bits indicate length with special values (max length for 6 bits is 2^6 - 1 = 63)
+static constexpr uint8_t string_header_8 = 60;
+static constexpr uint8_t string_header_16 = 61;
+static constexpr uint8_t string_header_32 = 62;
+static constexpr uint8_t string_header_NA = 63; // 0b 0011 1111
 
-// masks for 5-bit length headers
-static constexpr uint8_t bitmask_type_5 = 0xE0_u8;
-static constexpr uint8_t bitmask_length_5 = 0x1F_u8;
-
-// string header masks
-static constexpr uint8_t bitmask_string_encoding = 0xC0_u8;
-static constexpr uint8_t bitmask_string_type_5 = 0x20_u8;
-static constexpr uint8_t bitmask_string_length_type = 0x1F_u8;
-
-// strings with assumed uniform encoding
-// static constexpr uint8_t string_UF_max_8 = 254_u8; // exclusive of max string length using a uint8_t
-// static constexpr uint8_t string_UF_header_NA = 254_u8; // NA header value
-// static constexpr uint8_t string_UF_header_32 = 255_u8; // 32-bit header value
+static constexpr uint64_t MAX_STRING_6_BIT_LENGTH = 60; // exclusive of max value
+static constexpr uint64_t MAX_STRING_8_BIT_LENGTH = 256; // exclusive of max value
+static constexpr uint64_t MAX_STRING_16_BIT_LENGTH = 65536; // exclusive of max value
 
 enum class qstype : uint8_t {
   NIL = 0,

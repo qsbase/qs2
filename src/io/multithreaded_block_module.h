@@ -381,10 +381,11 @@ struct BlockCompressReaderMT {
     }
 
     void get_data(char * outbuffer, const uint64_t len) {
-                if(current_blocksize - data_offset >= len) {
+        if(current_blocksize - data_offset >= len) {
             std::memcpy(outbuffer, current_block.get()+data_offset, len);
             data_offset += len;
         } else {
+            // remainder of current block, may be zero
             uint64_t bytes_accounted = current_blocksize - data_offset;
             std::memcpy(outbuffer, current_block.get()+data_offset, bytes_accounted);
             while(bytes_accounted < len) {
@@ -407,6 +408,18 @@ struct BlockCompressReaderMT {
                     bytes_accounted += data_offset;
                 }
             }
+        }
+    }
+
+    const char * get_ptr(const uint64_t len) {
+        if(current_blocksize - data_offset >= len) {
+            const char * ptr = current_block.get() + data_offset;
+            data_offset += len;
+            return ptr;
+        } else {
+            // return nullptr, indicating len exceeds current block
+            // copy data using get_data
+            return nullptr;
         }
     }
 

@@ -233,18 +233,18 @@ struct QdataSerializer {
         case CE_BYTES:
             enc = string_enc_bytes; break;
         default:
-            enc = string_enc_native;
+            enc = string_enc_native; break;
         }
-        if(length < MAX_5_BIT_LENGTH) {
-            writer.push_pod( static_cast<uint8_t>(string_header_5 | enc | static_cast<uint8_t>(length)) );
-        } else if(length < MAX_8_BIT_LENGTH) {
-            writer.push_pod( static_cast<uint8_t>(string_header_8 | static_cast<uint8_t>(enc)) );
-            writer.push_pod_contiguous(static_cast<uint8_t>(length) );
-        } else if(length < MAX_16_BIT_LENGTH) {
-            writer.push_pod( static_cast<uint8_t>(string_header_16 | static_cast<uint8_t>(enc)) );
+        if(length < MAX_STRING_6_BIT_LENGTH) {
+            writer.push_pod( static_cast<uint8_t>(enc | static_cast<uint8_t>(length)) );
+        } else if(length < MAX_STRING_8_BIT_LENGTH) {
+            writer.push_pod( static_cast<uint8_t>(enc |string_header_8) );
+            writer.push_pod_contiguous(static_cast<uint8_t>(length));
+        } else if(length < MAX_STRING_16_BIT_LENGTH) {
+            writer.push_pod( static_cast<uint8_t>(enc | string_header_16) );
             writer.push_pod_contiguous(static_cast<uint16_t>(length) );
         } else {
-            writer.push_pod( static_cast<uint8_t>(string_header_32 | static_cast<uint8_t>(enc)) );
+            writer.push_pod( static_cast<uint8_t>(enc | string_header_32) );
             writer.push_pod_contiguous(length);
         }
     }
@@ -307,7 +307,7 @@ struct QdataSerializer {
                 // check for special case, stringfish ALTREP vector
                 if (is_unmaterialized_sf_vector(object)) {
                     auto & ref = sf_vec_data_ref(object); // sf_vec_data_ref from stringfish
-                    for(uint64_t i=0; i<object_length; i++) {
+                    for(uint64_t i=0; i<object_length; ++i) {
                         switch(ref[i].encoding) {
                             case cetype_t_ext::CE_NA: // cetype_t_ext is from stringfish
                                 writer.push_pod(string_header_NA);

@@ -193,26 +193,25 @@ struct QdataDeserializer {
 
     inline void read_string_header(uint32_t & string_len, cetype_t & string_encoding) {
         uint8_t header_byte = reader.template get_pod<uint8_t>();
-        uint8_t lentype = header_byte & bitmask_string_length_type;
-        if(header_byte & bitmask_string_type_5) {
-            string_len = lentype;
-        } else {
-            switch(lentype) {
-                case string_header_8:
-                    string_len = reader.template get_pod_contiguous<uint8_t>();
-                    break;
-                case string_header_16:
-                    string_len = reader.template get_pod_contiguous<uint16_t>();
-                    break;
-                case string_header_32:
-                    string_len = reader.template get_pod_contiguous<uint32_t>();
-                    break;
-                default: // string_header_NA
-                    string_len = NA_STRING_LENGTH;
-                    return; // no need to look at encoding
-            }
+        string_len = header_byte & (~string_enc_mask);
+        switch(string_len) {
+            case string_header_8: // 60
+                string_len = reader.template get_pod_contiguous<uint8_t>();
+                break;
+            case string_header_16: // 61
+                string_len = reader.template get_pod_contiguous<uint16_t>();
+                break;
+            case string_header_32: // 62
+                string_len = reader.template get_pod_contiguous<uint32_t>();
+                break;
+            case string_header_NA: // 63
+                string_len = NA_STRING_LENGTH;
+                return; // no need to look at encoding
+            default: // string_len < MAX_STRING_6_BIT_LENGTH (60)
+                // do nothing
+                break;
         }
-        uint8_t encoding_byte = header_byte & bitmask_string_encoding;
+        uint8_t encoding_byte = header_byte & string_enc_mask;
         switch(encoding_byte) {
             case string_enc_utf8:
                 string_encoding = CE_UTF8;
@@ -318,10 +317,6 @@ struct QdataDeserializer {
                 } else {
                     object = PROTECT(Rf_allocVector(STRSXP, object_length));
                     read_and_assign_attributes(object, attr_length);
-                    // buffer does not need to be null terminated
-                    // stack buffer seems to be slightly more efficient but we don't want to make it too big to avoid stack overflow
-                    // most strings are small so this is probably fine
-                    std::array<char, 512> string_buffer;
                     for(uint64_t i=0; i<object_length; ++i) {
                         uint32_t string_length;
                         cetype_t string_encoding;
@@ -331,13 +326,13 @@ struct QdataDeserializer {
                         } else if(string_length == 0) {
                             SET_STRING_ELT(object, i, R_BlankString);
                         } else {
-                            if(string_length > string_buffer.size()) {
-                                std::unique_ptr<char[]> string_buffer_long(MAKE_UNIQUE_BLOCK(string_length));
-                                reader.get_data(string_buffer_long.get(), string_length);
-                                SET_STRING_ELT(object, i, Rf_mkCharLenCE(string_buffer_long.get(), string_length, string_encoding));
+                            const char * string_ptr = reader.get_ptr(string_length);
+                            if(string_ptr == nullptr) {
+                                std::unique_ptr<char[]> string_buf(MAKE_UNIQUE_BLOCK(string_length));
+                                reader.get_data(string_buf.get(), string_length);
+                                SET_STRING_ELT(object, i, Rf_mkCharLenCE(string_buf.get(), string_length, string_encoding));
                             } else {
-                                reader.get_data(string_buffer.data(), string_length);
-                                SET_STRING_ELT(object, i, Rf_mkCharLenCE(string_buffer.data(), string_length, string_encoding));
+                                SET_STRING_ELT(object, i, Rf_mkCharLenCE(string_ptr, string_length, string_encoding));
                             }
                         }
                     }
