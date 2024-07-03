@@ -258,12 +258,10 @@ struct BlockCompressReaderMT {
     // template class objects
     stream_reader & myFile;
     tbb::enumerable_thread_specific<decompressor> dp;
-    decompressor dp_main; // decompressor for main thread to moonlight as compressor_node
 
     // intermediate data objects
     tbb::concurrent_queue<std::shared_ptr<char[]>> available_zblocks;
     tbb::concurrent_queue<std::shared_ptr<char[]>> available_blocks;
-    tbb::concurrent_queue<OrderedBlock> ordered_zblocks;
 
     // current data block
     std::shared_ptr<char[]> current_block;
@@ -278,20 +276,18 @@ struct BlockCompressReaderMT {
     // flow graph
     tbb::task_group_context tgc;
     tbb::flow::graph myGraph;
-    tbb::flow::source_node<tbb::flow::continue_msg> reader_node;
-    tbb::flow::function_node<tbb::flow::continue_msg, int> decompressor_node;
+    tbb::flow::source_node<OrderedBlock> reader_node;
+    tbb::flow::function_node<OrderedBlock, OrderedBlock> decompressor_node;
     tbb::flow::sequencer_node<OrderedBlock> sequencer_node;
 
     BlockCompressReaderMT(stream_reader & f) :
     // template class objects
     myFile(f),
     dp(),
-    dp_main(),
 
     // intermediate data objects
     available_zblocks(),
     available_blocks(),
-    ordered_zblocks(),
 
     // current data block
     current_block(MAKE_SHARED_BLOCK(MAX_BLOCKSIZE)),
@@ -307,7 +303,7 @@ struct BlockCompressReaderMT {
     tgc(),
     myGraph(this->tgc),
     reader_node(this->myGraph,
-    [this](tbb::flow::continue_msg & cont) {
+    [this](OrderedBlock & zblock) {
         // read size of next zblock. if insufficient bytes read into uint32_t, end of file
         uint32_t zsize;
         bool ok = this->myFile.readInteger(zsize);
@@ -317,7 +313,6 @@ struct BlockCompressReaderMT {
         }
 
         // get zblock from available_zblocks or make new
-        OrderedBlock zblock;
         if(!available_zblocks.try_pop(zblock.block)) {
             zblock.block = MAKE_SHARED_BLOCK_ASSIGNMENT(MAX_ZBLOCKSIZE);
         }
@@ -333,36 +328,12 @@ struct BlockCompressReaderMT {
         // Also incremenet blocks_to_process BEFORE zblock is added to ordered_zblocks
         zblock.blocksize = zsize;
         zblock.blocknumber = blocks_to_process.fetch_add(1);
-
-        this->ordered_zblocks.push(zblock);
-
-        // return continue token to decompressor node
-        cont = tbb::flow::continue_msg{};
         return true;
     }, false),
     decompressor_node(this->myGraph, tbb::flow::unlimited,
-    [this](tbb::flow::continue_msg cont) {
+    [this](OrderedBlock zblock) {
         typename tbb::enumerable_thread_specific<decompressor>::reference dp_local = dp.local();
-        // decompress routine manually try_put's a block to sequencer_node, return value is just a dummy 0 integer and does nothing
-        return this->decompressor_node_routine(dp_local);
-    }),
-    sequencer_node(this->myGraph, 
-    [](const OrderedBlock & block) {
-        return block.blocknumber; 
-    })
-    {
-        // connect computation graph
-        tbb::flow::make_edge(reader_node, decompressor_node);
-        reader_node.activate();
-    }
-    private:
-    int decompressor_node_routine(decompressor & dp_local) {
-        // try_pop from ordered_zblocks queue
-        OrderedBlock zblock;
-        if(!ordered_zblocks.try_pop(zblock)) {
-            return 0; // no available zblock, could be stolen by main thread
-        }
-        
+
         // get available block and decompress
         OrderedBlock block;
         if(!available_blocks.try_pop(block.block)) {
@@ -373,17 +344,26 @@ struct BlockCompressReaderMT {
             // don't throw error within graph
             // main thread will check for cancellelation and throw
             tgc.cancel_group_execution();
-            return -1;
+            return block;
         }
         block.blocknumber = zblock.blocknumber;
 
         // return zblock to available_zblocks queue
         available_zblocks.push(zblock.block);
 
-        // push to sequencer queue
-        this->sequencer_node.try_put(block);
-        return 0;
+        return block;
+    }),
+    sequencer_node(this->myGraph, 
+    [](const OrderedBlock & block) {
+        return block.blocknumber; 
+    })
+    {
+        // connect computation graph
+        tbb::flow::make_edge(reader_node, decompressor_node);
+        tbb::flow::make_edge(decompressor_node, sequencer_node);
+        reader_node.activate();
     }
+    private:
     void get_new_block() {
         OrderedBlock block;
         while( true ) {
@@ -397,9 +377,6 @@ struct BlockCompressReaderMT {
                 current_blocksize = block.blocksize;
                 blocks_processed += 1;
                 return;
-            } else {
-                // moonlight by trying to run decompression node routine
-                decompressor_node_routine(dp_main);
             }
 
             // check if end_of_file and blocks_used >= blocks_to_process
