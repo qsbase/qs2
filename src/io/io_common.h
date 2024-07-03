@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <memory>
 #include <cstring>
+#include <algorithm>
 
 #include "zstd.h"
 #include "xxhash/xxhash.c"

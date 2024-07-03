@@ -8,6 +8,22 @@
 #include <tbb/enumerable_thread_specific.h>
 #include <atomic>
 
+// single argument macro
+#define _SA_(...) __VA_ARGS__
+
+#if __cplusplus >= 201703L
+#define SUPPORTS_IF_CONSTEXPR 1
+#define DIRECT_MEM_SWITCH(if_true, if_false) \
+    if constexpr (direct_mem) {                         \
+        if_true;                                        \
+    } else {                                            \
+        if_false;                                       \
+    }
+#else
+#define SUPPORTS_IF_CONSTEXPR 0
+#define DIRECT_MEM_SWITCH(if_true, if_false) if_true;
+#endif
+
 struct OrderedBlock {
     std::shared_ptr<char[]> block;
     uint64_t blocksize;
@@ -17,16 +33,24 @@ struct OrderedBlock {
     OrderedBlock() : block(), blocksize(0), blocknumber(0) {}
 };
 
+struct OrderedPtr {
+    const char * block;
+    uint64_t blocknumber;
+    OrderedPtr(const char * block, uint64_t blocknumber) : 
+    block(block), blocknumber(blocknumber) {}
+    OrderedPtr() : block(), blocknumber(0) {}
+};
+
 // sequencer requires copy constructor for message, which means using shared_ptr
 // would be better if we could use unique_ptr
 // nthreads must be >= 2
-template <class stream_writer, class compressor, class hasher, ErrorType E>
+template <class stream_writer, class compressor, class hasher, ErrorType E, bool direct_mem>
 struct BlockCompressWriterMT {
     // template class objects
     stream_writer & myFile;
     tbb::enumerable_thread_specific<compressor> cp;
     hasher hp; // must be serial
-    int compress_level;
+    const int compress_level;
     
     // intermediate data objects
     tbb::concurrent_queue<std::shared_ptr<char[]>> available_blocks;
@@ -41,9 +65,10 @@ struct BlockCompressWriterMT {
     tbb::task_group_context tgc;
     tbb::flow::graph myGraph;
     tbb::flow::function_node<OrderedBlock, OrderedBlock> compressor_node;
+    tbb::flow::function_node<OrderedPtr, OrderedBlock> compressor_node_direct;
     tbb::flow::sequencer_node<OrderedBlock> sequencer_node;
     tbb::flow::function_node<OrderedBlock, int, tbb::flow::rejecting> writer_node;
-    BlockCompressWriterMT(stream_writer & f, int cl) :
+    BlockCompressWriterMT(stream_writer & f, const int cl) :
     // template class objects
     myFile(f),
     cp(), // each thread specific compressor should be default constructed
@@ -63,47 +88,64 @@ struct BlockCompressWriterMT {
     tgc(),
     myGraph(this->tgc),
     compressor_node(this->myGraph, tbb::flow::unlimited, 
-        [this](OrderedBlock block) {
-                        // get zblock from available_zblocks
-            OrderedBlock zblock;
-            if(!available_zblocks.try_pop(zblock.block)) {
-                zblock.block = MAKE_SHARED_BLOCK_ASSIGNMENT(MAX_ZBLOCKSIZE);
-            }
-            // do thread local compression
-            typename tbb::enumerable_thread_specific<compressor>::reference cp_local = cp.local();
-            zblock.blocksize = cp_local.compress(zblock.block.get(), MAX_ZBLOCKSIZE, 
-                                                 block.block.get(), block.blocksize,
-                                                 compress_level);
-            zblock.blocknumber = block.blocknumber;
-            
-            // return input block to available_blocks
-            available_blocks.push(block.block);
-            return zblock;
-        }),
-    sequencer_node(this->myGraph,
-        [](OrderedBlock zblock) {
-            return zblock.blocknumber;
-        }),
-    writer_node(this->myGraph, tbb::flow::serial,
-        [this](OrderedBlock zblock) {
-            write_and_update(static_cast<uint32_t>(zblock.blocksize));
-            write_and_update(zblock.block.get(), zblock.blocksize & (~BLOCK_METADATA));
-
-            // return input zblock to available_zblocks
-            available_zblocks.push(zblock.block);
-
-            // return 0 to indicate success
-            return 0;
-        }) {
-
-        // pre-populate available blocks and zblocks queues
-        // for(int i = 0; i < nthreads-1; ++i) {
-        //     available_blocks.push(MAKE_SHARED_BLOCK_ASSIGNMENT(MAX_BLOCKSIZE));
-        //     available_zblocks.push(MAKE_SHARED_BLOCK_ASSIGNMENT(MAX_ZBLOCKSIZE));
-        // }
+    [this](OrderedBlock block) {
+        // get zblock from available_zblocks
+        OrderedBlock zblock;
+        if(!available_zblocks.try_pop(zblock.block)) {
+            zblock.block = MAKE_SHARED_BLOCK_ASSIGNMENT(MAX_ZBLOCKSIZE);
+        }
+        // do thread local compression
+        typename tbb::enumerable_thread_specific<compressor>::reference cp_local = cp.local();
+        zblock.blocksize = cp_local.compress(zblock.block.get(), MAX_ZBLOCKSIZE, 
+                                                block.block.get(), block.blocksize,
+                                                compress_level);
+        zblock.blocknumber = block.blocknumber;
         
+        // return input block to available_blocks
+        available_blocks.push(block.block);
+        return zblock;
+    }),
+    compressor_node_direct(this->myGraph, tbb::flow::unlimited, 
+    [this](OrderedPtr ptr) {
+        // get zblock from available_zblocks
+        OrderedBlock zblock;
+        if(!available_zblocks.try_pop(zblock.block)) {
+            zblock.block = MAKE_SHARED_BLOCK_ASSIGNMENT(MAX_ZBLOCKSIZE);
+        }
+        // do thread local compression
+        typename tbb::enumerable_thread_specific<compressor>::reference cp_local = cp.local();
+        zblock.blocksize = cp_local.compress(zblock.block.get(), MAX_ZBLOCKSIZE, 
+                                                ptr.block, MAX_BLOCKSIZE,
+                                                compress_level);
+        zblock.blocknumber = ptr.blocknumber;
+        return zblock;
+    }),
+    sequencer_node(this->myGraph,
+    [](const OrderedBlock & zblock) {
+        return zblock.blocknumber;
+    }),
+    writer_node(this->myGraph, tbb::flow::serial,
+    [this](OrderedBlock zblock) {
+        write_and_update(static_cast<uint32_t>(zblock.blocksize));
+        write_and_update(zblock.block.get(), zblock.blocksize & (~BLOCK_METADATA));
+
+        // return input zblock to available_zblocks
+        available_zblocks.push(zblock.block);
+
+        // return 0 to indicate success
+        return 0;
+    })
+    {
         // connect computation graph
         tbb::flow::make_edge(compressor_node, sequencer_node);
+        DIRECT_MEM_SWITCH(
+            _SA_(
+                tbb::flow::make_edge(compressor_node_direct, sequencer_node);
+            ),
+            _SA_(
+                // compressor_node_direct not connected
+            )
+        )
         tbb::flow::make_edge(sequencer_node, writer_node);
     }
     private:
@@ -147,27 +189,46 @@ struct BlockCompressWriterMT {
 
     void push_data(const char * const inbuffer, const uint64_t len) {
         uint64_t current_pointer_consumed = 0;
-        while(current_pointer_consumed < len) {
-            if(current_blocksize >= MAX_BLOCKSIZE) { flush(); }
-            
-            if(current_blocksize == 0 && len - current_pointer_consumed >= MAX_BLOCKSIZE) {
-                // Different from ST, memcpy segment of inbuffer to block and then send to compress_node
-                std::memcpy(current_block.get(), inbuffer + current_pointer_consumed, MAX_BLOCKSIZE);
-                compressor_node.try_put(OrderedBlock(current_block, MAX_BLOCKSIZE, current_blocknumber));
-                current_blocknumber++;
-                current_pointer_consumed += MAX_BLOCKSIZE;
-                current_blocksize = 0;
-                // replace current_block with available block
-                if(!available_blocks.try_pop(current_block)) {
-                    current_block = MAKE_SHARED_BLOCK_ASSIGNMENT(MAX_BLOCKSIZE);
-                }
-            } else {
-                uint64_t remaining_pointer_available = len - current_pointer_consumed;
-                uint64_t add_length = remaining_pointer_available < (MAX_BLOCKSIZE - current_blocksize) ? remaining_pointer_available : MAX_BLOCKSIZE-current_blocksize;
-                                std::memcpy(current_block.get() + current_blocksize, inbuffer + current_pointer_consumed, add_length);
-                current_blocksize += add_length;
-                current_pointer_consumed += add_length;
-            }
+
+        // if data exists in current_block, then append to it first
+        if(current_blocksize >= MAX_BLOCKSIZE) { flush(); }
+        if(current_blocksize > 0) {
+            // append the minimum between remaining_len and remaining_block_space
+            uint64_t add_length = std::min(len - current_pointer_consumed, MAX_BLOCKSIZE - current_blocksize);
+            std::memcpy(current_block.get() + current_blocksize, inbuffer + current_pointer_consumed, add_length);
+            current_blocksize += add_length;
+            current_pointer_consumed += add_length;
+        }
+
+        // after appending to non-empty block any additional data push assumes that current_blocksize is zero
+        // True bc either inbuffer was fully consumed already (no more data to push) or block was filled and flushed (sets current_blocksize to zero)
+        if(current_blocksize >= MAX_BLOCKSIZE) { flush(); }
+        while(len - current_pointer_consumed >= MAX_BLOCKSIZE) {
+            DIRECT_MEM_SWITCH(
+                _SA_(
+                    compressor_node_direct.try_put(OrderedPtr(inbuffer + current_pointer_consumed, current_blocknumber));
+                ),
+                _SA_(
+                    // Different from ST, memcpy segment of inbuffer to block and then send to compress_node
+                    std::shared_ptr<char[]> full_block;
+                    if(!available_blocks.try_pop(full_block)) {
+                        full_block = MAKE_SHARED_BLOCK_ASSIGNMENT(MAX_BLOCKSIZE);
+                    }
+                    std::memcpy(full_block.get(), inbuffer + current_pointer_consumed, MAX_BLOCKSIZE);
+                    compressor_node.try_put(OrderedBlock(full_block, MAX_BLOCKSIZE, current_blocknumber));
+                )
+            )
+            current_blocknumber++;
+            // current_blocksize = 0; // If we are in this loop, current_blocksize is already zero
+            current_pointer_consumed += MAX_BLOCKSIZE;
+        }
+
+        // check if there is any remaining_len after sending full blocks
+        if(len - current_pointer_consumed > 0) {
+            uint64_t add_length = len - current_pointer_consumed;
+            std::memcpy(current_block.get(), inbuffer + current_pointer_consumed, add_length);
+            current_blocksize = add_length;
+            // current_pointer_consumed += add_length; // unnecessary
         }
     }
 
@@ -273,8 +334,6 @@ struct BlockCompressReaderMT {
         zblock.blocksize = zsize;
         zblock.blocknumber = blocks_to_process.fetch_add(1);
 
-        TOUT("read zblock ", zblock.blocknumber, " with size ", zblock.blocksize);
-
         this->ordered_zblocks.push(zblock);
 
         // return continue token to decompressor node
@@ -289,29 +348,20 @@ struct BlockCompressReaderMT {
     }),
     sequencer_node(this->myGraph, 
     [](const OrderedBlock & block) {
-        TOUT("sequencer ", block.blocknumber, " with size ", block.blocksize);
         return block.blocknumber; 
-    }) {
-        // pre-populate available blocks and zblocks queues
-        // for(int i = 0; i < nthreads-1; ++i) {
-        //     available_blocks.push(MAKE_SHARED_BLOCK_ASSIGNMENT(MAX_BLOCKSIZE));
-        //     available_zblocks.push(MAKE_SHARED_BLOCK_ASSIGNMENT(MAX_ZBLOCKSIZE));
-        // }
-        
+    })
+    {
         // connect computation graph
         tbb::flow::make_edge(reader_node, decompressor_node);
         reader_node.activate();
-        TOUT("activated");
     }
     private:
     int decompressor_node_routine(decompressor & dp_local) {
-        TOUT("decompressor ");
         // try_pop from ordered_zblocks queue
         OrderedBlock zblock;
         if(!ordered_zblocks.try_pop(zblock)) {
             return 0; // no available zblock, could be stolen by main thread
         }
-        TOUT("decompressor ", zblock.blocknumber, " with size ", zblock.blocksize);
         
         // get available block and decompress
         OrderedBlock block;
@@ -335,7 +385,6 @@ struct BlockCompressReaderMT {
         return 0;
     }
     void get_new_block() {
-        TOUT("get_new_block ");
         OrderedBlock block;
         while( true ) {
             // try_get from sequencer queue until a new block is available
@@ -388,25 +437,23 @@ struct BlockCompressReaderMT {
             // remainder of current block, may be zero
             uint64_t bytes_accounted = current_blocksize - data_offset;
             std::memcpy(outbuffer, current_block.get()+data_offset, bytes_accounted);
-            while(bytes_accounted < len) {
-                if(len - bytes_accounted >= MAX_BLOCKSIZE) {
-                    // different from ST, do not directly decompress
-                    // get a new block and memcopy
-                    get_new_block();
-                    std::memcpy(outbuffer + bytes_accounted, current_block.get(), current_blocksize);
-                    bytes_accounted += current_blocksize;
-                    data_offset = current_blocksize;
-                } else {
-                    // same as ST
-                    get_new_block();
-                    // if not enough bytes in block then something went wrong, throw error
-                    if(current_blocksize < len - bytes_accounted) {
-                        cleanup_and_throw("Corrupted block data");
-                    }
-                    std::memcpy(outbuffer + bytes_accounted, current_block.get(), len - bytes_accounted);
-                    data_offset = len - bytes_accounted;
-                    bytes_accounted += data_offset;
+            while(len - bytes_accounted >= MAX_BLOCKSIZE) {
+                // different from ST, do not directly decompress
+                // get a new block and memcopy
+                get_new_block();
+                std::memcpy(outbuffer + bytes_accounted, current_block.get(), current_blocksize);
+                bytes_accounted += MAX_BLOCKSIZE;
+                data_offset = MAX_BLOCKSIZE;
+            }
+            if(len - bytes_accounted > 0) { // but less than MAX_BLOCKSIZE
+                get_new_block();
+                // if not enough bytes in block then something went wrong, throw error
+                if(current_blocksize < len - bytes_accounted) {
+                    cleanup_and_throw("Corrupted block data");
                 }
+                std::memcpy(outbuffer + bytes_accounted, current_block.get(), len - bytes_accounted);
+                data_offset = len - bytes_accounted;
+                // bytes_accounted += data_offset; // no need to update since we are returning
             }
         }
     }
