@@ -324,3 +324,16 @@ std::vector<unsigned char> blosc_unshuffle_raw(SEXP const data, int bytesofsize)
   std::memcpy(xshuf.data() + vectorizablebytes, xdata + vectorizablebytes, remainder);
   return xshuf;
 }
+
+// [[Rcpp::export(rng = false)]]
+int internal_set_blocksize(const int size) {
+#ifdef QS2_DYNAMIC_BLOCKSIZE
+    int old = MAX_BLOCKSIZE;
+    MAX_BLOCKSIZE = size;
+    MIN_BLOCKSIZE = MAX_BLOCKSIZE - BLOCK_RESERVE;
+    MAX_ZBLOCKSIZE = ZSTD_compressBound(MAX_BLOCKSIZE);
+    return old;
+#else
+    throw std::runtime_error("dynamic blocksize compile option not enabled");
+#endif
+}

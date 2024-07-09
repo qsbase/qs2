@@ -369,7 +369,7 @@ struct BlockCompressReaderMT {
         while( true ) {
             // try_get from sequencer queue until a new block is available
             if( sequencer_node.try_get(block) ) {
-                                // put old block back in available_blocks
+                // put old block back in available_blocks
                 available_blocks.push(current_block);
 
                 // replace previous block with new block and increment blocks_processed

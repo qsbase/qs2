@@ -154,6 +154,16 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// internal_set_blocksize
+int internal_set_blocksize(const int size);
+RcppExport SEXP _qs2_internal_set_blocksize(SEXP sizeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< const int >::type size(sizeSEXP);
+    rcpp_result_gen = Rcpp::wrap(internal_set_blocksize(size));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_qs2_qs_save", (DL_FUNC) &_qs2_qs_save, 5},
@@ -169,6 +179,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_qs2_zstd_compress_bound", (DL_FUNC) &_qs2_zstd_compress_bound, 1},
     {"_qs2_blosc_shuffle_raw", (DL_FUNC) &_qs2_blosc_shuffle_raw, 2},
     {"_qs2_blosc_unshuffle_raw", (DL_FUNC) &_qs2_blosc_unshuffle_raw, 2},
+    {"_qs2_internal_set_blocksize", (DL_FUNC) &_qs2_internal_set_blocksize, 1},
     {NULL, NULL, 0}
 };
 

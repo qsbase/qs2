@@ -3,8 +3,10 @@ library(stringplus)
 set_string_ops("&", "|")
 
 # data path to store large benchmark files
-DATA_PATH <- "/mnt/n/R_stuff"
+DATA_PATH <- "~/datasets"
 
+
+################################################################################
 # GAIA celestial pseudocolor dataset
 # Data used for pseudocolor plot inst/benchmarks/GAIA_galaxy_pseudocolor.png
 files <- c("http://cdn.gea.esac.esa.int/Gaia/gdr2/gaia_source_with_rv/csv/GaiaSource_1584380076484244352_2200921635402776448.csv.gz",
@@ -30,6 +32,7 @@ data <- data.frame(text=readLines(con))
 close(con)
 fwrite(data, DATA_PATH & "/enwik8.csv.gz")
 
+################################################################################
 # T-cell data
 # https://clients.adaptivebiotech.com/pub/covid-2020
 # wget to DATA_PATH
@@ -60,3 +63,75 @@ v_resolved = "character")
 data <- fread(DATA_PATH & "/ImmuneCODE-Repertoires-002.2/ADIRP0000010_20200612_Frblood_Repertorie_TCRB.tsv", colClasses = cols, na.strings = c("no data", "unknown", "na"))
 data <- as.data.frame(data)
 saveRDS(data, file = DATA_PATH & "/T_cell_ADIRP0000010.rds")
+
+
+################################################################################
+library(dslabs)
+data <- dslabs::read_mnist()
+saveRDS(data, file = DATA_PATH & "/dslabs_mnist.rds")
+
+################################################################################
+library(recount3)
+
+z <- recount3::create_rse_manual(
+  project = "HEART",
+  project_home = "data_sources/gtex",
+  organism = "human",
+  annotation = "gencode_v26",
+  type = "gene"
+)
+counts <- recount3::transform_counts(z)
+mode(counts) <- "integer"
+saveRDS(counts, file = DATA_PATH & "/recount3_gtex_heart.rds")
+
+
+################################################################################
+# https://www.kaggle.com/datasets/datadetective08/washington-d-c-housing-market-2024
+# DC_real_estate_June_2024.json.gz
+
+################################################################################
+# https://www.kaggle.com/datasets/eren2222/nasdaq-nyse-nyse-a-otc-daily-stock-1962-2024
+# NYSE_1962_2024.csv.gz
+
+################################################################################
+# ERA5 wind data
+library(ecmwfr)
+library(ncdf4)
+library(askpass)
+# register https://cds.climate.copernicus.eu/ for API key
+
+user <- askpass("user")
+key <- askpass("key")
+wf_set_key(user=user, key = key, service = "cds")
+
+request <- list(
+  "dataset_short_name" = 'reanalysis-era5-land-monthly-means',
+  "product_type" = "reanalysis",
+  "variable" = c('10m_u_component_of_wind', '10m_v_component_of_wind'),
+  'month' = 1:12,
+  'year' = '2023',
+  "format" = "netcdf",
+  "target" = "reanalysis-era5-land-wind-monthly.nc"
+)
+
+
+file <- wf_request(
+  user     = user,
+  request  = request,
+  transfer = TRUE,
+  path     = DATA_PATH)
+
+nc <- nc_open(DATA_PATH & "/reanalysis-era5-land-wind-monthly.nc")
+data <- list(u10 = ncvar_get(nc, "u10"), v10 = ncvar_get(nc, "u10"))
+saveRDS(data, file = DATA_PATH & "/era5_land_wind_20230101.rds")
+
+################################################################################
+# Berkeley 2010-2019 global temperature
+library(ncdf4)
+nc <- nc_open(DATA_PATH & "/Berkeley_grid_temp_2010.nc")
+data <- ncvar_get(nc, "temperature")
+saveRDS(data, file = DATA_PATH & "/Berkeley_grid_temp_2010.rds")
+
+################################################################################
+# Steam game database 2024
+# https://www.kaggle.com/datasets/artermiloff/steam-games-dataset

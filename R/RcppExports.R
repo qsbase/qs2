@@ -53,3 +53,7 @@ blosc_unshuffle_raw <- function(data, bytesofsize) {
     .Call(`_qs2_blosc_unshuffle_raw`, data, bytesofsize)
 }
 
+internal_set_blocksize <- function(size) {
+    .Call(`_qs2_internal_set_blocksize`, size)
+}
+

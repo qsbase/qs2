@@ -14,26 +14,30 @@
 #include "BLOSC/shuffle_routines.h"
 #include "BLOSC/unshuffle_routines.h"
 
-#ifndef QS2_BLOCKSIZE_TESTING_ONLY_DO_NOT_USE
-static constexpr uint64_t MAX_BLOCKSIZE = 786432ULL;
-// 2^19 * 1.5 ... we save blocksize as uint32_t, so the last 12 MSBs can be used to store metadata
-// This blocksize is 50% larger than `qs` and seems to be a better tradeoff overall in benchmarks
-#else
-static constexpr uint64_t MAX_BLOCKSIZE = QS2_BLOCKSIZE_TESTING_ONLY_DO_NOT_USE;
-#endif
 
+#define QS2_DYNAMIC_BLOCKSIZE
+#ifdef QS2_DYNAMIC_BLOCKSIZE
+static uint64_t MAX_BLOCKSIZE = 786432ULL;
+static constexpr uint64_t BLOCK_RESERVE = 64ULL;
+static uint64_t MIN_BLOCKSIZE = MAX_BLOCKSIZE - BLOCK_RESERVE; // smallest allowable block size, except for last block
+static uint64_t MAX_ZBLOCKSIZE = ZSTD_compressBound(MAX_BLOCKSIZE);
+#else
+static constexpr uint64_t MAX_BLOCKSIZE = 786432ULL;
 static constexpr uint64_t BLOCK_RESERVE = 64ULL;
 static constexpr uint64_t MIN_BLOCKSIZE = MAX_BLOCKSIZE - BLOCK_RESERVE; // smallest allowable block size, except for last block
 static const uint64_t MAX_ZBLOCKSIZE = ZSTD_compressBound(MAX_BLOCKSIZE);
+// 2^19 * 1.5 ... we save blocksize as uint32_t, so the last 12 MSBs can be used to store metadata
+// This blocksize is 50% larger than `qs` and seems to be a better tradeoff overall in benchmarks
+#endif
+
+
+
 // 11111111 11110000 00000000 00000000 in binary, First 12 MSBs can be used for metadata in either zblock or block
 // currently only using the first bit for metadata
 static constexpr uint32_t BLOCK_METADATA = 0x80000000; // 10000000 00000000 00000000 00000000
 
 static constexpr uint64_t SHUFFLE_ELEMSIZE = 8ULL;
 static constexpr uint32_t SHUFFLE_MASK = (1ULL << 31);
-static const int SHUFFLE_HEURISTIC_CLEVEL = -1; // compress with fast clevel to test whether shuffle is better
-static constexpr uint64_t SHUFFLE_HEURISTIC_BLOCKSIZE = 16384ULL; // 524288 / 8 / 4
-static constexpr float SHUFFLE_MIN_IMPROVEMENT_THRESHOLD = 1.07f; // shuffle must be at least 7% better to use
 
 // MAKE_UNIQUE_BLOCK and MAKE_SHARED_BLOCK macros should be used ONLY in initializer lists
 #if __cplusplus >= 201402L // Check for C++14 or above

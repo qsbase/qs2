@@ -19,7 +19,13 @@ struct ZstdCompressor {
 // to do: investigate whether 16/32 byte alignment improves shuffle performance
 // likely not a big deal as shuffle is already really fast
 // NOT necessary since _mm_loadu_si128 does not require alignment
+
 struct ZstdShuffleCompressor {
+
+    static constexpr int SHUFFLE_HEURISTIC_CLEVEL = -1; // compress with fast clevel to test whether shuffle is better
+    static constexpr uint64_t SHUFFLE_HEURISTIC_BLOCKSIZE = 16384ULL; // 524288 / 8 / 4
+    static constexpr float SHUFFLE_MIN_IMPROVEMENT_THRESHOLD = 1.07f; // shuffle must be at least 7% better to use
+
     ZSTD_CCtx * cctx;
     std::unique_ptr<char[]> shuffleblock;
     ZstdShuffleCompressor() : cctx(ZSTD_createCCtx()), shuffleblock(MAKE_UNIQUE_BLOCK(MAX_BLOCKSIZE)) {}
