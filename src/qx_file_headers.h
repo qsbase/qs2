@@ -1,5 +1,5 @@
-#ifndef _QS_QS_QD_FILE_HEADERS_H_
-#define _QS_QS_QD_FILE_HEADERS_H_
+#ifndef _QS2_QX_FILE_HEADERS_H_
+#define _QS2_QX_FILE_HEADERS_H_
 
 
 #include <array>
@@ -17,7 +17,8 @@ static constexpr uint8_t YES_SHUFFLE_FLAG = 1_u8;
 static constexpr uint64_t HEADER_HASH_POSITION = 16;
 
 static const std::array<uint8_t,4> QS2_MAGIC_BITS = {0x0B,0x0E,0x0A,0xC1};
-static const std::array<uint8_t,4> QDATA_MAGIC_BITS = {0x0B,0x0E,0x0A,0xC2};
+static const std::array<uint8_t,4> QDATA_MAGIC_BITS = {0x0B,0x0E,0x0A,0xCD};
+static const std::array<uint8_t,4> QS_LEGACY_MAGIC_BITS = {0x0B,0x0E,0x0A,0x0C};
 static const std::array<uint8_t,16> RESERVED_BITS = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; // unused bits reserved for future use
 
 // https://stackoverflow.com/a/1001373
@@ -55,7 +56,13 @@ inline void read_qs2_header(stream_reader & reader, bool & shuffle, uint64_t & h
     std::array<uint8_t, 24> bits;
     reader.read(reinterpret_cast<char*>(bits.data()), bits.size());
     if(! checkMagicNumber(bits.data(), QS2_MAGIC_BITS.data())) {
-        throw std::runtime_error("qs2 format not detected");
+        // check for qdata or qs-legacy
+        if(checkMagicNumber(bits.data(), QDATA_MAGIC_BITS.data())) {
+            throw std::runtime_error("qdata format detected, use qs2::qd_read");
+        } else if(checkMagicNumber(bits.data(), QS_LEGACY_MAGIC_BITS.data())) {
+            throw std::runtime_error("qs-legacy format detected, use qs::qread");
+        }
+        throw std::runtime_error("Unknown file format detected");
     }
     uint8_t format_ver = bits[4];
     if(format_ver > QS2_CURRENT_FORMAT_VER) {
@@ -104,7 +111,13 @@ inline void read_qdata_header(stream_reader & reader, bool & shuffle, uint64_t &
     std::array<uint8_t, 24> bits;
     reader.read(reinterpret_cast<char*>(bits.data()), bits.size());
     if(! checkMagicNumber(bits.data(), QDATA_MAGIC_BITS.data())) {
-        throw std::runtime_error("qdata format not detected");
+        // check for qs2 or qs-legacy
+        if(checkMagicNumber(bits.data(), QS2_MAGIC_BITS.data())) {
+            throw std::runtime_error("qs2 format detected, use qs2::qs_read");
+        } else if(checkMagicNumber(bits.data(), QS_LEGACY_MAGIC_BITS.data())) {
+            throw std::runtime_error("qs-legacy format detected, use qs::qread");
+        }
+        throw std::runtime_error("Unknown file format detected");
     }
     uint8_t format_ver = bits[4];
     if(format_ver > QS2_CURRENT_FORMAT_VER) {

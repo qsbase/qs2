@@ -1,4 +1,3 @@
-// low level IO functions/classes
 #include "io/filestream_module.h"
 #include "io/zstd_module.h"
 #include "io/xxhash_module.h"
@@ -27,6 +26,7 @@
     _BASE_CLASS_ <OfStreamWriter, _COMPRESSOR_, _HASHER_, ErrorType::r_error, false> block_io(myFile, compress_level); \
     R_SerializeInit(&out, block_io); \
     qsSaveImplArgs args = {object, &out}; \
+    Rf_warning("Interrupt detected, file/object will be incomplete", "%s"); \
     DO_JMPBUF(); \
     DO_UNWIND_PROTECT(qs_save_impl, decltype(block_io), args)
 

@@ -1,5 +1,5 @@
-#ifndef _QS_SERIALIZER_H_
-#define _QS_SERIALIZER_H_
+#ifndef _QS2_SERIALIZER_H_
+#define _QS2_SERIALIZER_H_
 
 #include <Rcpp.h>
 #include <tbb/global_control.h>

@@ -1,5 +1,5 @@
-#ifndef _QS_QD_SERIALIZER_H_
-#define _QS_QD_SERIALIZER_H_
+#ifndef _QS2_QD_SERIALIZER_H_
+#define _QS2_QD_SERIALIZER_H_
 
 
 #include <Rcpp.h>

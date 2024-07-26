@@ -1,5 +1,5 @@
-#ifndef _QS_QD_CONSTANTS_H_
-#define _QS_QD_CONSTANTS_H_
+#ifndef _QS2_QD_CONSTANTS_H_
+#define _QS2_QD_CONSTANTS_H_
 
 #include <cstdint>
 

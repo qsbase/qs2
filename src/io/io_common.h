@@ -14,20 +14,18 @@
 #include "BLOSC/shuffle_routines.h"
 #include "BLOSC/unshuffle_routines.h"
 
-
-#define QS2_DYNAMIC_BLOCKSIZE
 #ifdef QS2_DYNAMIC_BLOCKSIZE
-static uint64_t MAX_BLOCKSIZE = 786432ULL;
+static uint64_t MAX_BLOCKSIZE = 1048576ULL;
 static constexpr uint64_t BLOCK_RESERVE = 64ULL;
 static uint64_t MIN_BLOCKSIZE = MAX_BLOCKSIZE - BLOCK_RESERVE; // smallest allowable block size, except for last block
 static uint64_t MAX_ZBLOCKSIZE = ZSTD_compressBound(MAX_BLOCKSIZE);
 #else
-static constexpr uint64_t MAX_BLOCKSIZE = 786432ULL;
+static constexpr uint64_t MAX_BLOCKSIZE = 1048576ULL;
 static constexpr uint64_t BLOCK_RESERVE = 64ULL;
 static constexpr uint64_t MIN_BLOCKSIZE = MAX_BLOCKSIZE - BLOCK_RESERVE; // smallest allowable block size, except for last block
 static const uint64_t MAX_ZBLOCKSIZE = ZSTD_compressBound(MAX_BLOCKSIZE);
-// 2^19 * 1.5 ... we save blocksize as uint32_t, so the last 12 MSBs can be used to store metadata
-// This blocksize is 50% larger than `qs` and seems to be a better tradeoff overall in benchmarks
+// 2^20 ... we save blocksize as uint32_t, so the last 12 MSBs can be used to store metadata
+// This blocksize is 2x larger than `qs` and seems to be a better tradeoff overall in benchmarks
 #endif
 
 

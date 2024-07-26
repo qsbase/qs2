@@ -1,5 +1,5 @@
-#ifndef _QS_QS_UNWIND_PROTECT_H_
-#define _QS_QS_UNWIND_PROTECT_H_
+#ifndef _QS2_QS_UNWIND_PROTECT_H_
+#define _QS2_QS_UNWIND_PROTECT_H_
 
 #include <Rcpp.h>
 #include <csetjmp>
@@ -80,9 +80,6 @@ struct RerrorUnwind {
 // In some ways this is easier as we don't need to pass objects that need to be cleaned up to cleanfun / cleandata
 
 // We don't need this for our own methods (qdata format) using C++/Rcpp only
-
-// Unclear: we need to call R_error instead of `throw std::runtime_error` within C++ code,
-// possibly because `throw std::runtime_error` is handled by Rcpp, whereas R_serialize / R_unserialize are internal R functions?
 
 // References
 // https://yutani.rbind.io/post/r-rust-protect-and-unwinding/

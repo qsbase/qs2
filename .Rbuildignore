@@ -14,3 +14,4 @@ Makefile
 README.html
 ^.github
 ^revdep$
+^inst/analysis

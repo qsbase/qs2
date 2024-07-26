@@ -2,6 +2,20 @@
 #define _QS2_ZSTD_MODULE_H
 
 #include "io/io_common.h"
+#include "io/xgboost_blockshuffle_model.h"
+
+
+static constexpr uint32_t COMPRESSION_ERROR = 0;
+static constexpr uint32_t SHUFFLE_HEURISTIC_BLOCKSIZE = 32768;
+static constexpr uint32_t SHUFFLE_ELEMSIZE = 8;
+
+static constexpr uint32_t SHUFFLE_HEURISTIC_CL = -1;
+static constexpr uint32_t USE_HEURISTIC = 1;
+static constexpr uint32_t DONT_USE_HEURISTIC = 2;
+
+static constexpr int HIGH_COMPRESS_LEVEL_THRESHOLD = 14;
+static constexpr double HIGH_HEURISTIC_THRESHOLD = -0.25;
+static constexpr double LOW_HEURISTIC_THRESHOLD = 0;
 
 struct ZstdCompressor {
     ZSTD_CCtx * cctx;
@@ -9,22 +23,19 @@ struct ZstdCompressor {
     ~ZstdCompressor() {
         ZSTD_freeCCtx(cctx);
     }
-    uint64_t compress(char * const dst, const uint64_t dstCapacity,
-                      const char * const src, const uint64_t srcSize,
+    uint32_t compress(char * const dst, const uint32_t dstCapacity,
+                      const char * const src, const uint32_t srcSize,
                       int compress_level) {
-        return ZSTD_compressCCtx(cctx, dst, dstCapacity, src, srcSize, compress_level);
+        auto output = ZSTD_compressCCtx(cctx, dst, dstCapacity, src, srcSize, compress_level);
+        if(ZSTD_isError(output)) {
+            return COMPRESSION_ERROR;
+        } else {
+            return output;
+        }
     }
 };
 
-// to do: investigate whether 16/32 byte alignment improves shuffle performance
-// likely not a big deal as shuffle is already really fast
-// NOT necessary since _mm_loadu_si128 does not require alignment
-
 struct ZstdShuffleCompressor {
-
-    static constexpr int SHUFFLE_HEURISTIC_CLEVEL = -1; // compress with fast clevel to test whether shuffle is better
-    static constexpr uint64_t SHUFFLE_HEURISTIC_BLOCKSIZE = 16384ULL; // 524288 / 8 / 4
-    static constexpr float SHUFFLE_MIN_IMPROVEMENT_THRESHOLD = 1.07f; // shuffle must be at least 7% better to use
 
     ZSTD_CCtx * cctx;
     std::unique_ptr<char[]> shuffleblock;
@@ -33,49 +44,97 @@ struct ZstdShuffleCompressor {
         ZSTD_freeCCtx(cctx);
     }
 
-    // heuristic whether to use shuffle or not
-    // using min compression level, compare compression of the first N bytes with or without shuffle using fast clevel
-    // if shuffle improves compression by 7% or more, use shuffle
-    bool use_shuffle_heuristic(char * const dst, const uint64_t dstCapacity, const char * const src, const uint64_t srcSize) {
-        if(srcSize < SHUFFLE_HEURISTIC_BLOCKSIZE) {
-            return false;
-        };
-        // copy from start of block
-        blosc_shuffle(reinterpret_cast<const uint8_t*>(src), reinterpret_cast<uint8_t*>(shuffleblock.get()), SHUFFLE_HEURISTIC_BLOCKSIZE, SHUFFLE_ELEMSIZE);
-        uint32_t shuffle_approx    = ZSTD_compressCCtx(cctx, dst, dstCapacity, shuffleblock.get(),
-                                                       SHUFFLE_HEURISTIC_BLOCKSIZE, 
-                                                       SHUFFLE_HEURISTIC_CLEVEL);
-        uint32_t no_shuffle_approx = ZSTD_compressCCtx(cctx, dst, dstCapacity, src,
-                                                       SHUFFLE_HEURISTIC_BLOCKSIZE,
-                                                       SHUFFLE_HEURISTIC_CLEVEL);
+    static bool is_error(const uint32_t blocksize) { return blocksize == COMPRESSION_ERROR; }
 
-        // copy from half way of block and add to estimate
-        if(srcSize >= MAX_BLOCKSIZE/2 + SHUFFLE_HEURISTIC_BLOCKSIZE) {
-            blosc_shuffle(reinterpret_cast<const uint8_t*>(src + MAX_BLOCKSIZE/2),
-                          reinterpret_cast<uint8_t*>(shuffleblock.get()), SHUFFLE_HEURISTIC_BLOCKSIZE, SHUFFLE_ELEMSIZE);
-        shuffle_approx += ZSTD_compressCCtx(cctx, dst, dstCapacity, shuffleblock.get(),
-                                            SHUFFLE_HEURISTIC_BLOCKSIZE,
-                                            SHUFFLE_HEURISTIC_CLEVEL);
-        no_shuffle_approx += ZSTD_compressCCtx(cctx, dst, dstCapacity, src + MAX_BLOCKSIZE/2,
-                                               SHUFFLE_HEURISTIC_BLOCKSIZE,
-                                               SHUFFLE_HEURISTIC_CLEVEL);
-        }
-        return (static_cast<float>(no_shuffle_approx) / static_cast<float>(shuffle_approx)) > SHUFFLE_MIN_IMPROVEMENT_THRESHOLD;
-    }
-    uint64_t compress(char * const dst, const uint64_t dstCapacity,
-                      const char * const src, const uint64_t srcSize,
-                      int compress_level) {
-
-        if(use_shuffle_heuristic(dst, dstCapacity, src, srcSize)) {
-            uint64_t remainder = srcSize % SHUFFLE_ELEMSIZE;
-            blosc_shuffle(reinterpret_cast<const uint8_t*>(src), reinterpret_cast<uint8_t*>(shuffleblock.get()), srcSize - remainder, SHUFFLE_ELEMSIZE);
-            std::memcpy(shuffleblock.get() + srcSize - remainder, src + srcSize - remainder, remainder);
-            uint32_t output_size = ZSTD_compressCCtx(cctx, dst, dstCapacity, shuffleblock.get(), srcSize, compress_level);
-            output_size = output_size | SHUFFLE_MASK;
-            return output_size;
+    uint32_t use_shuffle_heuristic(char * const dst, const uint32_t dstCapacity, 
+                               const char * const src, const uint32_t srcSize,
+                               const int compress_level,
+                               const double threshold) {
+        if(srcSize < 8*SHUFFLE_HEURISTIC_BLOCKSIZE) {
+            return DONT_USE_HEURISTIC;
         } else {
-            uint32_t output_size = ZSTD_compressCCtx(cctx, dst, dstCapacity, src, srcSize, compress_level);
-            return output_size;
+            std::array<double, 9> features;
+            features[8] = compress_level;
+
+            for(int i = 0; i < 4; ++i) {
+                uint32_t block_offset = (srcSize / 4ULL) * i; // integer division, rounds down
+                blosc_shuffle(reinterpret_cast<const uint8_t*>(src + block_offset), reinterpret_cast<uint8_t*>(shuffleblock.get()), SHUFFLE_HEURISTIC_BLOCKSIZE, SHUFFLE_ELEMSIZE);
+                auto shuf = ZSTD_compressCCtx(cctx, dst, dstCapacity, shuffleblock.get(),
+                                                SHUFFLE_HEURISTIC_BLOCKSIZE, 
+                                                SHUFFLE_HEURISTIC_CL);
+                if(ZSTD_isError(shuf)) { return COMPRESSION_ERROR; }
+                
+                auto noshuf = ZSTD_compressCCtx(cctx, dst, dstCapacity, src + block_offset,
+                                                  SHUFFLE_HEURISTIC_BLOCKSIZE,
+                                                  SHUFFLE_HEURISTIC_CL);
+                if(ZSTD_isError(noshuf)) { return COMPRESSION_ERROR; }
+
+                features[i*2] = shuf;
+                features[i*2+1] = noshuf;
+            }
+
+            if( XgboostBlockshuffleModel::predict_xgboost_impl(features) > threshold ) {
+                return USE_HEURISTIC;
+            } else {
+                return DONT_USE_HEURISTIC;
+            }
+        }
+    }
+
+    uint32_t compress(char * const dst, const uint32_t dstCapacity,
+                      const char * const src, const uint32_t srcSize,
+                      const int compress_level) {
+
+        uint32_t heuristic;
+        if(compress_level >= HIGH_COMPRESS_LEVEL_THRESHOLD) {
+            heuristic = use_shuffle_heuristic(dst, dstCapacity, src, srcSize, compress_level, HIGH_HEURISTIC_THRESHOLD);
+        } else {
+            heuristic = use_shuffle_heuristic(dst, dstCapacity, src, srcSize, compress_level, LOW_HEURISTIC_THRESHOLD);
+        }
+
+        if(heuristic == COMPRESSION_ERROR) {
+            return COMPRESSION_ERROR;
+        } else if(heuristic == USE_HEURISTIC) {
+            if(compress_level >= HIGH_COMPRESS_LEVEL_THRESHOLD) { // test both ways
+                // shuffle compress into new shuffleblock
+                std::unique_ptr<char[]> shuffle_zblock(MAKE_UNIQUE_BLOCK(MAX_ZBLOCKSIZE));
+                uint32_t remainder = srcSize % SHUFFLE_ELEMSIZE;
+                blosc_shuffle(reinterpret_cast<const uint8_t*>(src), reinterpret_cast<uint8_t*>(shuffleblock.get()), srcSize - remainder, SHUFFLE_ELEMSIZE);
+                std::memcpy(shuffleblock.get() + srcSize - remainder, src + srcSize - remainder, remainder);
+                auto output_size_with_shuffle = ZSTD_compressCCtx(cctx, shuffle_zblock.get(), MAX_ZBLOCKSIZE, shuffleblock.get(), srcSize, compress_level);
+                // compress without shuffle into dst
+                auto output_size_no_shuffle = ZSTD_compressCCtx(cctx, dst, dstCapacity, src, srcSize, compress_level);
+                // check for any error and propagate
+                if(ZSTD_isError(output_size_with_shuffle) || ZSTD_isError(output_size_no_shuffle)) {
+                    return COMPRESSION_ERROR;
+                }
+                if(output_size_with_shuffle > output_size_no_shuffle) {
+                    // replace output in dst
+                    std::memcpy(dst, shuffle_zblock.get(), output_size_with_shuffle);
+                    return output_size_with_shuffle | SHUFFLE_MASK;
+                } else {
+                    return output_size_no_shuffle;
+                }
+            } else {
+                uint32_t remainder = srcSize % SHUFFLE_ELEMSIZE;
+                blosc_shuffle(reinterpret_cast<const uint8_t*>(src), reinterpret_cast<uint8_t*>(shuffleblock.get()), srcSize - remainder, SHUFFLE_ELEMSIZE);
+                std::memcpy(shuffleblock.get() + srcSize - remainder, src + srcSize - remainder, remainder);
+                auto output_size = ZSTD_compressCCtx(cctx, dst, dstCapacity, shuffleblock.get(), srcSize, compress_level);
+                if(ZSTD_isError(output_size)) {
+                    return COMPRESSION_ERROR;
+                } else {
+                return output_size | SHUFFLE_MASK;
+                }
+
+            }
+
+        } else { // heuristic == DONT_USE_HEURISTIC
+            auto output_size = ZSTD_compressCCtx(cctx, dst, dstCapacity, src, srcSize, compress_level);
+            if(ZSTD_isError(output_size)) {
+                return COMPRESSION_ERROR;
+            } else {
+                return output_size;
+            }
         }
     }
 };
@@ -86,18 +145,18 @@ struct ZstdDecompressor {
     ~ZstdDecompressor() {
         ZSTD_freeDCtx(dctx);
     }
-    uint64_t decompress(char * const dst, const uint64_t dstCapacity,
-                        const char * const src, const uint64_t srcSize) {
+    static bool is_error(const uint32_t blocksize) { return blocksize == COMPRESSION_ERROR; }
+    uint32_t decompress(char * const dst, const uint32_t dstCapacity,
+                        const char * const src, const uint32_t srcSize) {
         if(srcSize > MAX_ZBLOCKSIZE) {
-            return 0; // 0 indicates an error
+            return COMPRESSION_ERROR;
         }
-        size_t output_blocksize = ZSTD_decompressDCtx(dctx, dst, dstCapacity, src, srcSize);
+        auto output_blocksize = ZSTD_decompressDCtx(dctx, dst, dstCapacity, src, srcSize);
         if(ZSTD_isError(output_blocksize)) {
-            return 0; // 0 indicates an error
+            return COMPRESSION_ERROR;
         }
         return output_blocksize;
     }
-    static bool is_error(const uint64_t blocksize) { return blocksize == 0; }
 };
 
 struct ZstdShuffleDecompressor {
@@ -107,35 +166,35 @@ struct ZstdShuffleDecompressor {
     ~ZstdShuffleDecompressor() {
         ZSTD_freeDCtx(dctx);
     }
-    uint64_t decompress(char * const dst, const uint64_t dstCapacity,
-                        const char * const src, uint64_t srcSize) { // srcSize modified by shuffle mask, so not const
+    static bool is_error(const uint32_t blocksize) { return blocksize == COMPRESSION_ERROR; }
+    uint32_t decompress(char * const dst, const uint32_t dstCapacity,
+                        const char * const src, uint32_t srcSize) { // srcSize modified by shuffle mask, so not const
         bool is_shuffled = srcSize & SHUFFLE_MASK;
         if(is_shuffled) {
             // set shuffle bit to zero, negate shuffle mask
             srcSize = srcSize & (~SHUFFLE_MASK);
             if(srcSize > MAX_ZBLOCKSIZE) {
-                return 0; // 0 indicates an error
+                return COMPRESSION_ERROR; // 0 indicates an error
             }
-            size_t output_blocksize = ZSTD_decompressDCtx(dctx, shuffleblock.get(), dstCapacity, src, srcSize);
+            auto output_blocksize = ZSTD_decompressDCtx(dctx, shuffleblock.get(), dstCapacity, src, srcSize);
             if(ZSTD_isError(output_blocksize)) {
-                return 0; // 0 indicates an error
+                return COMPRESSION_ERROR; // 0 indicates an error
             }
-            uint64_t remainder = output_blocksize % SHUFFLE_ELEMSIZE;
+            uint32_t remainder = output_blocksize % SHUFFLE_ELEMSIZE;
             blosc_unshuffle(reinterpret_cast<uint8_t*>(shuffleblock.get()), reinterpret_cast<uint8_t*>(dst), output_blocksize - remainder, SHUFFLE_ELEMSIZE);
             std::memcpy(dst + output_blocksize - remainder, shuffleblock.get() + output_blocksize - remainder, remainder);
             return output_blocksize;
         } else {
             if(srcSize > MAX_BLOCKSIZE) {
-                return 0; // 0 indicates an error
+                return COMPRESSION_ERROR; // 0 indicates an error
             }
-            size_t output_blocksize = ZSTD_decompressDCtx(dctx, dst, dstCapacity, src, srcSize);
+            auto output_blocksize = ZSTD_decompressDCtx(dctx, dst, dstCapacity, src, srcSize);
             if(ZSTD_isError(output_blocksize)) {
-                return 0; // 0 indicates an error
+                return COMPRESSION_ERROR; // 0 indicates an error
             }
             return output_blocksize;
         }
     }
-    static bool is_error(const uint64_t blocksize) { return blocksize == 0; }
 };
 
 #endif
