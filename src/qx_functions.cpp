@@ -26,8 +26,7 @@
     _BASE_CLASS_ <OfStreamWriter, _COMPRESSOR_, _HASHER_, ErrorType::r_error, false> block_io(myFile, compress_level); \
     R_SerializeInit(&out, block_io); \
     qsSaveImplArgs args = {object, &out}; \
-    Rf_warning("Interrupt detected, file/object will be incomplete", "%s"); \
-    DO_JMPBUF(); \
+    DO_JMPBUF_QS_SAVE(); \
     DO_UNWIND_PROTECT(qs_save_impl, decltype(block_io), args)
 
 // [[Rcpp::export(rng = false, invisible = true)]]
@@ -73,7 +72,13 @@ SEXP qs_save(SEXP object, const std::string & file, const int compress_level = 3
 #define DO_QS_READ(_BASE_CLASS_, _DECOMPRESSOR_) \
     _BASE_CLASS_ <IfStreamReader, _DECOMPRESSOR_, ErrorType::r_error> block_io(myFile); \
     R_UnserializeInit< _BASE_CLASS_ <IfStreamReader, _DECOMPRESSOR_, ErrorType::r_error>>(&in, (R_pstream_data_t)(&block_io)); \
-    DO_JMPBUF(); \
+    DO_JMPBUF_QS_READ(); \
+    DO_UNWIND_PROTECT(qs_read_impl, decltype(block_io), in);
+
+#define DO_QS_READHASH(_BASE_CLASS_, _DECOMPRESSOR_, _HASHER_) \
+    _BASE_CLASS_ <IfStreamReader, _DECOMPRESSOR_, _HASHER_, ErrorType::r_error> block_io(myFile, stored_hash); \
+    R_UnserializeInit< _BASE_CLASS_ <IfStreamReader, _DECOMPRESSOR_, _HASHER_, ErrorType::r_error>>(&in, (R_pstream_data_t)(&block_io)); \
+    DO_JMPBUF_QS_READ(); \
     DO_UNWIND_PROTECT(qs_read_impl, decltype(block_io), in);
 
 // [[Rcpp::export(rng = false)]]
@@ -94,29 +99,38 @@ SEXP qs_read(const std::string & file, const bool validate_checksum = false, con
     if(stored_hash == 0) {
         throw_error<ErrorType::r_error>("For file " + file + ": hash not stored, save file may be incomplete");
     }
-    if(validate_checksum) {
-        // to do: instead of reading through the file twice, keep data in memory and serialize from memory
-        uint64_t computed_hash = read_qx_hash(myFile);
-        if(computed_hash != stored_hash) {
-            throw_error<ErrorType::r_error>("For file " + file + ": hash mismatch");
-        }
-    }
 
     struct R_inpstream_st in;
     if(nthreads > 1) {
         #if RCPP_PARALLEL_USE_TBB
         tbb::global_control gc(tbb::global_control::parameter::max_allowed_parallelism, nthreads);
-        if(shuffle) {
-            DO_QS_READ(BlockCompressReaderMT, ZstdShuffleDecompressor);
+        if(validate_checksum) {
+            if(shuffle) {
+                DO_QS_READHASH(BlockCompressReaderHashMT, ZstdShuffleDecompressor, xxHashEnv);
+            } else {
+                DO_QS_READHASH(BlockCompressReaderHashMT, ZstdDecompressor, xxHashEnv);
+            }
         } else {
-            DO_QS_READ(BlockCompressReaderMT, ZstdDecompressor);
+            if(shuffle) {
+                DO_QS_READ(BlockCompressReaderMT, ZstdShuffleDecompressor);
+            } else {
+                DO_QS_READ(BlockCompressReaderMT, ZstdDecompressor);
+            }
         }
         #endif
     } else {
-        if(shuffle) {
-            DO_QS_READ(BlockCompressReader, ZstdShuffleDecompressor);
+        if(validate_checksum) {
+            if(shuffle) {
+                DO_QS_READHASH(BlockCompressReaderHash, ZstdShuffleDecompressor, xxHashEnv);
+            } else {
+                DO_QS_READHASH(BlockCompressReaderHash, ZstdDecompressor, xxHashEnv);
+            }
         } else {
-            DO_QS_READ(BlockCompressReader, ZstdDecompressor);
+            if(shuffle) {
+                DO_QS_READ(BlockCompressReader, ZstdShuffleDecompressor);
+            } else {
+                DO_QS_READ(BlockCompressReader, ZstdDecompressor);
+            }
         }
     }
     UNWIND_PROTECT_END();
@@ -174,6 +188,13 @@ SEXP qd_save(SEXP object, const std::string & file, const int compress_level = 3
     reader.finish(); \
     return output
 
+#define DO_QD_READHASH(_BASE_CLASS_, _DECOMPRESSOR_, _HASHER_) \
+    _BASE_CLASS_ <IfStreamReader, _DECOMPRESSOR_, _HASHER_, ErrorType::cpp_error> reader(myFile, stored_hash); \
+    QdataDeserializer<_BASE_CLASS_<IfStreamReader, _DECOMPRESSOR_, _HASHER_, ErrorType::cpp_error>> deserializer(reader, use_alt_rep); \
+    SEXP output = deserializer.read_object(); \
+    reader.finish(); \
+    return output
+
 // [[Rcpp::export(rng = false)]]
 SEXP qd_read(const std::string & file, const bool use_alt_rep = false, const bool validate_checksum = false, const int nthreads = 1) {
 
@@ -191,27 +212,37 @@ SEXP qd_read(const std::string & file, const bool use_alt_rep = false, const boo
     if(stored_hash == 0) {
         throw std::runtime_error("For file " + file + ": hash not stored, save file may be incomplete");
     }
-    if(validate_checksum) {
-        uint64_t computed_hash = read_qx_hash(myFile);
-        if(computed_hash != stored_hash) {
-            throw std::runtime_error("For file " + file + ": hash mismatch");
-        }
-    }
 
     if(nthreads > 1) {
         #if RCPP_PARALLEL_USE_TBB
         tbb::global_control gc(tbb::global_control::parameter::max_allowed_parallelism, nthreads);
-        if(shuffle) {
-            DO_QD_READ(BlockCompressReaderMT, ZstdShuffleDecompressor);
+        if(validate_checksum) {
+            if(shuffle) {
+                DO_QD_READHASH(BlockCompressReaderHashMT, ZstdShuffleDecompressor, xxHashEnv);
+            } else {
+                DO_QD_READHASH(BlockCompressReaderHashMT, ZstdDecompressor, xxHashEnv);
+            }
         } else {
-            DO_QD_READ(BlockCompressReaderMT, ZstdDecompressor);
+            if(shuffle) {
+                DO_QD_READ(BlockCompressReaderMT, ZstdShuffleDecompressor);
+            } else {
+                DO_QD_READ(BlockCompressReaderMT, ZstdDecompressor);
+            }
         }
         #endif
     } else {
-        if(shuffle) {
-            DO_QD_READ(BlockCompressReader, ZstdShuffleDecompressor);
+        if(validate_checksum) {
+            if(shuffle) {
+                DO_QD_READHASH(BlockCompressReaderHash, ZstdShuffleDecompressor, xxHashEnv);
+            } else {
+                DO_QD_READHASH(BlockCompressReaderHash, ZstdDecompressor, xxHashEnv);
+            }
         } else {
-            DO_QD_READ(BlockCompressReader, ZstdDecompressor);
+            if(shuffle) {
+                DO_QD_READ(BlockCompressReader, ZstdShuffleDecompressor);
+            } else {
+                DO_QD_READ(BlockCompressReader, ZstdDecompressor);
+            }
         }
     }
     return R_NilValue; // unreachable

@@ -28,13 +28,9 @@ static const uint64_t MAX_ZBLOCKSIZE = ZSTD_compressBound(MAX_BLOCKSIZE);
 // This blocksize is 2x larger than `qs` and seems to be a better tradeoff overall in benchmarks
 #endif
 
-
-
 // 11111111 11110000 00000000 00000000 in binary, First 12 MSBs can be used for metadata in either zblock or block
 // currently only using the first bit for metadata
 static constexpr uint32_t BLOCK_METADATA = 0x80000000; // 10000000 00000000 00000000 00000000
-
-static constexpr uint64_t SHUFFLE_ELEMSIZE = 8ULL;
 static constexpr uint32_t SHUFFLE_MASK = (1ULL << 31);
 
 // MAKE_UNIQUE_BLOCK and MAKE_SHARED_BLOCK macros should be used ONLY in initializer lists
@@ -86,7 +82,7 @@ inline constexpr unsigned char operator "" _u8(unsigned long long arg) noexcept 
     return static_cast<uint8_t>(arg);
 }
 
-// #define QS_MT_SERIALIZATION_DEBUG
+#define QS_MT_SERIALIZATION_DEBUG
 #if defined(QS_MT_SERIALIZATION_DEBUG)
     #include <iostream>
     #include <sstream>

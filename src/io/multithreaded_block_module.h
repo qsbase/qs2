@@ -4,6 +4,7 @@
 #include "io/io_common.h"
 
 #include <tbb/concurrent_queue.h>
+#include <tbb/concurrent_vector.h>
 #include <tbb/flow_graph.h>
 #include <tbb/enumerable_thread_specific.h>
 #include <atomic>
@@ -477,244 +478,219 @@ struct BlockCompressReaderMT {
 
 // In contrast to BlockCompressReaderMT, BlockCompressReaderHashMT calculates hash of all input data before allowing deserialization
 // this is done in the constructor, so that there is no difference in interface
-// template <class stream_reader, class decompressor, class hasher, ErrorType E> 
-// struct BlockCompressReaderHashMT {
-//     // template class objects
-//     stream_reader & myFile;
-//     tbb::enumerable_thread_specific<decompressor> dp;
-//     decompressor dp_main; // decompressor for main thread to moonlight as compressor_node
-//     hasher hp; // main thread only
+template <class stream_reader, class decompressor, class hasher, ErrorType E>
+struct BlockCompressReaderHashMT {
+    // template class objects
+    stream_reader & myFile;
+    tbb::enumerable_thread_specific<decompressor> dp;
+    hasher hp; // main thread only
 
-//     // intermediate data objects
-//     tbb::concurrent_queue<std::shared_ptr<char[]>> available_zblocks;
-//     tbb::concurrent_queue<std::shared_ptr<char[]>> available_blocks;
+    // intermediate data objects
+    tbb::concurrent_queue<std::shared_ptr<char[]>> available_zblocks;
+    tbb::concurrent_vector<std::pair< std::shared_ptr<char[]>, uint32_t> > block_vector;
 
-//     // current data block
-//     std::shared_ptr<char[]> current_block;
-//     uint64_t current_blocksize;
-//     uint64_t data_offset;
+    // global control objects
+    uint64_t blocks_processed; // only written and read by main thread; reset to zero after reading in all data first
 
-//     // global control objects
-//     std::atomic<bool> end_of_file; // set after blocks_to_process and there are insufficient bytes from reader stream for another block
-//     std::atomic<uint64_t> blocks_to_process;
-//     uint64_t blocks_processed; // only written and read by main thread
+    // use task group instead of flow graph, since were only multithreading decompression
+    // tg has an internal task_group_context
+    // https://github.com/RcppCore/RcppParallel/blob/8c000aace9ff0ed48a641b81340b1c25b73ff091/src/tbb/include/tbb/task_group.h#L171
+    // is_canceling() is equivalent to tgc.is_group_execution_cancelled()
+    // cancel() is equivalent to tgc.cancel_group_execution()
+    tbb::task_group tg;
 
-//     // flow graph
-//     tbb::task_group_context tgc;
-//     tbb::flow::graph myGraph;
-//     // tbb::flow::source_node<tbb::flow::continue_msg> reader_node; // no reader node, read in all data up front
-//     tbb::flow::function_node<tbb::flow::continue_msg, int> decompressor_node;
-//     tbb::flow::sequencer_node<OrderedBlock> sequencer_node;
+    // current data block
+    const char * current_block;
+    uint64_t current_blocksize;
+    uint64_t data_offset;
 
-//     BlockCompressReaderHashMT(stream_reader & f, const uint64_t stored_hash) :
-//     // template class objects
-//     myFile(f),
-//     dp(),
-//     dp_main(),
-//     hp(),
+    BlockCompressReaderHashMT(stream_reader & f, const uint64_t stored_hash) :
+    // template class objects
+    myFile(f),
+    dp(),
+    hp(),
 
-//     // intermediate data objects
-//     available_zblocks(),
-//     available_blocks(),
+    // intermediate data objects
+    available_zblocks(),
+    block_vector(),
 
-//     // current data block
-//     current_block(MAKE_SHARED_BLOCK(MAX_BLOCKSIZE)),
-//     current_blocksize(0), 
-//     data_offset(0),
+    // global control objects
+    blocks_processed(0),
 
-//     // global control objects
-//     end_of_file(false),
-//     blocks_to_process(0),
-//     blocks_processed(0),
-    
-//     // flow graph
-//     tgc(),
-//     myGraph(this->tgc),
-//     decompressor_node(this->myGraph, tbb::flow::unlimited,
-//     [this](tbb::flow::continue_msg cont) {
-//         typename tbb::enumerable_thread_specific<decompressor>::reference dp_local = dp.local();
-//         // decompress routine manually try_put's a block to sequencer_node, return value is just a dummy 0 integer and does nothing
-//         return this->decompressor_node_routine(dp_local);
-//     }),
-//     sequencer_node(this->myGraph, 
-//     [](const OrderedBlock & block) {
-//         return block.blocknumber; 
-//     })
-//     {
-//         // no node edges, decompressor manually puts to sequencer_node
+    tg(),
 
-//         // read all data up front
-//         while(true) {
-//             // read size of next zblock. if insufficient bytes read into uint32_t, end of file
-//             uint32_t zsize;
-//             bool ok = myFile.readInteger(zsize);
-//             if(!ok) {
-//                 end_of_file.store(true);
-//                 break;
-//             }
+    // current data block
+    current_block(nullptr),
+    current_blocksize(0), 
+    data_offset(0)
+    {
+        while(true) {
+            if(tg.is_canceling()) {
+                cleanup_and_throw("File read / decompression error");
+            }
+            uint32_t zsize;
+            bool ok = myFile.readInteger(zsize);
+            if(!ok) {
+                break; // end of file, is there a better way to check EOF and break out of this loop?
+            }
+            // get zblock from available_zblocks
+            OrderedBlock zblock;
+            if(!available_zblocks.try_pop(zblock.block)) {
+                zblock.block = MAKE_SHARED_BLOCK_ASSIGNMENT(MAX_ZBLOCKSIZE);
+            }
+            uint32_t bytes_to_read = zsize & (~BLOCK_METADATA);
+            uint32_t bytes_read = myFile.read(zblock.block.get(), bytes_to_read);
+            if(bytes_read != bytes_to_read) {
+                cleanup_and_throw("Unexpected end of file while reading next block");
+            }
+            hp.update(zsize);
+            hp.update(zblock.block.get(), bytes_read);
 
-//             // get zblock from available_zblocks or make new
-//             OrderedBlock zblock;
-//             if(!available_zblocks.try_pop(zblock.block)) {
-//                 zblock.block = MAKE_SHARED_BLOCK_ASSIGNMENT(MAX_ZBLOCKSIZE);
-//             }
-
-//             // read zblock. if bytes_read is less than zsize, end of file
-//             size_t bytes_read = myFile.read(zblock.block.get(), zsize & (~BLOCK_METADATA));
-//             if(bytes_read != (zsize & (~BLOCK_METADATA))) {
-//                 end_of_file.store(true);
-//                 break;
-//             }
-
-//             // set zblock size and block number and push to ordered_zblocks queue
-//             // Also incremenet blocks_to_process BEFORE zblock is added to ordered_zblocks
-//             zblock.blocksize = zsize;
-//             zblock.blocknumber = blocks_to_process.fetch_add(1);
-
+            zblock.blocksize = zsize;
+            zblock.blocknumber = blocks_processed;
+            blocks_processed++;
             
-//         }
-//     }
-//     private:
-//     int decompressor_node_routine(decompressor & dp_local) {
-//         // try_pop from ordered_zblocks queue
-//         OrderedBlock zblock;
-//         if(!ordered_zblocks.try_pop(zblock)) {
-//             return 0; // no available zblock, could be stolen by main thread
-//         }
-        
-//         // get available block and decompress
-//         OrderedBlock block;
-//         if(!available_blocks.try_pop(block.block)) {
-//             block.block = MAKE_SHARED_BLOCK_ASSIGNMENT(MAX_BLOCKSIZE);
-//         }
-//         block.blocksize = dp_local.decompress(block.block.get(), MAX_BLOCKSIZE, zblock.block.get(), zblock.blocksize);
-//         if(decompressor::is_error(block.blocksize)) {
-//             // don't throw error within graph
-//             // main thread will check for cancellelation and throw
-//             tgc.cancel_group_execution();
-//             return -1;
-//         }
-//         block.blocknumber = zblock.blocknumber;
+            // Add decompression_node_routine task to task_group
+            // zblock must be passed by value since it goes out of scope at the end of this iteration
+            tg.run([this, zblock]() {
+                decompressor_node_routine(zblock);
+            });
+        }
+        // after while loop reads in all data the only possible error is a decompression error, which is signalled by group cancel
+        tg.wait();
+        if(hp.digest() != stored_hash) {
+            cleanup_and_throw("Hash mismatch, file may be incomplete or corrupted");
+        }
+        if(tg.is_canceling()) {
+            cleanup_and_throw("File read / decompression error");
+        }
+        blocks_processed = 0; // reset to zero, will be re-used for deserialization
+    }
+    private:
+    int decompressor_node_routine(OrderedBlock zblock) {
+        typename tbb::enumerable_thread_specific<decompressor>::reference dp_local = dp.local();
+        std::unique_ptr<char[]> block(MAKE_UNIQUE_BLOCK(MAX_BLOCKSIZE));
+        uint32_t blocksize = dp_local.decompress(block.get(), MAX_BLOCKSIZE, zblock.block.get(), zblock.blocksize);
+        if(decompressor::is_error(blocksize)) {
+            // don't throw error within graph, main thread will check for cancellelation and throw
+            tg.cancel();
+            return -1;
+        }
 
-//         // return zblock to available_zblocks queue
-//         available_zblocks.push(zblock.block);
+        // return zblock to available_zblocks queue
+        available_zblocks.push(zblock.block);
 
-//         // push to sequencer queue
-//         this->sequencer_node.try_put(block);
-//         return 0;
-//     }
-//     void get_new_block() {
-//         OrderedBlock block;
-//         while( true ) {
-//             // try_get from sequencer queue until a new block is available
-//             if( sequencer_node.try_get(block) ) {
-//                                 // put old block back in available_blocks
-//                 available_blocks.push(current_block);
+        // Add block to block_vector at blocknumber
+        block_vector.grow_to_at_least(zblock.blocknumber + 1);
+        block_vector[zblock.blocknumber] = std::pair<std::unique_ptr<char[]>, uint32_t>(std::move(block), blocksize);
+        return 0;
+    }
+    void decompress_block() {
+        if(blocks_processed >= block_vector.size()) {
+            cleanup_and_throw("Unexpected end of data");
+        }
+        // get next block
+        current_block = block_vector[blocks_processed].first.get();
+        current_blocksize = block_vector[blocks_processed].second;
+        // clear memory of previous block if blocks_processed > 0
+        if(blocks_processed > 0) {
+            block_vector[blocks_processed-1].first.reset();
+        }
+        blocks_processed++;
+    }
+    void decompress_direct(char * outbuffer) {
+        // memcpy block directly into outbuffer
+        if(blocks_processed >= block_vector.size()) {
+            cleanup_and_throw("Unexpected end of data");
+        }
+        std::memcpy(outbuffer, block_vector[blocks_processed].first.get(), MAX_BLOCKSIZE);
+        // clear memory of previous block if blocks_processed > 0
+        if(blocks_processed > 0) {
+            block_vector[blocks_processed-1].first.reset();
+        }
+        blocks_processed++;
+    }
 
-//                 // replace previous block with new block and increment blocks_processed
-//                 current_block = block.block;
-//                 current_blocksize = block.blocksize;
-//                 blocks_processed += 1;
-//                 return;
-//             } else {
-//                 // moonlight by trying to run decompression node routine
-//                 decompressor_node_routine(dp_main);
-//             }
+    public:
+    void finish() {
+        // already wait()'ed in constructor
+    }
+    void cleanup() {
+        if(! tg.is_canceling()) {
+            tg.cancel();
+        }
+        tg.wait();
+    }
+    void cleanup_and_throw(std::string msg) {
+        cleanup();
+        throw_error<E>(msg.c_str());
+    }
 
-//             // check if end_of_file and blocks_used >= blocks_to_process
-//             // which means the file unexpectedly ended, because we are still expecting blocks
-//             if(end_of_file && blocks_processed >= blocks_to_process) {
-//                 cleanup_and_throw("Unexpected end of file");
-//             }
-//             if(tgc.is_group_execution_cancelled()) {
-//                 cleanup_and_throw("File read / decompression error");
-//             }
-//         }
-//     }
-//     public:
+    void get_data(char * outbuffer, const uint64_t len) {
+        if(current_blocksize - data_offset >= len) {
+            std::memcpy(outbuffer, current_block+data_offset, len);
+            data_offset += len;
+        } else {
+            // remainder of current block, may be zero
+            uint64_t bytes_accounted = current_blocksize - data_offset;
+            std::memcpy(outbuffer, current_block+data_offset, bytes_accounted);
+            while(len - bytes_accounted >= MAX_BLOCKSIZE) {
+                decompress_direct(outbuffer + bytes_accounted);
+                bytes_accounted += MAX_BLOCKSIZE;
+                data_offset = MAX_BLOCKSIZE;
+            }
+            if(len - bytes_accounted > 0) { // but less than MAX_BLOCKSIZE
+                decompress_block();
+                if(current_blocksize < len - bytes_accounted) {
+                    cleanup_and_throw("Corrupted block data");
+                }
+                std::memcpy(outbuffer + bytes_accounted, current_block, len - bytes_accounted);
+                data_offset = len - bytes_accounted;
+                // bytes_accounted += data_offset; // no need to update since we are returning
+            }
+        }
+    }
 
-//     void finish() {
-//         myGraph.wait_for_all();
-//     }
-//     void cleanup() {
-//         if(! tgc.is_group_execution_cancelled()) {
-//             tgc.cancel_group_execution();
-//         }
-//         myGraph.wait_for_all();
-//     }
-//     void cleanup_and_throw(std::string msg) {
-//         cleanup();
-//         throw_error<E>(msg.c_str());
-//     }
+    const char * get_ptr(const uint64_t len) {
+        if(current_blocksize - data_offset >= len) {
+            const char * ptr = current_block + data_offset;
+            data_offset += len;
+            return ptr;
+        } else {
+            // return nullptr, indicating len exceeds current block
+            // copy data using get_data
+            return nullptr;
+        }
+    }
 
-//     void get_data(char * outbuffer, const uint64_t len) {
-//         if(current_blocksize - data_offset >= len) {
-//             std::memcpy(outbuffer, current_block.get()+data_offset, len);
-//             data_offset += len;
-//         } else {
-//             // remainder of current block, may be zero
-//             uint64_t bytes_accounted = current_blocksize - data_offset;
-//             std::memcpy(outbuffer, current_block.get()+data_offset, bytes_accounted);
-//             while(len - bytes_accounted >= MAX_BLOCKSIZE) {
-//                 // different from ST, do not directly decompress
-//                 // get a new block and memcopy
-//                 get_new_block();
-//                 std::memcpy(outbuffer + bytes_accounted, current_block.get(), current_blocksize);
-//                 bytes_accounted += MAX_BLOCKSIZE;
-//                 data_offset = MAX_BLOCKSIZE;
-//             }
-//             if(len - bytes_accounted > 0) { // but less than MAX_BLOCKSIZE
-//                 get_new_block();
-//                 // if not enough bytes in block then something went wrong, throw error
-//                 if(current_blocksize < len - bytes_accounted) {
-//                     cleanup_and_throw("Corrupted block data");
-//                 }
-//                 std::memcpy(outbuffer + bytes_accounted, current_block.get(), len - bytes_accounted);
-//                 data_offset = len - bytes_accounted;
-//                 // bytes_accounted += data_offset; // no need to update since we are returning
-//             }
-//         }
-//     }
+    // A POD shall not be split across block boundaries
+    // But data_offset may be at the end of a block, so we still need to check
+    // Also we should guard against data corruption, by checking that there is
+    // enough data left in the block
+    template<typename POD> POD get_pod() {
+        if(current_blocksize == data_offset) {
+            decompress_block();
+            data_offset = 0;
+        }
+        if(current_blocksize - data_offset < sizeof(POD)) {
+            cleanup_and_throw("Corrupted block data");
+        }
+        POD pod;
+        memcpy(&pod, current_block+data_offset, sizeof(POD));
+        data_offset += sizeof(POD);
+        return pod;
+    }
 
-//     const char * get_ptr(const uint64_t len) {
-//         if(current_blocksize - data_offset >= len) {
-//             const char * ptr = current_block.get() + data_offset;
-//             data_offset += len;
-//             return ptr;
-//         } else {
-//             // return nullptr, indicating len exceeds current block
-//             // copy data using get_data
-//             return nullptr;
-//         }
-//     }
-
-//     // Same as ST
-//     template<typename POD> POD get_pod() {
-//         if(current_blocksize == data_offset) {
-//             get_new_block();
-//             data_offset = 0;
-//         }
-//         if(current_blocksize - data_offset < sizeof(POD)) {
-//             cleanup_and_throw("Corrupted block data");
-//         }
-//         POD pod;
-//         memcpy(&pod, current_block.get()+data_offset, sizeof(POD));
-//         data_offset += sizeof(POD);
-//         return pod;
-//     }
-
-//     // same as ST
-//     // unconditionally read from block without checking remaining length
-//     template<typename POD> POD get_pod_contiguous() {
-//         if(current_blocksize - data_offset < sizeof(POD)) {
-//             cleanup_and_throw("Corrupted block data");
-//         }
-//         POD pod;
-//         memcpy(&pod, current_block.get()+data_offset, sizeof(POD));
-//         data_offset += sizeof(POD);
-//         return pod;
-//     }
-// };
+    template<typename POD> POD get_pod_contiguous() {
+        if(current_blocksize - data_offset < sizeof(POD)) {
+            cleanup_and_throw("Corrupted block data");
+        }
+        POD pod;
+        memcpy(&pod, current_block+data_offset, sizeof(POD));
+        data_offset += sizeof(POD);
+        return pod;
+    }
+};
 
 
 #endif

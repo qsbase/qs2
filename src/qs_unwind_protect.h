@@ -41,10 +41,18 @@ struct RerrorUnwind {
     } catch(RerrorUnwind & cont) { R_ContinueUnwind(cont.cont); } \
     return R_NilValue; // unreachable
 
-#define DO_JMPBUF() \
+#define DO_JMPBUF_QS_READ() \
     std::jmp_buf jmpbuf; \
     if (setjmp(jmpbuf)) { \
         block_io.cleanup(); \
+        throw RerrorUnwind{cont_token}; \
+    } \
+
+#define DO_JMPBUF_QS_SAVE() \
+    std::jmp_buf jmpbuf; \
+    if (setjmp(jmpbuf)) { \
+        block_io.cleanup(); \
+        Rf_warning("%s", "Interrupt detected, file/object will be incomplete"); \
         throw RerrorUnwind{cont_token}; \
     } \
 
