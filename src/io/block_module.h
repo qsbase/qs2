@@ -11,7 +11,7 @@ struct BlockCompressWriter {
     hasher hp;
     std::unique_ptr<char[]> block;
     std::unique_ptr<char[]> zblock;
-    uint64_t current_blocksize;
+    uint32_t current_blocksize;
     const int compress_level;
     BlockCompressWriter(stream_writer & f, const int compress_level) : 
         myFile(f),
@@ -33,8 +33,8 @@ struct BlockCompressWriter {
     }
     void flush() {
         if(current_blocksize > 0) {
-            uint64_t zsize = cp.compress(zblock.get(), MAX_ZBLOCKSIZE, block.get(), current_blocksize, compress_level);
-            write_and_update(static_cast<uint32_t>(zsize));
+            uint32_t zsize = cp.compress(zblock.get(), MAX_ZBLOCKSIZE, block.get(), current_blocksize, compress_level);
+            write_and_update(zsize);
             // zsize contains metadata, filter it out to get size of write
             write_and_update(zblock.get(), zsize & (~BLOCK_METADATA));
             current_blocksize = 0;
@@ -58,7 +58,7 @@ struct BlockCompressWriter {
         if(current_blocksize >= MAX_BLOCKSIZE) { flush(); }
         if(current_blocksize > 0) {
             // append the minimum between remaining_len and remaining_block_space
-            uint64_t add_length = std::min(len - current_pointer_consumed, MAX_BLOCKSIZE - current_blocksize);
+            uint32_t add_length = std::min<uint64_t>(len - current_pointer_consumed, MAX_BLOCKSIZE - current_blocksize);
             std::memcpy(block.get() + current_blocksize, inbuffer + current_pointer_consumed, add_length);
             current_blocksize += add_length;
             current_pointer_consumed += add_length;
@@ -68,8 +68,8 @@ struct BlockCompressWriter {
         // True bc either inbuffer was fully consumed already (no more data to push) or block was filled and flushed (sets current_blocksize to zero)
         if(current_blocksize >= MAX_BLOCKSIZE) { flush(); }
         while(len - current_pointer_consumed >= MAX_BLOCKSIZE) {
-            uint64_t zsize = cp.compress(zblock.get(), MAX_ZBLOCKSIZE, inbuffer + current_pointer_consumed, MAX_BLOCKSIZE, compress_level);
-            write_and_update(static_cast<uint32_t>(zsize));
+            uint32_t zsize = cp.compress(zblock.get(), MAX_ZBLOCKSIZE, inbuffer + current_pointer_consumed, MAX_BLOCKSIZE, compress_level);
+            write_and_update(zsize);
             // zsize contains metadata, filter it out to get size of write
             write_and_update(zblock.get(), zsize & (~BLOCK_METADATA));
             // current_blocksize = 0; // If we are in this loop, current_blocksize is already zero
@@ -78,7 +78,7 @@ struct BlockCompressWriter {
 
         // check if there is any remaining_len after appending full blocks
         if(len - current_pointer_consumed > 0) {
-            uint64_t add_length = len - current_pointer_consumed;
+            uint32_t add_length = len - current_pointer_consumed;
             std::memcpy(block.get(), inbuffer + current_pointer_consumed, add_length);
             current_blocksize = add_length;
             // current_pointer_consumed += add_length; // unnecessary since we are returning now
@@ -111,8 +111,8 @@ struct BlockCompressReader {
     decompressor dp;
     std::unique_ptr<char[]> block;
     std::unique_ptr<char[]> zblock;
-    uint64_t current_blocksize;
-    uint64_t data_offset;
+    uint32_t current_blocksize;
+    uint32_t data_offset;
     BlockCompressReader(stream_reader & f) : 
         myFile(f),
         dp(),
@@ -127,7 +127,7 @@ struct BlockCompressReader {
         if(!ok) {
             cleanup_and_throw("Unexpected end of file while reading next block size");
         }
-        size_t bytes_read = myFile.read(zblock.get(), zsize & (~BLOCK_METADATA));
+        uint32_t bytes_read = myFile.read(zblock.get(), zsize & (~BLOCK_METADATA));
         if(bytes_read != (zsize & (~BLOCK_METADATA))) {
             cleanup_and_throw("Unexpected end of file while reading next block");
         }
@@ -140,7 +140,7 @@ struct BlockCompressReader {
         if(!ok) {
             cleanup_and_throw("Unexpected end of file while reading next block size");
         }
-        size_t bytes_read = myFile.read(zblock.get(), zsize & (~BLOCK_METADATA));
+        uint32_t bytes_read = myFile.read(zblock.get(), zsize & (~BLOCK_METADATA));
         if(bytes_read != (zsize & (~BLOCK_METADATA))) {
             cleanup_and_throw("Unexpected end of file while reading next block");
         }
@@ -163,7 +163,7 @@ struct BlockCompressReader {
             data_offset += len;
         } else {
             // remainder of current block, may be zero
-            uint64_t bytes_accounted = current_blocksize - data_offset;
+            uint32_t bytes_accounted = current_blocksize - data_offset;
             std::memcpy(outbuffer, block.get()+data_offset, bytes_accounted);
             while(len - bytes_accounted >= MAX_BLOCKSIZE) {
                 decompress_direct(outbuffer + bytes_accounted);
@@ -222,159 +222,5 @@ struct BlockCompressReader {
         return pod;
     }
 };
-
-// In contrast to BlockCompressReader, BlockCompressReaderHash calculates hash of all input data before allowing deserialization
-// this is done in the constructor, so that there is no difference in interface
-template <class stream_reader, class decompressor, class hasher, ErrorType E> 
-struct BlockCompressReaderHash {
-    stream_reader & myFile;
-    decompressor dp;
-    hasher hp;
-
-    std::vector< std::pair<std::unique_ptr<char[]>, uint32_t> > block_vector;
-
-    const char * current_block;
-    uint64_t current_blocksize;
-    uint64_t data_offset;
-    uint64_t blocks_processed;
-    BlockCompressReaderHash(stream_reader & f, const uint64_t stored_hash) : 
-        myFile(f),
-        dp(),
-        hp(),
-        block_vector(),
-        current_block(nullptr),
-        current_blocksize(0),
-        data_offset(0),
-        blocks_processed(0)
-        {
-            // read all data and hash it
-            std::unique_ptr<char[]> zblock(MAKE_UNIQUE_BLOCK(MAX_ZBLOCKSIZE));
-            while(true) {
-                uint32_t zsize;
-                bool ok = myFile.readInteger(zsize);
-                if(!ok) {
-                    break; // end of file, is there a better way to check EOF and break out of this loop?
-                }
-                uint32_t bytes_to_read = zsize & (~BLOCK_METADATA);
-                uint32_t bytes_read = myFile.read(zblock.get(), bytes_to_read);
-                if(bytes_read != bytes_to_read) {
-                    cleanup_and_throw("Unexpected end of file while reading next block");
-                }
-                hp.update(zsize);
-                hp.update(zblock.get(), bytes_read);
-                
-                // decompress block into new block
-                std::unique_ptr<char[]> block(MAKE_UNIQUE_BLOCK(MAX_BLOCKSIZE));
-                uint32_t blocksize = dp.decompress(block.get(), MAX_BLOCKSIZE, zblock.get(), zsize);
-                if(decompressor::is_error(blocksize)) { cleanup_and_throw("Decompression error"); }
-                block_vector.push_back( std::make_pair(std::move(block), blocksize) );
-            }
-            if(hp.digest() != stored_hash) {
-                cleanup_and_throw("Hash mismatch, file may be incomplete or corrupted");
-            }
-        }
-    private:
-    void decompress_block() {
-        if(blocks_processed >= block_vector.size()) {
-            cleanup_and_throw("Unexpected end of data");
-        }
-        // get next block
-        current_block = block_vector[blocks_processed].first.get();
-        current_blocksize = block_vector[blocks_processed].second;
-        // clear memory of previous block if blocks_processed > 0
-        if(blocks_processed > 0) {
-            block_vector[blocks_processed-1].first.reset();
-        }
-        blocks_processed++;
-    }
-    void decompress_direct(char * outbuffer) {
-        // memcpy block directly into outbuffer
-        if(blocks_processed >= block_vector.size()) {
-            cleanup_and_throw("Unexpected end of data");
-        }
-        std::memcpy(outbuffer, block_vector[blocks_processed].first.get(), MAX_BLOCKSIZE);
-        // clear memory of previous block if blocks_processed > 0
-        if(blocks_processed > 0) {
-            block_vector[blocks_processed-1].first.reset();
-        }
-        blocks_processed++;
-    }
-
-    public:
-    void finish() {
-        // nothing
-    }
-    void cleanup() {
-        // nothing
-    }
-    void cleanup_and_throw(const std::string msg) {
-        throw_error<E>(msg.c_str());
-    }
-    void get_data(char * outbuffer, const uint64_t len) {
-        if(current_blocksize - data_offset >= len) {
-            std::memcpy(outbuffer, current_block+data_offset, len);
-            data_offset += len;
-        } else {
-            // remainder of current block, may be zero
-            uint64_t bytes_accounted = current_blocksize - data_offset;
-            std::memcpy(outbuffer, current_block+data_offset, bytes_accounted);
-            while(len - bytes_accounted >= MAX_BLOCKSIZE) {
-                decompress_direct(outbuffer + bytes_accounted);
-                bytes_accounted += MAX_BLOCKSIZE;
-                data_offset = MAX_BLOCKSIZE;
-            }
-            if(len - bytes_accounted > 0) { // but less than MAX_BLOCKSIZE
-                decompress_block();
-                if(current_blocksize < len - bytes_accounted) {
-                    cleanup_and_throw("Corrupted block data");
-                }
-                std::memcpy(outbuffer + bytes_accounted, current_block, len - bytes_accounted);
-                data_offset = len - bytes_accounted;
-                // bytes_accounted += data_offset; // no need to update since we are returning
-            }
-        }
-    }
-
-    const char * get_ptr(const uint64_t len) {
-        if(current_blocksize - data_offset >= len) {
-            const char * ptr = current_block + data_offset;
-            data_offset += len;
-            return ptr;
-        } else {
-            // return nullptr, indicating len exceeds current block
-            // copy data using get_data
-            return nullptr;
-        }
-    }
-
-    // A POD shall not be split across block boundaries
-    // But data_offset may be at the end of a block, so we still need to check
-    // Also we should guard against data corruption, by checking that there is
-    // enough data left in the block
-    template<typename POD> POD get_pod() {
-        if(current_blocksize == data_offset) {
-            decompress_block();
-            data_offset = 0;
-        }
-        if(current_blocksize - data_offset < sizeof(POD)) {
-            cleanup_and_throw("Corrupted block data");
-        }
-        POD pod;
-        memcpy(&pod, current_block+data_offset, sizeof(POD));
-        data_offset += sizeof(POD);
-        return pod;
-    }
-
-    template<typename POD> POD get_pod_contiguous() {
-        if(current_blocksize - data_offset < sizeof(POD)) {
-            cleanup_and_throw("Corrupted block data");
-        }
-        POD pod;
-        memcpy(&pod, current_block+data_offset, sizeof(POD));
-        data_offset += sizeof(POD);
-        return pod;
-    }
-};
-
 
 #endif

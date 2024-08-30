@@ -8,20 +8,19 @@ qs2
 
 *qs2: a framework for efficient serialization*
 
-`qs2` is the successor to the `qs` package. The goal is to have cutting
-edge performance for saving and loading objects in R.
+`qs2` is the successor to the `qs` package. The goal is to have relaible
+and fast performance for saving and loading objects in R.
 
-The package introduces a new format for saving objects to disk.
+The `qs2` format directly uses R serialization (via the
+`R_Serialize`/`R_Unserialize` C API) while improving compression and
+writing/reading to disk. If you are familiar with the `qs` package, the
+benefits and usage are the same. Compared to `saveRDS` it can be an
+order of magnitude faster while having similar levels of compression.
 
 ``` r
 qs_save(data, "myfile.qs2")
 data <- qs_read("myfile.qs2")
 ```
-
-The `qs2` format directly uses R serialization and is a drop in
-replacement for `saveRDS`. If you are familiar with the `qs` package,
-the benefits of `qs2` are the same. Compared to `saveRDS` it can be an
-order of magnitude faster while having similar levels of compression.
 
 Use the file extension `qs2` to distinguish it from the original `qs`
 package. It is not compatible with the original `qs` format.
@@ -32,34 +31,15 @@ package. It is not compatible with the original `qs` format.
 install.packages("qs2")
 ```
 
-To enable multithreading on Mac or Linux, compile from source. It is
-enabled by default on Windows.
+On Mac or Linux, Tt enable multithreading (using
+`Intel Thread Building Blocks` via the `RcppParallel` package) compile
+from source. It is enabled by default on Windows.
 
 ``` r
 remotes::install_cran("qs2", type = "source", configure.args = " --with-TBB --with-simd=AVX2")
 ```
 
-Multithreading uses `Intel Thread Building Blocks` via the
-`RcppParallel` package.
-
-# The qdata format
-
-This package also introduces the `qdata` format which has its own layout
-and works with only R data types (vectors, lists, data frames,
-matrices). It will replace internal types (functions, promises, external
-pointers, environments, objects) with NULL.
-
-This has slightly better performance but is not general. If you have
-clean data and understand the caveats, you may want to use it. The
-eventual goal of `qdata` is to also have interoperability with other
-languages, particularly `Python`.
-
-``` r
-qd_save(data, "myfile.qs2")
-data <- qd_read("myfile.qs2")
-```
-
-# Converting qs2 to RDS
+# Advanced usage: converting qs2 to RDS
 
 Because the `qs2` format directly uses R serialization you can convert
 it to RDS and vice versa.
@@ -80,16 +60,34 @@ xrds <- readRDS(file_rds)
 stopifnot(identical(x, xrds))
 ```
 
+# Advanced usage: the qdata format
+
+The package also introduces the `qdata` format which has its own
+serialization layout and works with only data types (vectors, lists,
+data frames, matrices).
+
+It will replace internal types (functions, promises, external pointers,
+environments, objects) with NULL. The `qdata` format differs from the
+`qs2` format in that it is NOT a general.
+
+If you have clean data and understand the caveats, you may want to use
+it. The eventual goal of `qdata` is to also have interoperability with
+other languages, particularly `Python`.
+
+``` r
+qd_save(data, "myfile.qs2")
+data <- qd_read("myfile.qs2")
+```
+
 ## Benchmarks
 
-A summary table across 3 datasets is presented below. You may draw your
-own conclusions or run your own benchmarks.
+A summary table across 4 datasets is presented below.
 
 | Algorithm       | nthreads | Save Time | Read Time | Compression |
-| --------------- | -------- | --------- | --------- | ----------- |
+|-----------------|----------|-----------|-----------|-------------|
 | qs2             | 1        | 4.41      | 3.32      | 2.56        |
 | qdata           | 1        | 4.08      | 3.11      | 2.58        |
-| qs-legacy       | 1        | 4.24      | 3.17      | 2.51        |
+| qs              | 1        | 4.24      | 3.17      | 2.51        |
 | saveRDS         | 1        | 27.21     | 6.84      | 2.32        |
 | base::serialize | 1        | 10.17     | 11.51     | 1.10        |
 | fst             | 1        | 2.76      | 3.80      | 1.59        |
@@ -102,17 +100,17 @@ own conclusions or run your own benchmarks.
 
 **Notes on running each algorithm**
 
-  - `qs2`, `qdata` and `qs` used `compress_level = 5`
-  - `parquet` (from the `arrow` package) were run with `compression =
-    zstd` and `compress_level = 5`
-  - `fst` used `compress_level = 55`
-  - `base::serialize` was run with `ascii = FALSE` and `xdr = FALSE`
+- `qs2`, `qdata` and `qs` used `compress_level = 5`
+- `parquet` (from the `arrow` package) were run with
+  `compression = zstd` and `compress_level = 5`
+- `fst` used `compress_level = 55`
+- `base::serialize` was run with `ascii = FALSE` and `xdr = FALSE`
 
 **Datasets**
 
-  - `enwik8` the first 1E8 lines of English Wikipedia
-  - `gaia` galactic coordinates and color of 7.2 million stars
-  - `tcell` the genomic sequencing of a COVID patient’s immune system
+- `enwik8` the first 1E8 lines of English Wikipedia
+- `gaia` galactic coordinates and color of 7.2 million stars
+- `tcell` the genomic sequencing of a COVID patient’s immune system
 
 These datasets are openly licensed and represent a combination of
 numeric and textual data across multiple domains.
