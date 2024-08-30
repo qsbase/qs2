@@ -28,8 +28,7 @@ cat('
 `qs2` is the successor to the `qs` package. The goal is to have relaible and fast performance for saving and loading objects in R.
 
 The `qs2` format directly uses R serialization (via the `R_Serialize`/`R_Unserialize` C API) while improving compression and writing/reading to disk. 
-If you are familiar with the `qs` package, the benefits and usage are the same. Compared to `saveRDS` it can be an order of magnitude faster
-while having similar levels of compression.
+If you are familiar with the `qs` package, the benefits and usage are the same.
 
 ```{r eval=FALSE}
 qs_save(data, "myfile.qs2")

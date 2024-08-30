@@ -9,6 +9,22 @@
 #include <tbb/enumerable_thread_specific.h>
 #include <atomic>
 
+// single argument macro
+#define _SA_(...) __VA_ARGS__
+
+#if __cplusplus >= 201703L
+#define SUPPORTS_IF_CONSTEXPR 1
+#define DIRECT_MEM_SWITCH(if_true, if_false) \
+    if constexpr (direct_mem) {                         \
+        if_true;                                        \
+    } else {                                            \
+        if_false;                                       \
+    }
+#else
+#define SUPPORTS_IF_CONSTEXPR 0
+#define DIRECT_MEM_SWITCH(if_true, if_false) if_true;
+#endif
+
 struct OrderedBlock {
     std::shared_ptr<char[]> block;
     uint32_t blocksize;
@@ -29,7 +45,7 @@ struct OrderedPtr {
 // sequencer requires copy constructor for message, which means using shared_ptr
 // would be better if we could use unique_ptr
 // nthreads must be >= 2
-template <class stream_writer, class compressor, class hasher, ErrorType E>
+template <class stream_writer, class compressor, class hasher, ErrorType E, bool direct_mem>
 struct BlockCompressWriterMT {
     // template class objects
     stream_writer & myFile;
@@ -123,7 +139,14 @@ struct BlockCompressWriterMT {
     {
         // connect computation graph
         tbb::flow::make_edge(compressor_node, sequencer_node);
-        tbb::flow::make_edge(compressor_node_direct, sequencer_node);
+        DIRECT_MEM_SWITCH(
+            _SA_(
+                tbb::flow::make_edge(compressor_node_direct, sequencer_node);
+            ),
+            _SA_(
+                // compressor_node_direct not connected
+            )
+        )
         tbb::flow::make_edge(sequencer_node, writer_node);
     }
     private:
@@ -182,7 +205,20 @@ struct BlockCompressWriterMT {
         // True bc either inbuffer was fully consumed already (no more data to push) or block was filled and flushed (sets current_blocksize to zero)
         if(current_blocksize >= MAX_BLOCKSIZE) { flush(); }
         while(len - current_pointer_consumed >= MAX_BLOCKSIZE) {
-            compressor_node_direct.try_put(OrderedPtr(inbuffer + current_pointer_consumed, current_blocknumber));
+            DIRECT_MEM_SWITCH(
+                _SA_(
+                    compressor_node_direct.try_put(OrderedPtr(inbuffer + current_pointer_consumed, current_blocknumber));
+                ),
+                _SA_(
+                    // Different from ST, memcpy segment of inbuffer to block and then send to compress_node
+                    std::shared_ptr<char[]> full_block;
+                    if(!available_blocks.try_pop(full_block)) {
+                        full_block = MAKE_SHARED_BLOCK_ASSIGNMENT(MAX_BLOCKSIZE);
+                    }
+                    std::memcpy(full_block.get(), inbuffer + current_pointer_consumed, MAX_BLOCKSIZE);
+                    compressor_node.try_put(OrderedBlock(full_block, MAX_BLOCKSIZE, current_blocknumber));
+                )
+            )
             current_blocknumber++;
             // current_blocksize = 0; // If we are in this loop, current_blocksize is already zero
             current_pointer_consumed += MAX_BLOCKSIZE;
