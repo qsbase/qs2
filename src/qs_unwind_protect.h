@@ -45,6 +45,7 @@ struct RerrorUnwind {
     std::jmp_buf jmpbuf; \
     if (setjmp(jmpbuf)) { \
         block_io.cleanup(); \
+        Rf_warning("%s", "File read interrupted"); \
         throw RerrorUnwind{cont_token}; \
     } \
 
@@ -52,7 +53,7 @@ struct RerrorUnwind {
     std::jmp_buf jmpbuf; \
     if (setjmp(jmpbuf)) { \
         block_io.cleanup(); \
-        Rf_warning("%s", "Interrupt detected, file/object will be incomplete"); \
+        Rf_warning("%s", "File save interrupted, file/object will be incomplete"); \
         throw RerrorUnwind{cont_token}; \
     } \
 

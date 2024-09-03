@@ -44,7 +44,7 @@ if (nchar(Sys.getenv("QS_EXTENDED_TESTS")) == 0) {
   test_points_raw_vector <- c(test_points, seq(2^19-1000,2^19)) %>% sort
   test_points_character_vector <- test_points
   max_size <- 1e7
-  random_cl <- 10
+  random_cl <- 19
   if(qs2:::check_TBB() == FALSE) {
     cat("TBB not detected\n")
     random_threads <- 1 # no TBB support
@@ -139,6 +139,7 @@ qs_save_rand <- function(x) {
 qs_read_rand <- function() {
   ar <- sample(c(TRUE, FALSE),1)
   nt <- sample(random_threads, 1)
+  check <- sample(c(TRUE, FALSE),1)
   if(format == "qs2") {
     qs2::qs_read(myfile, validate_checksum=check, nthreads = nt)
   } else if(format == "qdata") {
@@ -148,10 +149,9 @@ qs_read_rand <- function() {
 
 ################################################################################################
 for(format in c("qdata", "qs2")) {
-for(check in c(TRUE, FALSE)) {
 for (q in 1:reps) {
-  cat("########################################")
-  cat("Format", format, "using checksum", check, "rep",  q, "of", reps, "\n")
+  cat("########################################\n")
+  cat("Format", format, "rep",  q, "of", reps, "\n")
 
   time <- vector("numeric", length = internal_reps)
   for (tp in test_points) {
@@ -453,7 +453,6 @@ for (q in 1:reps) {
   printCarriage(sprintf("nested tibble test: %s s", signif(mean(time), 4)))
   cat("\n")
 } # end format
-} # end check
 } # end reps
 
 } # end requireNamespace

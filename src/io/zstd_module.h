@@ -127,7 +127,6 @@ struct ZstdShuffleCompressor {
                 }
 
             }
-
         } else { // heuristic == DONT_USE_HEURISTIC
             auto output_size = ZSTD_compressCCtx(cctx, dst, dstCapacity, src, srcSize, compress_level);
             if(ZSTD_isError(output_size)) {

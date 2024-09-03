@@ -193,6 +193,14 @@ SEXP qd_read(const std::string & file, const bool use_alt_rep = false, const boo
         throw std::runtime_error("For file " + file + ": hash not stored, save file may be incomplete");
     }
 
+    if(validate_checksum) {
+        uint64_t computed_hash = read_qx_hash(myFile);
+        if(computed_hash != stored_hash) {
+            throw_error<ErrorType::r_error>("For file " + file + ": hash mismatch");
+        }
+    }
+
+
     if(nthreads > 1) {
         #if RCPP_PARALLEL_USE_TBB
         tbb::global_control gc(tbb::global_control::parameter::max_allowed_parallelism, nthreads);
