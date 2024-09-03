@@ -40,6 +40,12 @@ static constexpr uint32_t SHUFFLE_MASK = (1ULL << 31);
     #define MAKE_UNIQUE_BLOCK(SIZE) new char[SIZE]
 #endif
 
+#if __cplusplus >= 201402L // Check for C++14 or above
+    #define MAKE_UNIQUE_BLOCK_CUSTOM(_TYPE_, SIZE) std::make_unique<_TYPE_[]>(SIZE)
+#else
+    #define MAKE_UNIQUE_BLOCK_CUSTOM(_TYPE_, SIZE) new _TYPE_[SIZE]
+#endif
+
 // std::make_shared on an array requires c++20 (yes it is true)
 // If you try to use make_shared on c++17 or lower it won't compile or will segfault.
 #if __cplusplus >= 202002L  // Check for C++20 or above
@@ -82,7 +88,7 @@ inline constexpr unsigned char operator "" _u8(unsigned long long arg) noexcept 
     return static_cast<uint8_t>(arg);
 }
 
-#define QS_MT_SERIALIZATION_DEBUG
+// #define QS_MT_SERIALIZATION_DEBUG
 #if defined(QS_MT_SERIALIZATION_DEBUG)
     #include <iostream>
     #include <sstream>

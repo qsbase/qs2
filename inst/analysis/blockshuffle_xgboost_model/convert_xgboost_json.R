@@ -43,7 +43,7 @@ if(standalone) {
   a(OUT) <- c("#include <Rcpp.h>", "using namespace Rcpp;")
 } else {
   a(OUT) <- c("#ifndef _QS2_XGBOOST_BLOCKSHUFFLE_MODEL_H", "#define _QS2_XGBOOST_BLOCKSHUFFLE_MODEL_H")
-  a(OUT) <- c("#include <array>", "#include <memory>", "#include <vector>")
+  a(OUT) <- c("#include <array>", "#include <memory>", "#include <vector>", '#include "io_common.h"')
 }
   
 a(OUT) <- '
@@ -65,7 +65,7 @@ struct XgTree {
          const std::vector<uint8_t> & split_indices,
          const std::vector<uint16_t> & left_children,
          const std::vector<uint16_t> & right_children) :
-  nodes(std::make_unique<XgNode[]>(split_conditions.size())) {
+  nodes(MAKE_UNIQUE_BLOCK_CUSTOM(XgNode, split_conditions.size())) {
     for(size_t i = 0; i < split_conditions.size(); ++i) {
       nodes[i].split_idx = split_indices[i];
       nodes[i].split_cond = split_conditions[i];

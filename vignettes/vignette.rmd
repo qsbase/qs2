@@ -44,7 +44,7 @@ Use the file extension `qs2` to distinguish it from the original `qs` package. I
 install.packages("qs2")
 ```
 
-On Mac or Linux, you can enable multi-threading by compile from source. It is enabled by default on Windows. 
+On Mac or Linux, you can enable multi-threading by compiling from source. It is enabled by default on Windows. 
 
 ```{r eval=FALSE}
 remotes::install_cran("qs2", type = "source", configure.args = " --with-TBB --with-simd=AVX2")
@@ -55,7 +55,7 @@ Multi-threading in `qs2` uses the `Intel Thread Building Blocks` framework via t
 
 ## Converting qs2 to RDS
 
-Because the `qs2` format directly uses R serialization you can convert it to RDS and vice versa.
+Because the `qs2` format directly uses R serialization, you can convert it to RDS and vice versa.
 
 ```{r eval=FALSE}
 file_qs2 <- tempfile(fileext = ".qs2")

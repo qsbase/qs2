@@ -5,6 +5,7 @@
 #include <array>
 #include <memory>
 #include <vector>
+#include "io_common.h"
 
 
 namespace XgboostBlockshuffleModel {
@@ -24,7 +25,7 @@ struct XgTree {
          const std::vector<uint8_t> & split_indices,
          const std::vector<uint16_t> & left_children,
          const std::vector<uint16_t> & right_children) :
-  nodes(std::make_unique<XgNode[]>(split_conditions.size())) {
+  nodes(MAKE_UNIQUE_BLOCK_CUSTOM(XgNode, split_conditions.size())) {
     for(size_t i = 0; i < split_conditions.size(); ++i) {
       nodes[i].split_idx = split_indices[i];
       nodes[i].split_cond = split_conditions[i];

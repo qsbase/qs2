@@ -335,13 +335,13 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <div id="installation" class="section level2">
 <h2>Installation</h2>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb2-1" title="1"><span class="kw">install.packages</span>(<span class="st">&quot;qs2&quot;</span>)</a></code></pre></div>
-<p>On Mac or Linux, you can enable multi-threading by compile from source. It is enabled by default on Windows.</p>
+<p>On Mac or Linux, you can enable multi-threading by compiling from source. It is enabled by default on Windows.</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb3-1" title="1">remotes<span class="op">::</span><span class="kw">install_cran</span>(<span class="st">&quot;qs2&quot;</span>, <span class="dt">type =</span> <span class="st">&quot;source&quot;</span>, <span class="dt">configure.args =</span> <span class="st">&quot; --with-TBB --with-simd=AVX2&quot;</span>)</a></code></pre></div>
 <p>Multi-threading in <code>qs2</code> uses the <code>Intel Thread Building Blocks</code> framework via the <code>RcppParallel</code> package.</p>
 </div>
 <div id="converting-qs2-to-rds" class="section level2">
 <h2>Converting qs2 to RDS</h2>
-<p>Because the <code>qs2</code> format directly uses R serialization you can convert it to RDS and vice versa.</p>
+<p>Because the <code>qs2</code> format directly uses R serialization, you can convert it to RDS and vice versa.</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb4-1" title="1">file_qs2 &lt;-<span class="st"> </span><span class="kw">tempfile</span>(<span class="dt">fileext =</span> <span class="st">&quot;.qs2&quot;</span>)</a>
 <a class="sourceLine" id="cb4-2" title="2">file_rds &lt;-<span class="st"> </span><span class="kw">tempfile</span>(<span class="dt">fileext =</span> <span class="st">&quot;.RDS&quot;</span>)</a>
 <a class="sourceLine" id="cb4-3" title="3">x &lt;-<span class="st"> </span><span class="kw">runif</span>(<span class="fl">1e6</span>)</a>

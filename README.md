@@ -30,8 +30,8 @@ package. It is not compatible with the original `qs` format.
 install.packages("qs2")
 ```
 
-On Mac or Linux, you can enable multi-threading by compile from source.
-It is enabled by default on Windows.
+On Mac or Linux, you can enable multi-threading by compiling from
+source. It is enabled by default on Windows.
 
 ``` r
 remotes::install_cran("qs2", type = "source", configure.args = " --with-TBB --with-simd=AVX2")
@@ -42,7 +42,7 @@ framework via the `RcppParallel` package.
 
 ## Converting qs2 to RDS
 
-Because the `qs2` format directly uses R serialization you can convert
+Because the `qs2` format directly uses R serialization, you can convert
 it to RDS and vice versa.
 
 ``` r
