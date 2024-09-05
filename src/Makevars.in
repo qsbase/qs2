@@ -1,4 +1,4 @@
-PKG_CPPFLAGS=-DRCPP_USE_UNWIND_PROTECT -DRCPP_NO_RTTI -DRCPP_NO_SUGAR -I. @ZSTD_INCLUDE_PATH@ @SIMD_FLAG@ @DYNAMIC_BLOCKSIZE_FLAG@
+PKG_CPPFLAGS=-DRCPP_USE_UNWIND_PROTECT -DRCPP_NO_RTTI -DRCPP_NO_SUGAR -I../inst/include -I. @ZSTD_INCLUDE_PATH@ @SIMD_FLAG@ @DYNAMIC_BLOCKSIZE_FLAG@ -DIS_UTF8_LOCALE=$(shell "${R_HOME}/bin/Rscript" -e "cat(as.integer(identical(utils::localeToCharset()[1], 'UTF-8')))")
 PKG_CXXFLAGS = @TBB_FLAG@ $(shell ${R_HOME}/bin/Rscript -e "RcppParallel::CxxFlags()")
 PKG_LIBS = -L. @COMPILER_SPECIFIC_LIBS@ @ZSTD_LIBS@ $(shell ${R_HOME}/bin/Rscript -e "RcppParallel::RcppParallelLibs()")
 

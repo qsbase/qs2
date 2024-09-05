@@ -57,3 +57,7 @@ internal_set_blocksize <- function(size) {
     .Call(`_qs2_internal_set_blocksize`, size)
 }
 
+internal_is_utf8_locale <- function(size) {
+    .Call(`_qs2_internal_is_utf8_locale`, size)
+}
+

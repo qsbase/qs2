@@ -3,7 +3,6 @@
 
 
 #include <Rcpp.h>
-#include <tbb/global_control.h>
 
 #include "qx_file_headers.h"
 #include "qd_constants.h"
@@ -11,7 +10,6 @@
 #include "sf_external.h"
 
 using namespace Rcpp;
-
 #define FILE_SAVE_ERR_MSG "Failed to open for writing. Does the directory exist? Do you have file permissions? Is the file name long? (>255 chars)"
 
 template<typename block_compress_writer>
@@ -70,7 +68,7 @@ struct QdataSerializer {
     void write_attributes(std::vector< std::pair<SEXP, SEXP> > const & attrs) {
         for(uint64_t i = 0; i < attrs.size(); i++) {
             uint32_t alen = LENGTH(attrs[i].first);
-            write_string_header(alen, CE_NATIVE);
+            write_string_header(alen);
             writer.push_data(CHAR(attrs[i].first), alen);
             write_object(attrs[i].second);
         }
@@ -221,42 +219,17 @@ struct QdataSerializer {
     }
 
     // individual CHARSXP elements
-    void write_string_header(const uint32_t length, const cetype_t ce_enc) {
-        uint8_t enc;
-        switch(ce_enc) {
-        case CE_NATIVE:
-            enc = string_enc_native; break;
-        case CE_UTF8:
-            enc = string_enc_utf8; break;
-        case CE_LATIN1:
-            enc = string_enc_latin1; break;
-        case CE_BYTES:
-            enc = string_enc_bytes; break;
-        default:
-            enc = string_enc_native; break;
-        }
-        if(length < MAX_STRING_6_BIT_LENGTH) {
-            writer.push_pod( static_cast<uint8_t>(enc | static_cast<uint8_t>(length)) );
-        } else if(length < MAX_STRING_8_BIT_LENGTH) {
-            writer.push_pod( static_cast<uint8_t>(enc |string_header_8) );
-            writer.push_pod_contiguous(static_cast<uint8_t>(length));
+    void write_string_header(const uint32_t length) {
+        if(length < MAX_STRING_8_BIT_LENGTH) {
+            writer.push_pod( static_cast<uint8_t>( length ));
         } else if(length < MAX_STRING_16_BIT_LENGTH) {
-            writer.push_pod( static_cast<uint8_t>(enc | string_header_16) );
+            writer.push_pod( string_header_16 );
             writer.push_pod_contiguous(static_cast<uint16_t>(length) );
         } else {
-            writer.push_pod( static_cast<uint8_t>(enc | string_header_32) );
+            writer.push_pod( string_header_32 );
             writer.push_pod_contiguous(length);
         }
     }
-
-    // void write_string_UF_header(const uint32_t length) {
-    //     if(length < string_UF_max_8) {
-    //         writer.push_pod( static_cast<uint8_t>(length) );
-    //     } else {
-    //         writer.push_pod( static_cast<uint8_t>(string_UF_header_32) );
-    //         writer.push_pod_contiguous(length);
-    //     }
-    // }
 
     void write_object(SEXP const object) {
         SEXPTYPE object_type = TYPEOF(object);
@@ -308,18 +281,19 @@ struct QdataSerializer {
                 if (is_unmaterialized_sf_vector(object)) {
                     auto & ref = sf_vec_data_ref(object); // sf_vec_data_ref from stringfish
                     for(uint64_t i=0; i<object_length; ++i) {
-                        switch(ref[i].encoding) {
-                            case cetype_t_ext::CE_NA: // cetype_t_ext is from stringfish
-                                writer.push_pod(string_header_NA);
-                                break;
-                            case cetype_t_ext::CE_ASCII:
-                                write_string_header(ref[i].sdata.size(), CE_NATIVE);
-                                writer.push_data(ref[i].sdata.c_str(), ref[i].sdata.size());
-                                break;
-                            default:
-                                write_string_header(ref[i].sdata.size(), static_cast<cetype_t>(ref[i].encoding));
-                                writer.push_data(ref[i].sdata.c_str(), ref[i].sdata.size());
-                                break;
+                        cetype_t_ext enc = ref[i].encoding;
+                        if(enc == cetype_t_ext::CE_NA) { // cetype_t_ext is from stringfish
+                            writer.push_pod(string_header_NA);
+                        } else if ( (enc == cetype_t_ext::CE_LATIN1) || ((enc == cetype_t_ext::CE_NATIVE) && (IS_UTF8_LOCALE == 1)) ) {
+                            // check if latin1 or (native AND IS_UTF8_LOCALE == 0), needs translation
+                            SEXP xi = STRING_ELT(object, i); // materialize
+                            const char * ci = Rf_translateCharUTF8(xi);
+                            uint32_t li = strlen(ci);
+                            write_string_header(li);
+                            writer.push_data(ci, li);
+                        } else {
+                            write_string_header(ref[i].sdata.size());
+                            writer.push_data(ref[i].sdata.c_str(), ref[i].sdata.size());
                         }
                     }
                     return;
@@ -330,9 +304,18 @@ struct QdataSerializer {
                         if(xi == NA_STRING) {
                             writer.push_pod(string_header_NA);
                         } else {
+                            cetype_t enc = Rf_getCharCE(xi);
                             uint32_t li = LENGTH(xi);
-                            write_string_header(li, Rf_getCharCE(xi));
-                            writer.push_data(CHAR(xi), li);
+                            const char * ci = CHAR(xi);
+                            // check if needs translation
+                            bool needs_translation = (enc == cetype_t::CE_LATIN1) ||
+                                                     ((enc == cetype_t::CE_NATIVE) && (IS_UTF8_LOCALE == 0) && !checkAscii(ci, li));
+                            if(needs_translation) {
+                                ci = Rf_translateCharUTF8(xi);
+                                li = strlen(ci);
+                            }
+                            write_string_header(li);
+                            writer.push_data(ci, li);
                         }
                     }
                     return;

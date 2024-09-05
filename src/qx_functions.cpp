@@ -170,8 +170,10 @@ SEXP qd_save(SEXP object, const std::string & file, const int compress_level = 3
 #define DO_QD_READ(_BASE_CLASS_, _DECOMPRESSOR_) \
     _BASE_CLASS_ <IfStreamReader, _DECOMPRESSOR_, ErrorType::cpp_error> reader(myFile); \
     QdataDeserializer<_BASE_CLASS_<IfStreamReader, _DECOMPRESSOR_, ErrorType::cpp_error>> deserializer(reader, use_alt_rep); \
-    SEXP output = deserializer.read_object(); \
+    SEXP output = PROTECT(deserializer.read_object()); \
+    deserializer.do_delayed_string_assignments(); \
     reader.finish(); \
+    UNPROTECT(1); \
     return output
 
 
@@ -339,4 +341,9 @@ int internal_set_blocksize(const int size) {
 #else
     throw std::runtime_error("dynamic blocksize compile option not enabled");
 #endif
+}
+
+// [[Rcpp::export(rng = false)]]
+int internal_is_utf8_locale(const int size) {
+    return IS_UTF8_LOCALE;
 }

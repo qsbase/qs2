@@ -1,4 +1,4 @@
-PKG_CPPFLAGS = -DRCPP_USE_UNWIND_PROTECT -DRCPP_NO_RTTI -DRCPP_NO_SUGAR -I. -IZSTD
+PKG_CPPFLAGS = -DRCPP_USE_UNWIND_PROTECT -DRCPP_NO_RTTI -DRCPP_NO_SUGAR -I../inst/include -I. -IZSTD -DIS_UTF8_LOCALE=$(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript.exe" -e "cat(as.integer(identical(utils::localeToCharset()[1], 'UTF-8')))")
 PKG_CXXFLAGS = -DRCPP_PARALLEL_USE_TBB=1 $(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript.exe" -e "RcppParallel::CxxFlags()")
 PKG_LIBS = -L. -lQSZSTD $(shell ${R_HOME}/bin${R_ARCH_BIN}/Rscript.exe -e "RcppParallel::RcppParallelLibs()")
 

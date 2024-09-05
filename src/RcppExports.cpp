@@ -164,6 +164,16 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// internal_is_utf8_locale
+int internal_is_utf8_locale(const int size);
+RcppExport SEXP _qs2_internal_is_utf8_locale(SEXP sizeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< const int >::type size(sizeSEXP);
+    rcpp_result_gen = Rcpp::wrap(internal_is_utf8_locale(size));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_qs2_qs_save", (DL_FUNC) &_qs2_qs_save, 5},
@@ -180,6 +190,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_qs2_blosc_shuffle_raw", (DL_FUNC) &_qs2_blosc_shuffle_raw, 2},
     {"_qs2_blosc_unshuffle_raw", (DL_FUNC) &_qs2_blosc_unshuffle_raw, 2},
     {"_qs2_internal_set_blocksize", (DL_FUNC) &_qs2_internal_set_blocksize, 1},
+    {"_qs2_internal_is_utf8_locale", (DL_FUNC) &_qs2_internal_is_utf8_locale, 1},
     {NULL, NULL, 0}
 };
 

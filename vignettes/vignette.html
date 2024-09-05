@@ -356,13 +356,19 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <a class="sourceLine" id="cb4-12" title="12">xrds &lt;-<span class="st"> </span><span class="kw">readRDS</span>(file_rds)</a>
 <a class="sourceLine" id="cb4-13" title="13"><span class="kw">stopifnot</span>(<span class="kw">identical</span>(x, xrds))</a></code></pre></div>
 </div>
+<div id="validating-file-integrity" class="section level2">
+<h2>Validating file integrity</h2>
+<p>The <code>qs2</code> format saves an internal checksum. This can be used to test for file corruption before deserialization, but has a minor performance penality.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb5-1" title="1"><span class="kw">qs_save</span>(data, <span class="st">&quot;myfile.qs2&quot;</span>)</a>
+<a class="sourceLine" id="cb5-2" title="2">data &lt;-<span class="st"> </span><span class="kw">qs_read</span>(<span class="st">&quot;myfile.qs2&quot;</span>, <span class="dt">validate_checksum =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
+</div>
 <div id="the-qdata-format" class="section level1">
 <h1>The qdata format</h1>
 <p>The package also introduces the <code>qdata</code> format which has its own serialization layout and works with only data types (vectors, lists, data frames, matrices).</p>
 <p>It will replace internal types (functions, promises, external pointers, environments, objects) with NULL. The <code>qdata</code> format differs from the <code>qs2</code> format in that it is NOT a general.</p>
 <p>The eventual goal of <code>qdata</code> is to also have interoperability with other languages, particularly <code>Python</code>.</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb5-1" title="1"><span class="kw">qd_save</span>(data, <span class="st">&quot;myfile.qs2&quot;</span>)</a>
-<a class="sourceLine" id="cb5-2" title="2">data &lt;-<span class="st"> </span><span class="kw">qd_read</span>(<span class="st">&quot;myfile.qs2&quot;</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb6-1" title="1"><span class="kw">qd_save</span>(data, <span class="st">&quot;myfile.qs2&quot;</span>)</a>
+<a class="sourceLine" id="cb6-2" title="2">data &lt;-<span class="st"> </span><span class="kw">qd_read</span>(<span class="st">&quot;myfile.qs2&quot;</span>)</a></code></pre></div>
 <div id="benchmarks" class="section level2">
 <h2>Benchmarks</h2>
 <p>A summary across 4 datasets is presented below.</p>

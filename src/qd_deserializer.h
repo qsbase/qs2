@@ -7,19 +7,36 @@
 
 #include "qx_file_headers.h"
 #include "qd_constants.h"
+#include "io/io_common.h"
 
 #include "sf_external.h"
+#include "simple_array/small_array.h"
 
 using namespace Rcpp;
 
 #define FILE_READ_ERR_MSG "Failed to open for reading. Does the file exist? Do you have file permissions? Is the file name long? (>255 chars)"
 
+
+struct DelayedStringAssignments {
+    SEXP container;
+    std::unique_ptr< trqwe::small_array<char>[] > strings;
+    DelayedStringAssignments(SEXP container, size_t n) : container(container), strings(MAKE_UNIQUE_BLOCK_CUSTOM(trqwe::small_array<char>, n)) {}
+    void do_assignments() {
+        size_t len = Rf_xlength(container);
+        for(size_t i = 0; i < len; ++i) {
+            trqwe::small_array<char> & str = strings[i];
+            if(str.size() != 0) {
+                SET_STRING_ELT( container, i, Rf_mkCharLenCE(str.data(), str.size(), CE_UTF8) );
+            }
+        }
+    }
+};
+
 template<typename block_compress_reader>
 struct QdataDeserializer {
     block_compress_reader & reader;
+    std::vector<DelayedStringAssignments> delayed_string_assignments;
     const bool use_alt_rep;
-    // std::vector<uint8_t> shuffleblock;
-    // const bool shuffle;
     QdataDeserializer(block_compress_reader & reader, const bool use_alt_rep) : 
     reader(reader), use_alt_rep(use_alt_rep) {}
 
@@ -191,39 +208,19 @@ struct QdataDeserializer {
         }
     }
 
-    inline void read_string_header(uint32_t & string_len, cetype_t & string_encoding) {
-        uint8_t header_byte = reader.template get_pod<uint8_t>();
-        string_len = header_byte & (~string_enc_mask);
+    inline void read_string_header(uint32_t & string_len) {
+        string_len = reader.template get_pod<uint8_t>();
         switch(string_len) {
-            case string_header_8: // 60
-                string_len = reader.template get_pod_contiguous<uint8_t>();
-                break;
-            case string_header_16: // 61
+            case string_header_16: // 253
                 string_len = reader.template get_pod_contiguous<uint16_t>();
                 break;
-            case string_header_32: // 62
+            case string_header_32: // 254
                 string_len = reader.template get_pod_contiguous<uint32_t>();
                 break;
-            case string_header_NA: // 63
+            case string_header_NA: // 255
                 string_len = NA_STRING_LENGTH;
-                return; // no need to look at encoding
-            default: // string_len < MAX_STRING_6_BIT_LENGTH (60)
-                // do nothing
                 break;
-        }
-        uint8_t encoding_byte = header_byte & string_enc_mask;
-        switch(encoding_byte) {
-            case string_enc_utf8:
-                string_encoding = CE_UTF8;
-                break;
-            case string_enc_latin1:
-                string_encoding = CE_LATIN1;
-                break;
-            case string_enc_bytes:
-                string_encoding = CE_BYTES;
-                break;
-            default: // string_enc_native
-                string_encoding = CE_NATIVE;
+            default:
                 break;
         }
     }
@@ -245,8 +242,7 @@ struct QdataDeserializer {
         std::string attr_name; // use std::string here, must be null terminated for Rf_install
         for(uint64_t i=0; i<attr_length; ++i) {
             uint32_t string_len;
-            cetype_t string_encoding;
-            read_string_header(string_len, string_encoding);
+            read_string_header(string_len);
             attr_name.resize(string_len);
             reader.get_data(&attr_name[0], string_len);
             SET_TAG(aptr, Rf_install(attr_name.c_str()));
@@ -300,41 +296,47 @@ struct QdataDeserializer {
                     auto & ref = sf_vec_data_ref(object);
                     for(uint64_t i=0; i < object_length; ++i) {
                         uint32_t string_length;
-                        cetype_t string_encoding;
-                        read_string_header(string_length, string_encoding);
+                        read_string_header(string_length);
                         if(string_length == NA_STRING_LENGTH) {
                             ref[i] = sfstring(NA_STRING);
                         } else {
                             if(string_length == 0) {
                                 ref[i] = sfstring();
                             } else {
-                                ref[i] = sfstring(string_length);
-                                reader.get_data(&ref[i].sdata[0], string_length);
-                                ref[i].check_if_native_is_ascii(string_encoding);
+                                std::string xi;
+                                xi.resize(string_length);
+                                reader.get_data(&xi[0], string_length);
+                                ref[i] = sfstring(xi, CE_UTF8);
                             }
                         }
                     }
                 } else {
                     object = PROTECT(Rf_allocVector(STRSXP, object_length));
                     read_and_assign_attributes(object, attr_length);
-                    for(uint64_t i=0; i<object_length; ++i) {
-                        uint32_t string_length;
-                        cetype_t string_encoding;
-                        read_string_header(string_length, string_encoding);
-                        if(string_length == NA_STRING_LENGTH) {
-                            SET_STRING_ELT(object, i, NA_STRING);
-                        } else if(string_length == 0) {
-                            SET_STRING_ELT(object, i, R_BlankString);
-                        } else {
-                            const char * string_ptr = reader.get_ptr(string_length);
-                            if(string_ptr == nullptr) {
-                                std::unique_ptr<char[]> string_buf(MAKE_UNIQUE_BLOCK(string_length));
-                                reader.get_data(string_buf.get(), string_length);
-                                SET_STRING_ELT(object, i, Rf_mkCharLenCE(string_buf.get(), string_length, string_encoding));
+                    if(object_length > 0) {
+                        DelayedStringAssignments dsa(object, object_length);
+                        for(uint64_t i=0; i<object_length; ++i) {
+                            uint32_t string_length;
+                            read_string_header(string_length);
+                            if(string_length == NA_STRING_LENGTH) {
+                                SET_STRING_ELT(object, i, NA_STRING);
+                            } else if(string_length == 0) {
+                                SET_STRING_ELT(object, i, R_BlankString);
                             } else {
-                                SET_STRING_ELT(object, i, Rf_mkCharLenCE(string_ptr, string_length, string_encoding));
+                                trqwe::small_array<char> xi(string_length);
+                                reader.get_data(xi.data(), string_length);
+                                dsa.strings[i] = std::move(xi);
+                                // const char * string_ptr = reader.get_ptr(string_length);
+                                // if(string_ptr == nullptr) {
+                                //     std::unique_ptr<char[]> string_buf(MAKE_UNIQUE_BLOCK(string_length));
+                                //     reader.get_data(string_buf.get(), string_length);
+                                //     SET_STRING_ELT(object, i, Rf_mkCharLenCE(string_buf.get(), string_length, CE_UTF8));
+                                // } else {
+                                //     SET_STRING_ELT(object, i, Rf_mkCharLenCE(string_ptr, string_length, CE_UTF8));
+                                // }
                             }
                         }
+                        delayed_string_assignments.push_back(std::move(dsa));
                     }
                 }
                 break;
@@ -359,6 +361,11 @@ struct QdataDeserializer {
         }
         UNPROTECT(1);
         return object;
+    }
+    void do_delayed_string_assignments() {
+        for(auto & dsa : delayed_string_assignments) {
+            dsa.do_assignments();
+        }
     }
 };
 

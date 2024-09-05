@@ -61,6 +61,17 @@ xrds <- readRDS(file_rds)
 stopifnot(identical(x, xrds))
 ```
 
+## Validating file integrity
+
+The `qs2` format saves an internal checksum. This can be used to test
+for file corruption before deserialization, but has a minor performance
+penality.
+
+``` r
+qs_save(data, "myfile.qs2")
+data <- qs_read("myfile.qs2", validate_checksum = TRUE)
+```
+
 # The qdata format
 
 The package also introduces the `qdata` format which has its own
