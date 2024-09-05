@@ -336,15 +336,14 @@ for (q in 1:reps) {
   cat("Tibble test")
   cat("\n")
 
+  # qdata format will convert everything to UTF-8
+  # identical(x,y) will return true even if the Encodings are different
   if (Sys.info()[['sysname']] != "Windows") {
     for (i in 1:internal_reps) {
-      x1 <- "己所不欲，勿施于人" # utf 8
-      x2 <- x1
-      Encoding(x2) <- "latin1"
-      x3 <- x1
-      Encoding(x3) <- "bytes"
-      x4 <- rep(x1, x2, length.out = 1e4) %>% paste(collapse = ";")
-      x1 <- c(x1, x2, x3, x4)
+      x <- "fa\xE7ile"
+      Encoding(x)
+      Encoding(x) <- "latin1"
+      x1 <- c(iconv(x, "latin1", "UTF-8"), x)
       qs_save_rand(x1)
       z <- qs_read_rand()
       do_gc()

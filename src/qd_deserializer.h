@@ -11,26 +11,51 @@
 
 #include "sf_external.h"
 #include "simple_array/small_array.h"
+// #include "ankerl/unordered_dense.h"
 
 using namespace Rcpp;
 
 #define FILE_READ_ERR_MSG "Failed to open for reading. Does the file exist? Do you have file permissions? Is the file name long? (>255 chars)"
 
+// struct small_array_hash {
+//     using is_avalanching = void; // mark class as high quality avalanching hash
+//     uint64_t operator()(const trqwe::small_array<char> & str) const {
+//         return ankerl::unordered_dense::detail::wyhash::hash(str.data(), str.size());
+//     }
+// };
+
+// struct small_array_equal {
+//     bool operator()(const trqwe::small_array<char> & lhs, const trqwe::small_array<char> & rhs) const {
+//         if(lhs.size() != rhs.size()) return false;
+//         return strncmp(lhs.data(), rhs.data(), lhs.size()) == 0;
+//     }
+// };
+
+// using string_map_type = ankerl::unordered_dense::map<trqwe::small_array<char>, SEXP, small_array_hash, small_array_equal>;
 
 struct DelayedStringAssignments {
     SEXP container;
     std::unique_ptr< trqwe::small_array<char>[] > strings;
     DelayedStringAssignments(SEXP container, size_t n) : container(container), strings(MAKE_UNIQUE_BLOCK_CUSTOM(trqwe::small_array<char>, n)) {}
+    DelayedStringAssignments() {}
     void do_assignments() {
         size_t len = Rf_xlength(container);
         for(size_t i = 0; i < len; ++i) {
             trqwe::small_array<char> & str = strings[i];
-            if(str.size() != 0) {
-                SET_STRING_ELT( container, i, Rf_mkCharLenCE(str.data(), str.size(), CE_UTF8) );
-            }
+            if(str.size() == 0) continue;
+            SET_STRING_ELT(container, i, Rf_mkCharLenCE(str.data(), str.size(), CE_UTF8));
+            // auto it = string_map.find(str);
+            // if(it != string_map.end()) {
+            //     SET_STRING_ELT(container, i, it->second);
+            // } else {
+            //     SEXP rstr = Rf_mkCharLenCE(str.data(), str.size(), CE_UTF8);
+            //     SET_STRING_ELT(container, i, rstr);
+            //     string_map[str] = rstr;
+            // }
         }
     }
 };
+
 
 template<typename block_compress_reader>
 struct QdataDeserializer {
@@ -363,8 +388,10 @@ struct QdataDeserializer {
         return object;
     }
     void do_delayed_string_assignments() {
+        // string_map_type string_map;
         for(auto & dsa : delayed_string_assignments) {
             dsa.do_assignments();
+            dsa = DelayedStringAssignments(); // clear memory
         }
     }
 };
