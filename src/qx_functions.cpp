@@ -126,6 +126,7 @@ SEXP qs_read(const std::string & file, const bool validate_checksum = false, con
     _BASE_CLASS_ <OfStreamWriter, _COMPRESSOR_, _HASHER_, ErrorType::cpp_error, true> writer(myFile, compress_level); \
     QdataSerializer<_BASE_CLASS_<OfStreamWriter, _COMPRESSOR_, _HASHER_, ErrorType::cpp_error, true>> serializer(writer, warn_unsupported_types); \
     serializer.write_object(object); \
+    serializer.write_object_data(); \
     uint64_t hash = writer.finish(); \
     write_qx_hash(myFile, hash); \
     return R_NilValue
@@ -171,7 +172,7 @@ SEXP qd_save(SEXP object, const std::string & file, const int compress_level = 3
     _BASE_CLASS_ <IfStreamReader, _DECOMPRESSOR_, ErrorType::cpp_error> reader(myFile); \
     QdataDeserializer<_BASE_CLASS_<IfStreamReader, _DECOMPRESSOR_, ErrorType::cpp_error>> deserializer(reader, use_alt_rep); \
     SEXP output = PROTECT(deserializer.read_object()); \
-    deserializer.do_delayed_string_assignments(); \
+    deserializer.read_object_data(); \
     reader.finish(); \
     UNPROTECT(1); \
     return output

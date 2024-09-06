@@ -10,58 +10,24 @@
 #include "io/io_common.h"
 
 #include "sf_external.h"
-#include "simple_array/small_array.h"
+// #include "simple_array/small_array.h"
 // #include "ankerl/unordered_dense.h"
 
 using namespace Rcpp;
 
 #define FILE_READ_ERR_MSG "Failed to open for reading. Does the file exist? Do you have file permissions? Is the file name long? (>255 chars)"
 
-// struct small_array_hash {
-//     using is_avalanching = void; // mark class as high quality avalanching hash
-//     uint64_t operator()(const trqwe::small_array<char> & str) const {
-//         return ankerl::unordered_dense::detail::wyhash::hash(str.data(), str.size());
-//     }
-// };
-
-// struct small_array_equal {
-//     bool operator()(const trqwe::small_array<char> & lhs, const trqwe::small_array<char> & rhs) const {
-//         if(lhs.size() != rhs.size()) return false;
-//         return strncmp(lhs.data(), rhs.data(), lhs.size()) == 0;
-//     }
-// };
-
-// using string_map_type = ankerl::unordered_dense::map<trqwe::small_array<char>, SEXP, small_array_hash, small_array_equal>;
-
-struct DelayedStringAssignments {
-    SEXP container;
-    std::unique_ptr< trqwe::small_array<char>[] > strings;
-    DelayedStringAssignments(SEXP container, size_t n) : container(container), strings(MAKE_UNIQUE_BLOCK_CUSTOM(trqwe::small_array<char>, n)) {}
-    DelayedStringAssignments() {}
-    void do_assignments() {
-        size_t len = Rf_xlength(container);
-        for(size_t i = 0; i < len; ++i) {
-            trqwe::small_array<char> & str = strings[i];
-            if(str.size() == 0) continue;
-            SET_STRING_ELT(container, i, Rf_mkCharLenCE(str.data(), str.size(), CE_UTF8));
-            // auto it = string_map.find(str);
-            // if(it != string_map.end()) {
-            //     SET_STRING_ELT(container, i, it->second);
-            // } else {
-            //     SEXP rstr = Rf_mkCharLenCE(str.data(), str.size(), CE_UTF8);
-            //     SET_STRING_ELT(container, i, rstr);
-            //     string_map[str] = rstr;
-            // }
-        }
-    }
-};
-
 
 template<typename block_compress_reader>
 struct QdataDeserializer {
     block_compress_reader & reader;
-    std::vector<DelayedStringAssignments> delayed_string_assignments;
     const bool use_alt_rep;
+    std::vector<std::pair<SEXP, uint64_t>> character_sexp;
+    std::vector<std::pair<SEXP, uint64_t>> complex_sexp;
+    std::vector<std::pair<SEXP, uint64_t>> real_sexp;
+    std::vector<std::pair<SEXP, uint64_t>> integer_sexp; // and logical
+    std::vector<std::pair<SEXP, uint64_t>> raw_sexp;
+
     QdataDeserializer(block_compress_reader & reader, const bool use_alt_rep) : 
     reader(reader), use_alt_rep(use_alt_rep) {}
 
@@ -296,74 +262,36 @@ struct QdataDeserializer {
             case qstype::LOGICAL:
                 object = PROTECT(Rf_allocVector(LGLSXP, object_length));
                 read_and_assign_attributes(object, attr_length);
-                reader.get_data( reinterpret_cast<char*>(LOGICAL(object)), object_length*4);
+                integer_sexp.push_back(std::make_pair(object, object_length));
+                // reader.get_data( reinterpret_cast<char*>(LOGICAL(object)), object_length*4);
                 break;
             case qstype::INTEGER:
                 object = PROTECT(Rf_allocVector(INTSXP, object_length));
                 read_and_assign_attributes(object, attr_length);
-                reader.get_data( reinterpret_cast<char*>(INTEGER(object)), object_length*4 );
+                integer_sexp.push_back(std::make_pair(object, object_length));
+                // reader.get_data( reinterpret_cast<char*>(INTEGER(object)), object_length*4 );
                 break;
             case qstype::REAL:
                 object = PROTECT(Rf_allocVector(REALSXP, object_length));
                 read_and_assign_attributes(object, attr_length);
-                reader.get_data( reinterpret_cast<char*>(REAL(object)), object_length*8 );
+                real_sexp.push_back(std::make_pair(object, object_length));
+                // reader.get_data( reinterpret_cast<char*>(REAL(object)), object_length*8 );
                 break;
             case qstype::COMPLEX:
                 object = PROTECT(Rf_allocVector(CPLXSXP, object_length));
                 read_and_assign_attributes(object, attr_length);
-                reader.get_data( reinterpret_cast<char*>(COMPLEX(object)), object_length*16 );
+                complex_sexp.push_back(std::make_pair(object, object_length));
+                // reader.get_data( reinterpret_cast<char*>(COMPLEX(object)), object_length*16 );
                 break;
             case qstype::CHARACTER:
             {
                 if(use_alt_rep) {
                     object = PROTECT(sf_vector(object_length)); // stringfish ALTREP vector
-                    read_and_assign_attributes(object, attr_length);
-                    auto & ref = sf_vec_data_ref(object);
-                    for(uint64_t i=0; i < object_length; ++i) {
-                        uint32_t string_length;
-                        read_string_header(string_length);
-                        if(string_length == NA_STRING_LENGTH) {
-                            ref[i] = sfstring(NA_STRING);
-                        } else {
-                            if(string_length == 0) {
-                                ref[i] = sfstring();
-                            } else {
-                                std::string xi;
-                                xi.resize(string_length);
-                                reader.get_data(&xi[0], string_length);
-                                ref[i] = sfstring(xi, CE_UTF8);
-                            }
-                        }
-                    }
                 } else {
                     object = PROTECT(Rf_allocVector(STRSXP, object_length));
-                    read_and_assign_attributes(object, attr_length);
-                    if(object_length > 0) {
-                        DelayedStringAssignments dsa(object, object_length);
-                        for(uint64_t i=0; i<object_length; ++i) {
-                            uint32_t string_length;
-                            read_string_header(string_length);
-                            if(string_length == NA_STRING_LENGTH) {
-                                SET_STRING_ELT(object, i, NA_STRING);
-                            } else if(string_length == 0) {
-                                SET_STRING_ELT(object, i, R_BlankString);
-                            } else {
-                                trqwe::small_array<char> xi(string_length);
-                                reader.get_data(xi.data(), string_length);
-                                dsa.strings[i] = std::move(xi);
-                                // const char * string_ptr = reader.get_ptr(string_length);
-                                // if(string_ptr == nullptr) {
-                                //     std::unique_ptr<char[]> string_buf(MAKE_UNIQUE_BLOCK(string_length));
-                                //     reader.get_data(string_buf.get(), string_length);
-                                //     SET_STRING_ELT(object, i, Rf_mkCharLenCE(string_buf.get(), string_length, CE_UTF8));
-                                // } else {
-                                //     SET_STRING_ELT(object, i, Rf_mkCharLenCE(string_ptr, string_length, CE_UTF8));
-                                // }
-                            }
-                        }
-                        delayed_string_assignments.push_back(std::move(dsa));
-                    }
                 }
+                read_and_assign_attributes(object, attr_length);
+                character_sexp.push_back(std::make_pair(object, object_length));
                 break;
             }
             case qstype::LIST:
@@ -378,7 +306,8 @@ struct QdataDeserializer {
             case qstype::RAW:
                 object = PROTECT(Rf_allocVector(RAWSXP, object_length));
                 read_and_assign_attributes(object, attr_length);
-                reader.get_data( reinterpret_cast<char*>(RAW(object)), object_length );
+                raw_sexp.push_back(std::make_pair(object, object_length));
+                // reader.get_data( reinterpret_cast<char*>(RAW(object)), object_length );
                 break;
             default:
                 // this statement should be unreachable
@@ -387,11 +316,68 @@ struct QdataDeserializer {
         UNPROTECT(1);
         return object;
     }
-    void do_delayed_string_assignments() {
-        // string_map_type string_map;
-        for(auto & dsa : delayed_string_assignments) {
-            dsa.do_assignments();
-            dsa = DelayedStringAssignments(); // clear memory
+    void read_object_data() {
+        for(auto & x : character_sexp) {
+            SEXP object = x.first;
+            uint64_t object_length = x.second;
+            if(use_alt_rep) {
+                auto & ref = sf_vec_data_ref(object);
+                for(uint64_t i=0; i < object_length; ++i) {
+                    uint32_t string_length;
+                    read_string_header(string_length);
+                    if(string_length == NA_STRING_LENGTH) {
+                        ref[i] = sfstring(NA_STRING);
+                    } else {
+                        if(string_length == 0) {
+                            ref[i] = sfstring();
+                        } else {
+                            std::string xi;
+                            xi.resize(string_length);
+                            reader.get_data(&xi[0], string_length);
+                            ref[i] = sfstring(xi, CE_UTF8);
+                        }
+                    }
+                }
+            } else {
+                for(uint64_t i=0; i<object_length; ++i) {
+                    uint32_t string_length;
+                    read_string_header(string_length);
+                    if(string_length == NA_STRING_LENGTH) {
+                        SET_STRING_ELT(object, i, NA_STRING);
+                    } else if(string_length == 0) {
+                        SET_STRING_ELT(object, i, R_BlankString);
+                    } else {
+                        const char * string_ptr = reader.get_ptr(string_length);
+                        if(string_ptr == nullptr) {
+                            std::unique_ptr<char[]> string_buf(MAKE_UNIQUE_BLOCK(string_length));
+                            reader.get_data(string_buf.get(), string_length);
+                            SET_STRING_ELT(object, i, Rf_mkCharLenCE(string_buf.get(), string_length, CE_UTF8));
+                        } else {
+                            SET_STRING_ELT(object, i, Rf_mkCharLenCE(string_ptr, string_length, CE_UTF8));
+                        }
+                    }
+                }
+            }
+        }
+        for(auto & x : complex_sexp) {
+            SEXP object = x.first;
+            uint64_t object_length = x.second;
+            reader.get_data( reinterpret_cast<char*>(COMPLEX(object)), object_length*16 );
+        }
+        for(auto & x : real_sexp) {
+            SEXP object = x.first;
+            uint64_t object_length = x.second;
+            reader.get_data( reinterpret_cast<char*>(REAL(object)), object_length*8 );
+        }
+        for(auto & x : integer_sexp) {
+            SEXP object = x.first;
+            uint64_t object_length = x.second;
+            reader.get_data( reinterpret_cast<char*>(INTEGER(object)), object_length*4 );
+        }
+        for(auto & x : raw_sexp) {
+            SEXP object = x.first;
+            uint64_t object_length = x.second;
+            reader.get_data( reinterpret_cast<char*>(RAW(object)), object_length );
         }
     }
 };
