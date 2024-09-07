@@ -64,8 +64,8 @@ stopifnot(identical(x, xrds))
 ## Validating file integrity
 
 The `qs2` format saves an internal checksum. This can be used to test
-for file corruption before deserialization, but has a minor performance
-penality.
+for file corruption before deserialization via the `validate_checksum`
+parameter, but has a minor performance penalty.
 
 ``` r
 qs_save(data, "myfile.qs2")
@@ -96,33 +96,38 @@ A summary across 4 datasets is presented below.
 
 #### Single-threaded
 
-| Algorithm       | nthreads | Save Time | Read Time | Compression |
-| --------------- | -------- | --------- | --------- | ----------- |
-| saveRDS         | 1        | 104.46    | 60.10     | 8.38        |
-| base::serialize | 1        | 8.91      | 46.99     | 1.12        |
-| qs2             | 1        | 13.02     | 48.69     | 8.10        |
-| qdata           | 1        | 10.31     | 45.13     | 8.80        |
-| qs-legacy       | 1        | 9.10      | 44.84     | 7.42        |
+| Algorithm       | Compression | Save Time (s) | Read Time (s) |
+| --------------- | ----------- | ------------- | ------------- |
+| qs2             | 7.96        | 13.4          | 50.4          |
+| qdata           | 8.45        | 10.5          | 34.8          |
+| base::serialize | 1.1         | 8.87          | 51.4          |
+| saveRDS         | 8.68        | 107           | 63.7          |
+| fst             | 2.59        | 5.09          | 46.3          |
+| parquet         | 8.29        | 20.3          | 38.4          |
+| qs (legacy)     | 7.97        | 9.13          | 48.1          |
 
-#### Multi-threaded
+#### Multi-threaded (8 threads)
 
-| Algorithm | nthreads | Save Time | Read Time | Compression |
-| --------- | -------- | --------- | --------- | ----------- |
-| qs2       | 8        | 3.64      | 43.87     | 8.10        |
-| qdata     | 8        | 2.12      | 41.72     | 8.80        |
-| qs-legacy | 8        | 3.34      | 47.90     | 7.42        |
+| Algorithm   | Compression | Save Time (s) | Read Time (s) |
+| ----------- | ----------- | ------------- | ------------- |
+| qs2         | 7.96        | 3.79          | 48.1          |
+| qdata       | 8.45        | 1.98          | 33.1          |
+| fst         | 2.59        | 5.05          | 46.6          |
+| parquet     | 8.29        | 20.2          | 37.0          |
+| qs (legacy) | 7.97        | 3.21          | 52.0          |
 
-  - `qs2`, `qdata` and `qs` used `compress_level = 3`
-  - `base::serialize` was run with `ascii = FALSE` and `xdr = FALSE`
+  - `qs2`, `qdata` and `qs` with `compress_level = 3`
+  - `parquet` via the `arrow` package using zstd `compression_level = 3`
+  - `base::serialize` with `ascii = FALSE` and `xdr = FALSE`
 
-**Datasets**
+**Datasets used**
 
-  - `1000 genomes non-coding VCF` 1000 genomes non-coding variants
-  - `B-cell data` B-cell mouse data (Greiff 2017)
-  - `IP location` IPV4 range data with location information
-  - `Netflix movie ratings` Netflix Prize open competition machine
-    learning dataset
+  - `1000 genomes non-coding VCF` 1000 genomes non-coding variants (2743
+    MB)
+  - `B-cell data` B-cell mouse data, Greiff 2017 (1057 MB)
+  - `IP location` IPV4 range data with location information (198 MB)
+  - `Netflix movie ratings` Netflix ML prediction dataset (571 MB)
 
 These datasets are openly licensed and represent a combination of
-numeric and text data across multiple domains. See `inst/benchmarks` on
-Github.
+numeric and text data across multiple domains. See
+`inst/analysis/datasets.R` on Github.

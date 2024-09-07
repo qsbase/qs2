@@ -9,8 +9,8 @@ set_string_ops("&", "|")
 
 options(warn=1)
 
-PLATFORM <- "ubuntu"
-DATA_PATH <- "~/datasets/processed"
+PLATFORM <- "windows"
+DATA_PATH <- "N:/datasets_qs2/processed"
 datasets <- DATA_PATH & "/" & c("1000genomes_noncoding_vcf.csv.gz", "B_cell_petshopmouse3.tsv.gz",
                                 "ip_location_2023.csv.gz", "Netflix_Ratings.csv.gz")
 read_dataset <- function(d) {
@@ -85,8 +85,33 @@ dfs2 <- dfs %>%
             (algo == "parquet" & compress_level == 3))
 
 dfs2 %>%
-  mutate(compression = obj_size / file_size) %>%
   group_by(algo, nthreads) %>%
-  summarize(compression = mean(compression), save_time = sum(save_time), read_time = sum(read_time)) %>%
-  arrange(algo, nthreads) %>% as.data.frame
+  summarize(compression = ( sum(obj_size)/sum(file_size) ) %>% signif(3),
+            save_time = sum(save_time) %>% signif(3), 
+            read_time = sum(read_time) %>% signif(3)) %>%
+  arrange(nthreads, algo) %>%
+  fwrite(sep =",")
 
+# algo,nthreads,compression,save_time,read_time
+# base_serialize,1,1.1,8.87,51.4
+# fst,1,2.59,5.09,46.3
+# parquet,1,8.29,20.3,38.4
+# qdata,1,8.45,10.5,34.8
+# qs-legacy,1,7.97,9.13,48.1
+# qs2,1,7.96,13.4,50.4
+# rds,1,8.68,107,63.7
+# fst,8,2.59,5.05,46.6
+# parquet,8,8.29,20.2,37
+# qdata,8,8.45,1.98,33.1
+# qs-legacy,8,7.97,3.21,52
+# qs2,8,7.96,3.79,48.1
+
+dfs2 %>%
+  as.data.frame %>%
+  dplyr::select(dataset, obj_size) %>% unique
+
+# dataset  obj_size
+# 1 1000genomes_noncoding_vcf 2743.4075
+# 2      B_cell_petshopmouse3 1057.2301
+# 3           Netflix_Ratings  198.4124
+# 4          ip_location_2023  570.7996

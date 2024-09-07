@@ -27,3 +27,5 @@ src/Makevars
 README.html
 revdep/*
 configure~
+*.gz
+*.json

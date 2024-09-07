@@ -17,9 +17,9 @@ later <- function() { as.numeric(Sys.time() - get(".time", envir = globalenv()),
 
 setwd(this.dir())
 
-PLATFORM <- "ubuntu" # for results naming purposes
+PLATFORM <- "windows" # for results naming purposes
+DATA_PATH <- "N:/datasets_qs2/processed/"
 
-DATA_PATH <- "~/datasets/processed"
 OUTPUT_PATH <- tempdir()
 TMP_RESULTS_PATH <- tempfile()
 
@@ -42,15 +42,15 @@ read_dataset <- function(d) {
 
 for(DATASET in datasets) {
   reps <- 1:3
-  compress_levels <- c(1,3,5,9,11)
+  compress_levels <- c(1,3,5,7,9)
   grid <- rbind(
     data.frame(algo = "rds", compress_level = 1, nthreads = 1, rep=reps),
     data.frame(algo = "base_serialize", compress_level = 1, nthreads = 1, rep=reps),
     expand.grid(algo = "qs-legacy", compress_level = compress_levels, nthreads=c(1,8), rep=reps, stringsAsFactors = FALSE),
     expand.grid(algo = "qs2", compress_level = compress_levels, nthreads=c(1,8), rep=reps, stringsAsFactors = FALSE),
     expand.grid(algo = "qdata", compress_level = compress_levels, nthreads=c(1,8), rep=reps, stringsAsFactors = FALSE),
-    expand.grid(algo = "fst", compress_level = 50, nthreads=c(1,8), rep = reps, stringsAsFactors = FALSE),
-    expand.grid(algo = "parquet", compress_level = 3, nthreads=c(1,8), rep=reps, stringsAsFactors = FALSE)
+    expand.grid(algo = "fst", compress_level = c(50,80,95), nthreads=c(1,8), rep = reps, stringsAsFactors = FALSE),
+    expand.grid(algo = "parquet", compress_level = compress_levels, nthreads=c(1,8), rep=reps, stringsAsFactors = FALSE)
     ) %>% sample_n(nrow(.))
   
   DATA <- read_dataset(DATASET)

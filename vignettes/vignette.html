@@ -358,7 +358,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 </div>
 <div id="validating-file-integrity" class="section level2">
 <h2>Validating file integrity</h2>
-<p>The <code>qs2</code> format saves an internal checksum. This can be used to test for file corruption before deserialization, but has a minor performance penality.</p>
+<p>The <code>qs2</code> format saves an internal checksum. This can be used to test for file corruption before deserialization via the <code>validate_checksum</code> parameter, but has a minor performance penalty.</p>
 <div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb5-1" title="1"><span class="kw">qs_save</span>(data, <span class="st">&quot;myfile.qs2&quot;</span>)</a>
 <a class="sourceLine" id="cb5-2" title="2">data &lt;-<span class="st"> </span><span class="kw">qs_read</span>(<span class="st">&quot;myfile.qs2&quot;</span>, <span class="dt">validate_checksum =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
 </div>
@@ -378,99 +378,114 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <thead>
 <tr class="header">
 <th>Algorithm</th>
-<th>nthreads</th>
-<th>Save Time</th>
-<th>Read Time</th>
 <th>Compression</th>
+<th>Save Time (s)</th>
+<th>Read Time (s)</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td>saveRDS</td>
-<td>1</td>
-<td>104.46</td>
-<td>60.10</td>
-<td>8.38</td>
-</tr>
-<tr class="even">
-<td>base::serialize</td>
-<td>1</td>
-<td>8.91</td>
-<td>46.99</td>
-<td>1.12</td>
-</tr>
-<tr class="odd">
 <td>qs2</td>
-<td>1</td>
-<td>13.02</td>
-<td>48.69</td>
-<td>8.10</td>
+<td>7.96</td>
+<td>13.4</td>
+<td>50.4</td>
 </tr>
 <tr class="even">
 <td>qdata</td>
-<td>1</td>
-<td>10.31</td>
-<td>45.13</td>
-<td>8.80</td>
+<td>8.45</td>
+<td>10.5</td>
+<td>34.8</td>
 </tr>
 <tr class="odd">
-<td>qs-legacy</td>
-<td>1</td>
-<td>9.10</td>
-<td>44.84</td>
-<td>7.42</td>
+<td>base::serialize</td>
+<td>1.1</td>
+<td>8.87</td>
+<td>51.4</td>
+</tr>
+<tr class="even">
+<td>saveRDS</td>
+<td>8.68</td>
+<td>107</td>
+<td>63.7</td>
+</tr>
+<tr class="odd">
+<td>fst</td>
+<td>2.59</td>
+<td>5.09</td>
+<td>46.3</td>
+</tr>
+<tr class="even">
+<td>parquet</td>
+<td>8.29</td>
+<td>20.3</td>
+<td>38.4</td>
+</tr>
+<tr class="odd">
+<td>qs (legacy)</td>
+<td>7.97</td>
+<td>9.13</td>
+<td>48.1</td>
 </tr>
 </tbody>
 </table>
 </div>
-<div id="multi-threaded" class="section level4">
-<h4>Multi-threaded</h4>
+<div id="multi-threaded-8-threads" class="section level4">
+<h4>Multi-threaded (8 threads)</h4>
 <table>
 <thead>
 <tr class="header">
 <th>Algorithm</th>
-<th>nthreads</th>
-<th>Save Time</th>
-<th>Read Time</th>
 <th>Compression</th>
+<th>Save Time (s)</th>
+<th>Read Time (s)</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td>qs2</td>
-<td>8</td>
-<td>3.64</td>
-<td>43.87</td>
-<td>8.10</td>
+<td>7.96</td>
+<td>3.79</td>
+<td>48.1</td>
 </tr>
 <tr class="even">
 <td>qdata</td>
-<td>8</td>
-<td>2.12</td>
-<td>41.72</td>
-<td>8.80</td>
+<td>8.45</td>
+<td>1.98</td>
+<td>33.1</td>
 </tr>
 <tr class="odd">
-<td>qs-legacy</td>
-<td>8</td>
-<td>3.34</td>
-<td>47.90</td>
-<td>7.42</td>
+<td>fst</td>
+<td>2.59</td>
+<td>5.05</td>
+<td>46.6</td>
+</tr>
+<tr class="even">
+<td>parquet</td>
+<td>8.29</td>
+<td>20.2</td>
+<td>37.0</td>
+</tr>
+<tr class="odd">
+<td>qs (legacy)</td>
+<td>7.97</td>
+<td>3.21</td>
+<td>52.0</td>
 </tr>
 </tbody>
 </table>
 <ul>
-<li><code>qs2</code>, <code>qdata</code> and <code>qs</code> used <code>compress_level = 3</code></li>
-<li><code>base::serialize</code> was run with <code>ascii = FALSE</code> and <code>xdr = FALSE</code></li>
+<li><code>qs2</code>, <code>qdata</code> and <code>qs</code> with <code>compress_level = 3</code></li>
+<li><code>parquet</code> via the <code>arrow</code> package using zstd <code>compression_level = 3</code></li>
+<li><code>base::serialize</code> with <code>ascii = FALSE</code> and <code>xdr = FALSE</code></li>
 </ul>
-<p><strong>Datasets</strong></p>
+<p><strong>Datasets used</strong></p>
 <ul>
-<li><code>1000 genomes non-coding VCF</code> 1000 genomes non-coding variants</li>
-<li><code>B-cell data</code> B-cell mouse data (Greiff 2017)</li>
-<li><code>IP location</code> IPV4 range data with location information</li>
-<li><code>Netflix movie ratings</code> Netflix Prize open competition machine learning dataset</li>
+<li><code>1000 genomes non-coding VCF</code> 1000 genomes non-coding variants (2743 MB)</li>
+<li><code>B-cell data</code> B-cell mouse data, Greiff 2017 (1057 MB)</li>
+<li><code>IP location</code> IPV4 range data with location information (198 MB)</li>
+<li><code>Netflix movie ratings</code> Netflix ML prediction dataset (571 MB)</li>
 </ul>
-<p>These datasets are openly licensed and represent a combination of numeric and text data across multiple domains. See <code>inst/benchmarks</code> on Github.</p>
+<p>These datasets are openly licensed and represent a combination of numeric and text data across multiple domains. See <code>inst/analysis/datasets.R</code> on Github.</p>
 </div>
 </div>
 </div>

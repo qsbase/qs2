@@ -2,7 +2,7 @@ Package: qs2
 Type: Package
 Title: A Package for Efficient Serialization
 Version: 0.1.0
-Date: 2024-09-03
+Date: 2024-09-07
 Authors@R: c(
     person("Travers", "Ching", email = "traversc@gmail.com", role = c("aut", "cre", "cph")),
     person("Yann", "Collet", role = c("ctb", "cph"), comment = "Yann Collet is the author of the bundled zstd"),

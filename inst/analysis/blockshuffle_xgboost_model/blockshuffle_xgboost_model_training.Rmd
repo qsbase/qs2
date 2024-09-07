@@ -20,7 +20,7 @@ library(future.apply)
 plan("future::multisession", workers=16)
 
 # dynamic blocksize set to 1048576
-qs2:::internal_set_blocksize(1048576)
+# qs2:::internal_set_blocksize(1048576)
 
 DATA_PATH <- "~/datasets/processed"
 
