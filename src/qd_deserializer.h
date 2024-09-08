@@ -262,25 +262,25 @@ struct QdataDeserializer {
             case qstype::LOGICAL:
                 object = PROTECT(Rf_allocVector(LGLSXP, object_length));
                 read_and_assign_attributes(object, attr_length);
-                integer_sexp.push_back(std::make_pair(object, object_length));
+                if(object_length > 0) integer_sexp.push_back(std::make_pair(object, object_length));
                 // reader.get_data( reinterpret_cast<char*>(LOGICAL(object)), object_length*4);
                 break;
             case qstype::INTEGER:
                 object = PROTECT(Rf_allocVector(INTSXP, object_length));
                 read_and_assign_attributes(object, attr_length);
-                integer_sexp.push_back(std::make_pair(object, object_length));
+                if(object_length > 0) integer_sexp.push_back(std::make_pair(object, object_length));
                 // reader.get_data( reinterpret_cast<char*>(INTEGER(object)), object_length*4 );
                 break;
             case qstype::REAL:
                 object = PROTECT(Rf_allocVector(REALSXP, object_length));
                 read_and_assign_attributes(object, attr_length);
-                real_sexp.push_back(std::make_pair(object, object_length));
+                if(object_length > 0) real_sexp.push_back(std::make_pair(object, object_length));
                 // reader.get_data( reinterpret_cast<char*>(REAL(object)), object_length*8 );
                 break;
             case qstype::COMPLEX:
                 object = PROTECT(Rf_allocVector(CPLXSXP, object_length));
                 read_and_assign_attributes(object, attr_length);
-                complex_sexp.push_back(std::make_pair(object, object_length));
+                if(object_length > 0) complex_sexp.push_back(std::make_pair(object, object_length));
                 // reader.get_data( reinterpret_cast<char*>(COMPLEX(object)), object_length*16 );
                 break;
             case qstype::CHARACTER:
@@ -291,7 +291,7 @@ struct QdataDeserializer {
                     object = PROTECT(Rf_allocVector(STRSXP, object_length));
                 }
                 read_and_assign_attributes(object, attr_length);
-                character_sexp.push_back(std::make_pair(object, object_length));
+                if(object_length > 0) character_sexp.push_back(std::make_pair(object, object_length));
                 break;
             }
             case qstype::LIST:
@@ -306,7 +306,7 @@ struct QdataDeserializer {
             case qstype::RAW:
                 object = PROTECT(Rf_allocVector(RAWSXP, object_length));
                 read_and_assign_attributes(object, attr_length);
-                raw_sexp.push_back(std::make_pair(object, object_length));
+                if(object_length > 0) raw_sexp.push_back(std::make_pair(object, object_length));
                 // reader.get_data( reinterpret_cast<char*>(RAW(object)), object_length );
                 break;
             default:

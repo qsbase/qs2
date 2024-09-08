@@ -234,7 +234,7 @@ struct QdataSerializer {
                 std::vector< std::pair<SEXP, SEXP> > attrs = get_attributes(object);
                 write_header_lglsxp(object_length, attrs.size());
                 write_attributes(attrs);
-                integer_sexp.push_back(std::make_pair(object, object_length));
+                if(object_length > 0) integer_sexp.push_back(std::make_pair(object, object_length));
                 // writer.push_data(reinterpret_cast<char*>(LOGICAL(object)), object_length * 4);
                 return;
             }
@@ -244,7 +244,7 @@ struct QdataSerializer {
                 std::vector< std::pair<SEXP, SEXP> > attrs = get_attributes(object);
                 write_header_intsxp(object_length, attrs.size());
                 write_attributes(attrs);
-                integer_sexp.push_back(std::make_pair(object, object_length));
+                if(object_length > 0) integer_sexp.push_back(std::make_pair(object, object_length));
                 // writer.push_data(reinterpret_cast<char*>(INTEGER(object)), object_length * 4);
                 return;
             }
@@ -254,7 +254,7 @@ struct QdataSerializer {
                 std::vector< std::pair<SEXP, SEXP> > attrs = get_attributes(object);
                 write_header_realsxp(object_length, attrs.size());
                 write_attributes(attrs);
-                real_sexp.push_back(std::make_pair(object, object_length));
+                if(object_length > 0) real_sexp.push_back(std::make_pair(object, object_length));
                 // writer.push_data(reinterpret_cast<char*>(REAL(object)), object_length * 8);
                 return;
             }
@@ -264,7 +264,7 @@ struct QdataSerializer {
                 std::vector< std::pair<SEXP, SEXP> > attrs = get_attributes(object);
                 write_header_cplxsxp(object_length, attrs.size());
                 write_attributes(attrs);
-                complex_sexp.push_back(std::make_pair(object, object_length));
+                if(object_length > 0) complex_sexp.push_back(std::make_pair(object, object_length));
                 // writer.push_data(reinterpret_cast<char*>(COMPLEX(object)), object_length * 16);
                 return;
             }
@@ -274,7 +274,7 @@ struct QdataSerializer {
                 std::vector< std::pair<SEXP, SEXP> > attrs = get_attributes(object);
                 write_header_strsxp(object_length, attrs.size());
                 write_attributes(attrs);
-                character_sexp.push_back(std::make_pair(object, object_length));
+                if(object_length > 0) character_sexp.push_back(std::make_pair(object, object_length));
                 return;
             }
             case VECSXP:
@@ -295,7 +295,7 @@ struct QdataSerializer {
                 std::vector< std::pair<SEXP, SEXP> > attrs = get_attributes(object);
                 write_header_rawsxp(object_length, attrs.size());
                 write_attributes(attrs);
-                raw_sexp.push_back(std::make_pair(object, object_length));
+                if(object_length > 0) raw_sexp.push_back(std::make_pair(object, object_length));
                 // writer.push_data(reinterpret_cast<char*>(RAW(object)), object_length);
                 return;
             }
