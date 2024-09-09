@@ -72,7 +72,7 @@ rand_strings <- function(N) {
   }
 }
 
-# do not include functions as they do not evaluate to TRUE with identical(x, y)
+# use with_envs = FALSE; functions do not evaluate to TRUE with identical(x, y)
 random_object_generator <- function(N, with_envs = FALSE) { # additional input: global obj_size, max_size
   ret <- as.list(1:N)
   for (i in 1:N) {
@@ -367,11 +367,7 @@ for (q in 1:reps) {
   time <- vector("numeric", length = 8)
   for (i in 1:8) {
     obj_size <- 0
-    if(format == "qs2") {
-        x1 <- random_object_generator(12, with_envs = TRUE)
-    } else { # qdata
-        x1 <- random_object_generator(12, with_envs = FALSE)
-    }
+    x1 <- random_object_generator(12, with_envs = FALSE)
     printCarriage(sprintf("Random objects: %s bytes", object.size(x1) %>% as.numeric))
     time[i] <- Sys.time()
     qs_save_rand(x1)
