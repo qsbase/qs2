@@ -18,7 +18,7 @@ The maximum and minimum possible values depends on the version of ZSTD library u
 As of ZSTD 1.5.6 the maximum compression level is 22, and the minimum is -131072. Usually, values in the low positive range offer very good performance in terms
 of speed and compression.}
 
-\item{shuffle}{Whether to allow byte shuffling when compressing data (default: \code{TRUE}). See section \emph{Byte shuffling} in the vignette or readme for details.}
+\item{shuffle}{Whether to allow byte shuffling when compressing data (default: \code{TRUE}).}
 
 \item{nthreads}{The number of threads to use when compressing data (default: \code{1}).}
 }

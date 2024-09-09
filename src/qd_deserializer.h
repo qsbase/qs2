@@ -174,15 +174,6 @@ struct QdataDeserializer {
         }
     }
     public:
-    // template <typename T> void shuffle_get_data(T * buf, const uint64_t len, const uint64_t bytesoftype = sizeof(T)) {
-    //     if( shuffle && (len > MIN_SHUFFLE_ARRAYSIZE) ) {
-    //         if(len > shuffleblock.size()) shuffleblock.resize(len);
-    //         reader.get_data( reinterpret_cast<char*>(shuffleblock.data()), len );
-    //         blosc_unshuffle(reinterpret_cast<uint8_t *>(shuffleblock.data()), reinterpret_cast<uint8_t *>(buf), len, bytesoftype);
-    //     } else {
-    //         reader.get_data( reinterpret_cast<char*>(buf), len );
-    //     }
-    // }
 
     // len, attr_length should be pre-initialized to 0
     void read_header(qstype & type, uint64_t & object_length, uint32_t & attr_length) {
@@ -215,17 +206,6 @@ struct QdataDeserializer {
                 break;
         }
     }
-
-    // inline void read_string_UF_header(uint32_t & string_len) {
-    //     uint8_t header_byte = reader.template get_pod<uint8_t>();
-    //     if(header_byte < string_UF_max_8) {
-    //         string_len = header_byte;
-    //     } else if(header_byte == string_UF_header_NA) {
-    //         string_len = NA_STRING_LENGTH;
-    //     } else {
-    //         string_len = reader.template get_pod_contiguous<uint32_t>();
-    //     }
-    // }
 
     void read_and_assign_attributes(SEXP object, const uint32_t attr_length) {
         SEXP aptr = Rf_allocList(attr_length);

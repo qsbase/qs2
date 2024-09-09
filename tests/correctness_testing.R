@@ -74,13 +74,7 @@ rand_strings <- function(N) {
 
 # do not include functions as they do not evaluate to TRUE with identical(x, y)
 random_object_generator <- function(N, with_envs = FALSE) { # additional input: global obj_size, max_size
-  if (sample(3, 1) == 1) {
-    ret <- as.list(1:N)
-  } else if (sample(2, 1) == 1) {
-    ret <- as.pairlist(1:N)
-  } else {
-    ret <- as.pairlist(1:N)
-  }
+  ret <- as.list(1:N)
   for (i in 1:N) {
     if (get_obj_size() > get("max_size", envir = globalenv())) break;
     otype <- sample(12, size = 1)
@@ -92,7 +86,7 @@ random_object_generator <- function(N, with_envs = FALSE) { # additional input: 
     else if (otype == 4) { z <- (sample(256, size = 1e4, replace = TRUE) - 1) %>% as.raw; set_obj_size(z); }
     else if (otype == 5) { z <- replicate(sample(1e4, size = 1), {rep(letters, length.out = sample(10, size = 1)) %>% paste(collapse = "")}); set_obj_size(z); }
     else if (otype == 6) { z <- rep(letters, length.out = sample(1e4, size = 1)) %>% paste(collapse = ""); set_obj_size(z); }
-    else if (otype == 7) { z <- as.formula("y ~ a + b + c : d", env = globalenv()); attr(z, "blah") <- sample(1e4) - 5e2; set_obj_size(z); }
+    else if (with_envs && otype == 7) { z <- as.formula("y ~ a + b + c : d", env = globalenv()); attr(z, "blah") <- sample(1e4) - 5e2; set_obj_size(z); }
     else if (with_envs && otype %in% c(8, 9)) { z <- function(x) {x + runif(1)} }
     else { z <- random_object_generator(N, with_envs) }
     if (is_attribute) {
@@ -370,22 +364,24 @@ for (q in 1:reps) {
   }
   cat("\n")
 
-  if(format == "qs2") {
-    time <- vector("numeric", length = 8)
-    for (i in 1:8) {
-      obj_size <- 0
-      x1 <- random_object_generator(12)
-      printCarriage(sprintf("Random objects: %s bytes", object.size(x1) %>% as.numeric))
-      time[i] <- Sys.time()
-      qs_save_rand(x1)
-      z <- qs_read_rand()
-      time[i] <- Sys.time() - time[i]
-      do_gc()
-      stopifnot(identical(z, x1))
+  time <- vector("numeric", length = 8)
+  for (i in 1:8) {
+    obj_size <- 0
+    if(format == "qs2") {
+        x1 <- random_object_generator(12, with_envs = TRUE)
+    } else { # qdata
+        x1 <- random_object_generator(12, with_envs = FALSE)
     }
-    printCarriage(sprintf("Random objects: %s s", signif(mean(time), 4)))
-    cat("\n")
+    printCarriage(sprintf("Random objects: %s bytes", object.size(x1) %>% as.numeric))
+    time[i] <- Sys.time()
+    qs_save_rand(x1)
+    z <- qs_read_rand()
+    time[i] <- Sys.time() - time[i]
+    do_gc()
+    stopifnot(identical(z, x1))
   }
+  printCarriage(sprintf("Random objects: %s s", signif(mean(time), 4)))
+  cat("\n")
 
   time <- vector("numeric", length = internal_reps)
   for (i in 1:internal_reps) {

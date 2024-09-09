@@ -7,8 +7,7 @@ shared_params_save <- function(warn_unsupported_types=FALSE) {
     'The maximum and minimum possible values depends on the version of ZSTD library used.',
     'As of ZSTD 1.5.6 the maximum compression level is 22, and the minimum is -131072. Usually, values in the low positive range offer very good performance in terms',
     'of speed and compression.',
-    '@param shuffle Whether to allow byte shuffling when compressing data (default: `TRUE`). See section *Byte shuffling* in the vignette or readme for details.',
-    # '@param store_checksum Whether to store the checksum in the saved object (Default `TRUE`) which is used to verify file integrity during read. There is a performance penalty when enabled and a checksum is not at all necessary so you may want to disable it.',
+    '@param shuffle Whether to allow byte shuffling when compressing data (default: `TRUE`).',
     '@param warn_unsupported_types Whether to warn when saving an object with an unsupported type (default `TRUE`).'[warn_unsupported_types],
     '@param nthreads The number of threads to use when compressing data (default: `1`).')
 }
