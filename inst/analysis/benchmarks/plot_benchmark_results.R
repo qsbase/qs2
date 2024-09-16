@@ -9,8 +9,8 @@ set_string_ops("&", "|")
 
 options(warn=1)
 
-PLATFORM <- "windows"
-DATA_PATH <- "N:/datasets_qs2/processed"
+PLATFORM <- "ubuntu2"
+DATA_PATH <- "~/datasets/processed"
 datasets <- DATA_PATH & "/" & c("1000genomes_noncoding_vcf.csv.gz", "B_cell_petshopmouse3.tsv.gz",
                                 "ip_location_2023.csv.gz", "Netflix_Ratings.csv.gz")
 read_dataset <- function(d) {

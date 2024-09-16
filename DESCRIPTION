@@ -1,8 +1,8 @@
 Package: qs2
 Type: Package
-Title: A Package for Efficient Serialization
-Version: 0.1.0
-Date: 2024-09-09
+Title: Efficient Serialization of R objects
+Version: 0.1.1
+Date: 2024-09-16
 Authors@R: c(
     person("Travers", "Ching", email = "traversc@gmail.com", role = c("aut", "cre", "cph")),
     person("Yann", "Collet", role = c("ctb", "cph"), comment = "Yann Collet is the author of the bundled zstd"),
@@ -12,7 +12,7 @@ Authors@R: c(
     person("Mori", "Yuta", role = c("ctb", "cph"), comment = "Contributor/copyright holder of zstd bundled code"),
     person("Francesc", "Alted", role = c("ctb", "cph"), comment = "Shuffling routines derived from Blosc library"))
 Maintainer: Travers Ching <traversc@gmail.com>
-Description: Provides functions for quickly writing and reading any R object to and from disk. Successor to the original 'qs' package.
+Description: Streamlines and accelerates the process of saving and loading R objects, improving speed and compression compared to other methods. The package offers two compression formats: the 'qs2' format which utilizes R serialization via the C API while improving underlying compression and disk IO, and the 'qdata' format which implements its own serialization and is slightly faster and better compressed. Additionally, the 'qs2' format can be directly converted to standard 'RDS' format, ensuring any data saved is future compatible.
 License: GPL-3
 Biarch: true
 Depends: R (>= 3.5.0)

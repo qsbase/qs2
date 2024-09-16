@@ -10,6 +10,7 @@ shared_params_save <- function(warn_unsupported_types=FALSE) {
     '@param shuffle Whether to allow byte shuffling when compressing data (default: `TRUE`).',
     '@param warn_unsupported_types Whether to warn when saving an object with an unsupported type (default `TRUE`).'[warn_unsupported_types],
     '@param nthreads The number of threads to use when compressing data (default: `1`).')
+    '@value No value is returned. The file is written to disk.'
 }
 
 shared_params_read <- function(use_alt_rep=FALSE) {
