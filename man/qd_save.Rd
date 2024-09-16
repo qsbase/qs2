@@ -8,6 +8,26 @@ qd_save(object, file, compress_level = 3L,
 shuffle = TRUE, warn_unsupported_types=TRUE,
 nthreads = 1L)
 }
+\arguments{
+\item{object}{The object to save.}
+
+\item{file}{The file name/path.}
+
+\item{compress_level}{The compression level used (default 3).
+
+The maximum and minimum possible values depends on the version of ZSTD library used.
+As of ZSTD 1.5.6 the maximum compression level is 22, and the minimum is -131072. Usually, values in the low positive range offer very good performance in terms
+of speed and compression.}
+
+\item{shuffle}{Whether to allow byte shuffling when compressing data (default: \code{TRUE}).}
+
+\item{warn_unsupported_types}{Whether to warn when saving an object with an unsupported type (default \code{TRUE}).}
+
+\item{nthreads}{The number of threads to use when compressing data (default: \code{1}).}
+}
+\value{
+No value is returned. The file is written to disk.
+}
 \description{
 Saves an object to disk using the \code{qdata} format.
 }

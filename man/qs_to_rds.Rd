@@ -13,6 +13,9 @@ qs_to_rds(input_file, output_file, compress_level = 6)
 
 \item{compress_level}{The gzip compression level to use when writing the RDS file (a value between 0 and 9).}
 }
+\value{
+No value is returned. The converted file is written to disk.
+}
 \description{
 Converts a file saved in the \code{qs2} format to the \code{RDS} format.
 }

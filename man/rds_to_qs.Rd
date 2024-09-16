@@ -13,6 +13,9 @@ rds_to_qs(input_file, output_file, compress_level = 3)
 
 \item{compress_level}{The zstd compression level to use when writing the \code{qs2} file. See the \code{qs_save} help file for more details on this parameter.}
 }
+\value{
+No value is returned. The converted file is written to disk.
+}
 \description{
 Converts a file saved in the \code{RDS} format to the \code{qs2} format.
 }

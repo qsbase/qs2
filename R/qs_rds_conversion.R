@@ -7,7 +7,7 @@
 #' @param input_file The `qs2` file to convert.
 #' @param output_file The `RDS` file to write.
 #' @param compress_level The gzip compression level to use when writing the RDS file (a value between 0 and 9).
-#' @value No value is returned. The converted file is written to disk.
+#' @return No value is returned. The converted file is written to disk.
 #'
 #' @examples
 #' qs_tmp <- tempfile(fileext = ".qs2")
@@ -44,7 +44,7 @@ qs_to_rds <- function(input_file, output_file, compress_level = 6) {
 #' 
 #' @details The `shuffle` parameters is currently not supported when converting from `RDS` to `qs2`.
 #' When reading the resulting `qs2` file, `validate_checksum` must be set to `FALSE`.
-#' @value No value is returned. The converted file is written to disk.
+#' @return No value is returned. The converted file is written to disk.
 #' 
 #' @examples
 #' qs_tmp <- tempfile(fileext = ".qs2")
