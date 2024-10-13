@@ -30,11 +30,17 @@ package. It is not compatible with the original `qs` format.
 install.packages("qs2")
 ```
 
-On Mac or Linux, you can enable multi-threading by compiling from
+On x64 Mac or Linux, you can enable multi-threading by compiling from
 source. It is enabled by default on Windows.
 
 ``` r
-remotes::install_cran("qs2", type = "source", configure.args = " --with-TBB --with-simd=AVX2")
+remotes::install_cran("qs2", type = "source", configure.args = "--with-TBB --with-simd=AVX2")
+```
+
+On non-x64 systems (e.g. Mac ARM) remove the AVX2 flag.
+
+``` r
+remotes::install_cran("qs2", type = "source", configure.args = "--with-TBB")
 ```
 
 Multi-threading in `qs2` uses the `Intel Thread Building Blocks`
