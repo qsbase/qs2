@@ -1,0 +1,6 @@
+Version 0.1.2
+    * Add support for newer versions of TBB using tbb::flow::input_node (https://github.com/qsbase/qs2/issues/2)
+    * Add in memory serialization functions `qs_serialize`, `qs_deserialize`, `qd_serialize` and `qd_deserialize`
+
+Version 0.1.1 (2024-09-16)
+    * Initial CRAN release

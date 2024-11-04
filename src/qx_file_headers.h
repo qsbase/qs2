@@ -41,7 +41,7 @@ inline bool checkMagicNumber(uint8_t const * const bits, uint8_t const * const m
 
 template <typename stream_writer>
 inline void write_qs2_header(stream_writer & writer, const bool shuffle) {
-    std::array<uint8_t, 24> bits;
+    std::array<uint8_t, 24> bits = {};
     std::memcpy(bits.data(), QS2_MAGIC_BITS.data(), 4);
     bits[4] = QS2_CURRENT_FORMAT_VER;
     bits[5] = ZSTD_COMPRESSION_FLAG; // compress algorithm, currently zstd only
@@ -53,7 +53,7 @@ inline void write_qs2_header(stream_writer & writer, const bool shuffle) {
 
 template <typename stream_reader>
 inline void read_qs2_header(stream_reader & reader, bool & shuffle, uint64_t & hash) {
-    std::array<uint8_t, 24> bits;
+    std::array<uint8_t, 24> bits = {};
     reader.read(reinterpret_cast<char*>(bits.data()), bits.size());
     if(! checkMagicNumber(bits.data(), QS2_MAGIC_BITS.data())) {
         // check for qdata or qs-legacy
@@ -86,7 +86,7 @@ inline void read_qs2_header(stream_reader & reader, bool & shuffle, uint64_t & h
 
 template <typename stream_writer>
 inline void write_qdata_header(stream_writer & writer, const bool shuffle) {
-    std::array<uint8_t, 24> bits;
+    std::array<uint8_t, 24> bits = {};
     std::memcpy(bits.data(), QDATA_MAGIC_BITS.data(), 4);
     bits[4] = QDATA_CURRENT_FORMAT_VER;
     bits[5] = ZSTD_COMPRESSION_FLAG; // compress algorithm, currently zstd only
@@ -108,7 +108,7 @@ inline void write_qx_hash(stream_writer & writer, const uint64_t value) {
 
 template <typename stream_reader>
 inline void read_qdata_header(stream_reader & reader, bool & shuffle, uint64_t & hash) {
-    std::array<uint8_t, 24> bits;
+    std::array<uint8_t, 24> bits = {};
     reader.read(reinterpret_cast<char*>(bits.data()), bits.size());
     if(! checkMagicNumber(bits.data(), QDATA_MAGIC_BITS.data())) {
         // check for qs2 or qs-legacy
@@ -152,7 +152,7 @@ struct qxHeaderInfo {
 
 template <typename stream_reader>
 inline qxHeaderInfo read_qx_header(stream_reader & reader) {
-    std::array<uint8_t, 24> bits;
+    std::array<uint8_t, 24> bits = {};
     qxHeaderInfo output;
     reader.read(reinterpret_cast<char*>(bits.data()), bits.size());
     if(checkMagicNumber(bits.data(), QS2_MAGIC_BITS.data()) ) {

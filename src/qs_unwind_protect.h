@@ -38,8 +38,7 @@ struct RerrorUnwind {
     try {
 
 #define UNWIND_PROTECT_END() \
-    } catch(RerrorUnwind & cont) { R_ContinueUnwind(cont.cont); } \
-    return R_NilValue; // unreachable
+    } catch(RerrorUnwind & cont) { R_ContinueUnwind(cont.cont); }
 
 #define DO_JMPBUF_QS_READ() \
     std::jmp_buf jmpbuf; \
@@ -59,12 +58,11 @@ struct RerrorUnwind {
 
 
 #define DO_UNWIND_PROTECT(_FUNCTION_, _IO_TYPE_, _ARGS_) \
-    SEXP output = R_UnwindProtect(_FUNCTION_ < _IO_TYPE_ >, (void*)(& _ARGS_), [](void* jmpbuf, Rboolean jump) { \
+    output = R_UnwindProtect(_FUNCTION_ < _IO_TYPE_ >, (void*)(& _ARGS_), [](void* jmpbuf, Rboolean jump) { \
         if (jump == TRUE) { \
             longjmp(*static_cast<std::jmp_buf*>(jmpbuf), 1); \
         } \
-    }, &jmpbuf, static_cast<SEXP>(cont_token)); \
-    return output
+    }, &jmpbuf, static_cast<SEXP>(cont_token))
 
 #endif
 

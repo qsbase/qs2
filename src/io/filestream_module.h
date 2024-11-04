@@ -23,14 +23,14 @@ struct IfStreamReader {
 
     }
     bool isSeekable() const { return true; }
-    void seekg(const uint32_t pos) {
+    void seekg(const uint64_t pos) {
         // https://stackoverflow.com/q/16364301/2723734
         // If EOF is reached, need to call clear() before seekg()
-        // since realistically we are only seeking at EOF, it's fine to unconditionally call clear
+        // since we are only seeking at EOF, it's fine to unconditionally call clear
         con.clear();
         con.seekg(pos);
     }
-    uint32_t tellg() { return con.tellg(); }
+    uint64_t tellg() { return con.tellg(); }
 };
 
 struct OfStreamWriter {
@@ -45,8 +45,8 @@ struct OfStreamWriter {
         con.write(reinterpret_cast<const char*>(&value), sizeof(T));
     }
     bool isSeekable() const { return true; }
-    void seekp(const uint32_t pos) { con.seekp(pos); }
-    uint32_t tellp() { return con.tellp(); }
+    void seekp(const uint64_t pos) { con.seekp(pos); }
+    uint64_t tellp() { return con.tellp(); }
 };
 
 #endif

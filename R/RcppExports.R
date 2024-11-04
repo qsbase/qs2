@@ -5,16 +5,32 @@ qs_save <- function(object, file, compress_level = 3L, shuffle = TRUE, nthreads 
     invisible(.Call(`_qs2_qs_save`, object, file, compress_level, shuffle, nthreads))
 }
 
+qs_serialize <- function(object, compress_level = 3L, shuffle = TRUE, nthreads = 1L) {
+    invisible(.Call(`_qs2_qs_serialize`, object, compress_level, shuffle, nthreads))
+}
+
 qs_read <- function(file, validate_checksum = FALSE, nthreads = 1L) {
     .Call(`_qs2_qs_read`, file, validate_checksum, nthreads)
+}
+
+qs_deserialize <- function(input, validate_checksum = FALSE, nthreads = 1L) {
+    .Call(`_qs2_qs_deserialize`, input, validate_checksum, nthreads)
 }
 
 qd_save <- function(object, file, compress_level = 3L, shuffle = TRUE, warn_unsupported_types = TRUE, nthreads = 1L) {
     invisible(.Call(`_qs2_qd_save`, object, file, compress_level, shuffle, warn_unsupported_types, nthreads))
 }
 
+qd_serialize <- function(object, compress_level = 3L, shuffle = TRUE, warn_unsupported_types = TRUE, nthreads = 1L) {
+    .Call(`_qs2_qd_serialize`, object, compress_level, shuffle, warn_unsupported_types, nthreads)
+}
+
 qd_read <- function(file, use_alt_rep = FALSE, validate_checksum = FALSE, nthreads = 1L) {
     .Call(`_qs2_qd_read`, file, use_alt_rep, validate_checksum, nthreads)
+}
+
+qd_deserialize <- function(input, use_alt_rep = FALSE, validate_checksum = FALSE, nthreads = 1L) {
+    .Call(`_qs2_qd_deserialize`, input, use_alt_rep, validate_checksum, nthreads)
 }
 
 qx_dump <- function(file) {
