@@ -1,3 +1,6 @@
+# temporary, remove to update analyses
+inst/analysis/
+
 .Rproj.user
 .Rhistory
 .RData

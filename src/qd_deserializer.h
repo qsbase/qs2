@@ -15,9 +15,6 @@
 
 using namespace Rcpp;
 
-#define FILE_READ_ERR_MSG "Failed to open for reading. Does the file exist? Do you have file permissions? Is the file name long? (>255 chars)"
-
-
 template<typename block_compress_reader>
 struct QdataDeserializer {
     block_compress_reader & reader;

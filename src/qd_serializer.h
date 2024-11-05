@@ -10,7 +10,6 @@
 #include "sf_external.h"
 
 using namespace Rcpp;
-#define FILE_SAVE_ERR_MSG "Failed to open for writing. Does the directory exist? Do you have file permissions? Is the file name long? (>255 chars)"
 
 template<typename block_compress_writer>
 struct QdataSerializer {

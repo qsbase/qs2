@@ -7,8 +7,6 @@
 
 using namespace Rcpp;
 
-#define FILE_READ_ERR_MSG "Failed to open for reading. Does the file exist? Do you have file permissions? Is the file name long? (>255 chars)"
-
 template<typename block_compress_reader>
 void qs_read_in_bytes(R_inpstream_t stream, void * buf, int length) {
     block_compress_reader * reader = reinterpret_cast<block_compress_reader*>(stream->data);

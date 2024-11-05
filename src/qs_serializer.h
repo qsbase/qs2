@@ -7,8 +7,6 @@
   
 using namespace Rcpp;
 
-#define FILE_SAVE_ERR_MSG "Failed to open for writing. Does the directory exist? Do you have file permissions? Is the file name long? (>255 chars)"
-
 struct qsSaveImplArgs {
     SEXP object;
     uint64_t & output_hash;
