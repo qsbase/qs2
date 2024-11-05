@@ -28,9 +28,4 @@ myfile <- tempfile()
 qs_save(x, myfile)
 x2 <- qs_read(myfile)
 identical(x, x2) # returns true
-
-# qs2 support multithreading
-qs_save(x, myfile, nthreads=1)
-x2 <- qs_read(myfile, nthreads=1)
-identical(x, x2) # returns true
 }

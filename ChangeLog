@@ -2,6 +2,9 @@ Version 0.1.2
     * Add support for newer versions of TBB using tbb::flow::input_node (https://github.com/qsbase/qs2/issues/2)
     * Add in memory serialization functions `qs_serialize`, `qs_deserialize`, `qd_serialize` and `qd_deserialize`
     * Add `qs_readm` and `qs_savem` functions for saving and loading multiple objects
+    * Added XXH3 64 bit standalone function `xxhash_raw`
+    * Ported from `qs` package: star name database from the International Astronomical Union; see `?starnames`
+    * Ported from `qs` package: base85 and basE91 ASCII encoding
 
 Version 0.1.1 (2024-09-16)
     * Initial CRAN release

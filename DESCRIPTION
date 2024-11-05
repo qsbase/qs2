@@ -14,6 +14,7 @@ Authors@R: c(
 Maintainer: Travers Ching <traversc@gmail.com>
 Description: Streamlines and accelerates the process of saving and loading R objects, improving speed and compression compared to other methods. The package provides two compression formats: the 'qs2' format, which uses R serialization via the C API while optimizing compression and disk I/O, and the 'qdata' format, featuring custom serialization for slightly faster performance and better compression. Additionally, the 'qs2' format can be directly converted to the standard 'RDS' format, ensuring long-term compatibility with future versions of R.
 License: GPL-3
+LazyData: true
 Biarch: true
 Depends: R (>= 3.5.0)
 Imports: 

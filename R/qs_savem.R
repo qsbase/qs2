@@ -22,12 +22,6 @@
 #' rm(x1, x2)
 #' qs_readm(myfile)
 #' exists('x1') && exists('x2') # returns true
-#'
-#' # qs support multithreading
-#' qs_savem(x1, x2, file=myfile, nthreads=2)
-#' rm(x1, x2)
-#' qs_readm(myfile, nthreads=2)
-#' exists('x1') && exists('x2') # returns true
 qs_savem <- function (...) {
   full_call <- as.list(sys.call())[-1]
   objects <- list(...)
@@ -66,12 +60,6 @@ qs_savem <- function (...) {
 #' qs_savem(x1, x2, file=myfile)
 #' rm(x1, x2)
 #' qs_readm(myfile)
-#' exists('x1') && exists('x2') # returns true
-#'
-#' # qs support multithreading
-#' qs_savem(x1, x2, file=myfile, nthreads=2)
-#' rm(x1, x2)
-#' qs_readm(myfile, nthreads=2)
 #' exists('x1') && exists('x2') # returns true
 qs_readm <- function(file, env = parent.frame(), ...) {
   savelist <- qs_read(file, ...)

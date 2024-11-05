@@ -153,6 +153,26 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// internal_set_blocksize
+int internal_set_blocksize(const int size);
+RcppExport SEXP _qs2_internal_set_blocksize(SEXP sizeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< const int >::type size(sizeSEXP);
+    rcpp_result_gen = Rcpp::wrap(internal_set_blocksize(size));
+    return rcpp_result_gen;
+END_RCPP
+}
+// internal_is_utf8_locale
+int internal_is_utf8_locale(const int size);
+RcppExport SEXP _qs2_internal_is_utf8_locale(SEXP sizeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< const int >::type size(sizeSEXP);
+    rcpp_result_gen = Rcpp::wrap(internal_is_utf8_locale(size));
+    return rcpp_result_gen;
+END_RCPP
+}
 // zstd_compress_raw
 std::vector<unsigned char> zstd_compress_raw(SEXP const data, const int compress_level);
 RcppExport SEXP _qs2_zstd_compress_raw(SEXP dataSEXP, SEXP compress_levelSEXP) {
@@ -206,23 +226,53 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// internal_set_blocksize
-int internal_set_blocksize(const int size);
-RcppExport SEXP _qs2_internal_set_blocksize(SEXP sizeSEXP) {
+// xxhash_raw
+std::string xxhash_raw(SEXP const data);
+RcppExport SEXP _qs2_xxhash_raw(SEXP dataSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< const int >::type size(sizeSEXP);
-    rcpp_result_gen = Rcpp::wrap(internal_set_blocksize(size));
+    Rcpp::traits::input_parameter< SEXP const >::type data(dataSEXP);
+    rcpp_result_gen = Rcpp::wrap(xxhash_raw(data));
     return rcpp_result_gen;
 END_RCPP
 }
-// internal_is_utf8_locale
-int internal_is_utf8_locale(const int size);
-RcppExport SEXP _qs2_internal_is_utf8_locale(SEXP sizeSEXP) {
+// base85_encode
+std::string base85_encode(const RawVector& rawdata);
+RcppExport SEXP _qs2_base85_encode(SEXP rawdataSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< const int >::type size(sizeSEXP);
-    rcpp_result_gen = Rcpp::wrap(internal_is_utf8_locale(size));
+    Rcpp::traits::input_parameter< const RawVector& >::type rawdata(rawdataSEXP);
+    rcpp_result_gen = Rcpp::wrap(base85_encode(rawdata));
+    return rcpp_result_gen;
+END_RCPP
+}
+// base85_decode
+RawVector base85_decode(const std::string& encoded_string);
+RcppExport SEXP _qs2_base85_decode(SEXP encoded_stringSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type encoded_string(encoded_stringSEXP);
+    rcpp_result_gen = Rcpp::wrap(base85_decode(encoded_string));
+    return rcpp_result_gen;
+END_RCPP
+}
+// c_base91_encode
+std::string c_base91_encode(const RawVector& rawdata);
+RcppExport SEXP _qs2_c_base91_encode(SEXP rawdataSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< const RawVector& >::type rawdata(rawdataSEXP);
+    rcpp_result_gen = Rcpp::wrap(c_base91_encode(rawdata));
+    return rcpp_result_gen;
+END_RCPP
+}
+// c_base91_decode
+RawVector c_base91_decode(const std::string& encoded_string);
+RcppExport SEXP _qs2_c_base91_decode(SEXP encoded_stringSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type encoded_string(encoded_stringSEXP);
+    rcpp_result_gen = Rcpp::wrap(c_base91_decode(encoded_string));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -240,13 +290,18 @@ static const R_CallMethodDef CallEntries[] = {
     {"_qs2_check_SIMD", (DL_FUNC) &_qs2_check_SIMD, 0},
     {"_qs2_check_TBB", (DL_FUNC) &_qs2_check_TBB, 0},
     {"_qs2_check_internal_blocksize", (DL_FUNC) &_qs2_check_internal_blocksize, 0},
+    {"_qs2_internal_set_blocksize", (DL_FUNC) &_qs2_internal_set_blocksize, 1},
+    {"_qs2_internal_is_utf8_locale", (DL_FUNC) &_qs2_internal_is_utf8_locale, 1},
     {"_qs2_zstd_compress_raw", (DL_FUNC) &_qs2_zstd_compress_raw, 2},
     {"_qs2_zstd_decompress_raw", (DL_FUNC) &_qs2_zstd_decompress_raw, 1},
     {"_qs2_zstd_compress_bound", (DL_FUNC) &_qs2_zstd_compress_bound, 1},
     {"_qs2_blosc_shuffle_raw", (DL_FUNC) &_qs2_blosc_shuffle_raw, 2},
     {"_qs2_blosc_unshuffle_raw", (DL_FUNC) &_qs2_blosc_unshuffle_raw, 2},
-    {"_qs2_internal_set_blocksize", (DL_FUNC) &_qs2_internal_set_blocksize, 1},
-    {"_qs2_internal_is_utf8_locale", (DL_FUNC) &_qs2_internal_is_utf8_locale, 1},
+    {"_qs2_xxhash_raw", (DL_FUNC) &_qs2_xxhash_raw, 1},
+    {"_qs2_base85_encode", (DL_FUNC) &_qs2_base85_encode, 1},
+    {"_qs2_base85_decode", (DL_FUNC) &_qs2_base85_decode, 1},
+    {"_qs2_c_base91_encode", (DL_FUNC) &_qs2_c_base91_encode, 1},
+    {"_qs2_c_base91_decode", (DL_FUNC) &_qs2_c_base91_decode, 1},
     {NULL, NULL, 0}
 };
 

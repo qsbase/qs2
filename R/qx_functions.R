@@ -42,11 +42,6 @@ shared_params_read <- function(file_input=TRUE, use_alt_rep=FALSE) {
 #' qs_save(x, myfile)
 #' x2 <- qs_read(myfile)
 #' identical(x, x2) # returns true
-#'
-#' # qs2 support multithreading
-#' qs_save(x, myfile, nthreads=1)
-#' x2 <- qs_read(myfile, nthreads=1)
-#' identical(x, x2) # returns true
 NULL
 
 #' qs_serialize
@@ -89,11 +84,6 @@ NULL
 #' myfile <- tempfile()
 #' qs_save(x, myfile)
 #' x2 <- qs_read(myfile)
-#' identical(x, x2) # returns true
-#'
-#' # qs2 support multithreading
-#' qs_save(x, myfile, nthreads=1)
-#' x2 <- qs_read(myfile, nthreads=1)
 #' identical(x, x2) # returns true
 NULL
 
@@ -140,18 +130,14 @@ NULL
 #' qd_save(x, myfile)
 #' x2 <- qd_read(myfile)
 #' identical(x, x2) # returns true
-#'
-#' # qdata support multithreading
-#' qd_save(x, myfile, nthreads=1)
-#' x2 <- qd_read(myfile, nthreads=1)
-#' identical(x, x2) # returns true
 NULL
 
 #' qd_serialize
 #' 
 #' Serializes an object to a raw vector using the `qdata` format.
 #' 
-#' @usage qd_serialize(object, compress_level = 3L, shuffle = TRUE, warn_unsupported_types = TRUE, nthreads = 1L)
+#' @usage qd_serialize(object, compress_level = 3L, shuffle = TRUE, 
+#' warn_unsupported_types = TRUE, nthreads = 1L)
 #' 
 #' @eval shared_params_save(file_output=FALSE, warn_unsupported_types = TRUE)
 #' @return The serialized object as a raw vector.
@@ -187,11 +173,6 @@ NULL
 #' myfile <- tempfile()
 #' qd_save(x, myfile)
 #' x2 <- qd_read(myfile)
-#' identical(x, x2) # returns true
-#'
-#' # qdata support multithreading
-#' qd_save(x, myfile, nthreads=1)
-#' x2 <- qd_read(myfile, nthreads=1)
 #' identical(x, x2) # returns true
 NULL
 
@@ -332,5 +313,21 @@ NULL
 #' x <- serialize(1L:1000L, NULL)
 #' xshuf <- blosc_shuffle_raw(x, 4)
 #' xunshuf <- blosc_unshuffle_raw(xshuf, 4)
+NULL
+
+#' XXH3_64 hash
+#' 
+#' Calculates 64-bit XXH3 hash
+#' 
+#' @usage xxhash_raw(data)
+#' @param data The data to hash
+#' 
+#' @return The 64-bit hash
+#' @export
+#' @name xxhash_raw
+#' 
+#' @examples
+#' x <- as.raw(c(1,2,3))
+#' xxhash_raw(x)
 NULL
 

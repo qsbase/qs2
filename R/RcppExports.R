@@ -49,6 +49,14 @@ check_internal_blocksize <- function() {
     .Call(`_qs2_check_internal_blocksize`)
 }
 
+internal_set_blocksize <- function(size) {
+    .Call(`_qs2_internal_set_blocksize`, size)
+}
+
+internal_is_utf8_locale <- function(size) {
+    .Call(`_qs2_internal_is_utf8_locale`, size)
+}
+
 zstd_compress_raw <- function(data, compress_level) {
     .Call(`_qs2_zstd_compress_raw`, data, compress_level)
 }
@@ -69,11 +77,23 @@ blosc_unshuffle_raw <- function(data, bytesofsize) {
     .Call(`_qs2_blosc_unshuffle_raw`, data, bytesofsize)
 }
 
-internal_set_blocksize <- function(size) {
-    .Call(`_qs2_internal_set_blocksize`, size)
+xxhash_raw <- function(data) {
+    .Call(`_qs2_xxhash_raw`, data)
 }
 
-internal_is_utf8_locale <- function(size) {
-    .Call(`_qs2_internal_is_utf8_locale`, size)
+base85_encode <- function(rawdata) {
+    .Call(`_qs2_base85_encode`, rawdata)
+}
+
+base85_decode <- function(encoded_string) {
+    .Call(`_qs2_base85_decode`, encoded_string)
+}
+
+c_base91_encode <- function(rawdata) {
+    .Call(`_qs2_c_base91_encode`, rawdata)
+}
+
+c_base91_decode <- function(encoded_string) {
+    .Call(`_qs2_c_base91_decode`, encoded_string)
 }
 

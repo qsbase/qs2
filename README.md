@@ -1,7 +1,7 @@
 qs2
 ================
 
-[![R-CMD-check](https://github.com/traversc/qs2/workflows/R-CMD-check/badge.svg)](https://github.com/traversc/qs2/actions)
+[![R-CMD-check](https://github.com/qsbase/qs2/workflows/R-CMD-check/badge.svg)](https://github.com/qsbase/qs2/actions)
 [![CRAN-Status-Badge](https://www.r-pkg.org/badges/version/qs2)](https://cran.r-project.org/package=qs2)
 [![CRAN-Downloads-Badge](https://cranlogs.r-pkg.org/badges/qs2)](https://cran.r-project.org/package=qs2)
 [![CRAN-Downloads-Total-Badge](https://cranlogs.r-pkg.org/badges/grand-total/qs2)](https://cran.r-project.org/package=qs2)

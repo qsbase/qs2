@@ -4,7 +4,8 @@
 \alias{qd_serialize}
 \title{qd_serialize}
 \usage{
-qd_serialize(object, compress_level = 3L, shuffle = TRUE, warn_unsupported_types = TRUE, nthreads = 1L)
+qd_serialize(object, compress_level = 3L, shuffle = TRUE, 
+warn_unsupported_types = TRUE, nthreads = 1L)
 }
 \arguments{
 \item{object}{The object to save.}
