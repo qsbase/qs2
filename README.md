@@ -137,3 +137,29 @@ A summary across 4 datasets is presented below.
 These datasets are openly licensed and represent a combination of
 numeric and text data across multiple domains. See
 `inst/analysis/datasets.R` on Github.
+
+# Usage in C/C++
+
+Serialization functions can be accessed in compiled code. Below is an
+example using Rcpp.
+
+``` cpp
+// [[Rcpp::depends(qs2)]]
+#include <Rcpp.h>
+#include "qs2_external.h"
+using namespace Rcpp;
+
+// [[Rcpp::export]]
+SEXP test_qs_serialize(SEXP x) {
+  uint64_t len = 0;
+  char * buffer = c_qs_serialize(x, &len, 10, 4); // object, buffer length, compress_level, nthreads
+  SEXP y = c_qs_deserialize(buffer, len, 4);      // buffer, buffer length, nthreads
+  free(buffer);                                   // must manually free buffer
+  return y;
+}
+
+/*** R
+x <- runif(1e7)
+stopifnot(test_qs_serialize(x) == x)
+*/
+```

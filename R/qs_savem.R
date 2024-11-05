@@ -35,7 +35,7 @@ qs_savem <- function (...) {
   unnamed_list <- objects[unnamed]
   names(unnamed_list) <- sapply(unnamed, function(i) parse(text = full_call[[i]]))
   named_list <- objects[-unnamed]
-  named_list$x <- unnamed_list
+  named_list[["object"]] <- unnamed_list
   do.call(qs_save,named_list)
 }
 
@@ -74,11 +74,7 @@ qs_savem <- function (...) {
 #' qs_readm(myfile, nthreads=2)
 #' exists('x1') && exists('x2') # returns true
 qs_readm <- function(file, env = parent.frame(), ...) {
-
   savelist <- qs_read(file, ...)
-
   if (!is.list(savelist) || is.null(names(savelist))) stop(paste0("Object read from ", file, " is not a named list."))
-
   invisible(list2env(savelist, env))
-
 }

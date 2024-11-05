@@ -127,6 +127,10 @@ qs_save_rand <- function(x) {
     qs2::qs_save(x, file = myfile, compress_level = cl, nthreads = nt)
   } else if(format == "qdata") {
     qs2::qd_save(x, file = myfile, compress_level = cl, nthreads = nt)
+  } else if(format == "qs2_memory") {
+    .serialized_object <<- qs2::qs_serialize(x, compress_level = cl, nthreads = nt)
+  } else if(format == "qdata_memory") {
+    .serialized_object <<- qs2::qd_serialize(x, compress_level = cl, nthreads = nt)
   }
 }
 
@@ -138,11 +142,15 @@ qs_read_rand <- function() {
     qs2::qs_read(myfile, validate_checksum=check, nthreads = nt)
   } else if(format == "qdata") {
     qs2::qd_read(myfile, use_alt_rep = ar, validate_checksum=check, nthreads = nt)
+  } else if(format == "qs2_memory") {
+    qs2::qs_deserialize(.serialized_object, validate_checksum=check, nthreads = nt)
+  } else if(format == "qdata_memory") {
+    qs2::qd_deserialize(.serialized_object, use_alt_rep = ar, validate_checksum=check, nthreads = nt)
   }
 }
 
 ################################################################################################
-for(format in c("qdata", "qs2")) {
+for(format in c("qs2_memory", "qdata_memory", "qdata", "qs2")) {
 for (q in 1:reps) {
   cat("########################################\n")
   cat("Format", format, "rep",  q, "of", reps, "\n")
