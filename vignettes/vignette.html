@@ -531,17 +531,28 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <span id="cb8-5"><a href="#cb8-5" aria-hidden="true"></a></span>
 <span id="cb8-6"><a href="#cb8-6" aria-hidden="true"></a><span class="co">// [[Rcpp::export]]</span></span>
 <span id="cb8-7"><a href="#cb8-7" aria-hidden="true"></a>SEXP test_qs_serialize(SEXP x) {</span>
-<span id="cb8-8"><a href="#cb8-8" aria-hidden="true"></a>  <span class="dt">uint64_t</span> len = <span class="dv">0</span>;</span>
-<span id="cb8-9"><a href="#cb8-9" aria-hidden="true"></a>  <span class="dt">char</span> * buffer = c_qs_serialize(x, &amp;len, <span class="dv">10</span>, <span class="dv">4</span>); <span class="co">// object, buffer length, compress_level, nthreads</span></span>
-<span id="cb8-10"><a href="#cb8-10" aria-hidden="true"></a>  SEXP y = c_qs_deserialize(buffer, len, <span class="dv">4</span>);      <span class="co">// buffer, buffer length, nthreads</span></span>
-<span id="cb8-11"><a href="#cb8-11" aria-hidden="true"></a>  free(buffer);                                   <span class="co">// must manually free buffer</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true"></a>  <span class="dt">size_t</span> len = <span class="dv">0</span>;</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true"></a>  <span class="dt">unsigned</span> <span class="dt">char</span> * buffer = c_qs_serialize(x, &amp;len, <span class="dv">10</span>, <span class="kw">true</span>, <span class="dv">4</span>); <span class="co">// object, buffer length, compress_level, shuffle, nthreads</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true"></a>  SEXP y = c_qs_deserialize(buffer, len, <span class="kw">false</span>, <span class="dv">4</span>);              <span class="co">// buffer, buffer length, validate_checksum, nthreads</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true"></a>  c_qs_free(buffer);                                             <span class="co">// must manually free buffer</span></span>
 <span id="cb8-12"><a href="#cb8-12" aria-hidden="true"></a>  <span class="cf">return</span> y;</span>
 <span id="cb8-13"><a href="#cb8-13" aria-hidden="true"></a>}</span>
 <span id="cb8-14"><a href="#cb8-14" aria-hidden="true"></a></span>
-<span id="cb8-15"><a href="#cb8-15" aria-hidden="true"></a><span class="co">/*** R</span></span>
-<span id="cb8-16"><a href="#cb8-16" aria-hidden="true"></a><span class="co">x &lt;- runif(1e7)</span></span>
-<span id="cb8-17"><a href="#cb8-17" aria-hidden="true"></a><span class="co">stopifnot(test_qs_serialize(x) == x)</span></span>
-<span id="cb8-18"><a href="#cb8-18" aria-hidden="true"></a><span class="co">*/</span></span></code></pre></div>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true"></a><span class="co">// [[Rcpp::export]]</span></span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true"></a>SEXP test_qd_serialize(SEXP x) {</span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true"></a>  <span class="dt">size_t</span> len = <span class="dv">0</span>;</span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true"></a>  <span class="dt">unsigned</span> <span class="dt">char</span> * buffer = c_qd_serialize(x, &amp;len, <span class="dv">10</span>, <span class="kw">true</span>, <span class="dv">4</span>); <span class="co">// object, buffer length, compress_level, shuffle, nthreads</span></span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true"></a>  SEXP y = c_qd_deserialize(buffer, len, <span class="kw">false</span>, <span class="kw">false</span>, <span class="dv">4</span>);       <span class="co">// buffer, buffer length, use_alt_rep, validate_checksum, nthreads</span></span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true"></a>  c_qd_free(buffer);                                             <span class="co">// must manually free buffer</span></span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true"></a>  <span class="cf">return</span> y;</span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true"></a>}</span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true"></a></span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true"></a></span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true"></a><span class="co">/*** R</span></span>
+<span id="cb8-26"><a href="#cb8-26" aria-hidden="true"></a><span class="co">x &lt;- runif(1e7)</span></span>
+<span id="cb8-27"><a href="#cb8-27" aria-hidden="true"></a><span class="co">stopifnot(test_qs_serialize(x) == x)</span></span>
+<span id="cb8-28"><a href="#cb8-28" aria-hidden="true"></a><span class="co">stopifnot(test_qd_serialize(x) == x)</span></span>
+<span id="cb8-29"><a href="#cb8-29" aria-hidden="true"></a><span class="co">*/</span></span></code></pre></div>
 </div>
 
 
