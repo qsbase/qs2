@@ -191,6 +191,7 @@ bool c_qs_free(void *buffer) {
 }
 
 // DO_UNWIND_PROTECT macro assigns SEXP output
+// requires PROTECT in this macro due to false positive rchk warning
 #define DO_QS_READ(_STREAM_READER_, _BASE_CLASS_, _DECOMPRESSOR_)                                                             \
     _BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, ErrorType::r_error> block_io(myFile);                                       \
     R_UnserializeInit<_BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, ErrorType::r_error>>(&in, (R_pstream_data_t)(&block_io)); \
@@ -234,6 +235,8 @@ SEXP qs_read(const std::string& file, const bool validate_checksum = false, cons
         } else {
             DO_QS_READ(IfStreamReader, BlockCompressReaderMT, ZstdDecompressor);
         }
+#else
+        PROTECT(output); // unreachable, but rchk warns if stack is empty
 #endif
     } else {
         if (shuffle) {
@@ -278,6 +281,8 @@ SEXP qs_deserialize_impl(CVectorIn& myFile, const bool validate_checksum = false
         } else {
             DO_QS_READ(CVectorIn, BlockCompressReaderMT, ZstdDecompressor);
         }
+#else
+        PROTECT(output); // unreachable, but rchk warns if stack is empty
 #endif
     } else {
         if (shuffle) {
@@ -407,6 +412,7 @@ bool c_qd_free(void *buffer) {
     return true;
 }
 
+// do not UNPROTECT in this macro due to false positive rchk warning
 #define DO_QD_READ(_STREAM_READER_, _BASE_CLASS_, _DECOMPRESSOR_)                                                             \
     _BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, ErrorType::cpp_error> reader(myFile);                                       \
     QdataDeserializer<_BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, ErrorType::cpp_error>> deserializer(reader, use_alt_rep); \
@@ -447,6 +453,8 @@ SEXP qd_read(const std::string& file, const bool use_alt_rep = false, const bool
         } else {
             DO_QD_READ(IfStreamReader, BlockCompressReaderMT, ZstdDecompressor);
         }
+#else
+        PROTECT(output); // unreachable, but rchk warns if stack is empty
 #endif
     } else {
         if (shuffle) {
@@ -487,6 +495,8 @@ SEXP qd_deserialize_impl(CVectorIn& myFile, const bool use_alt_rep = false, cons
         } else {
             DO_QD_READ(CVectorIn, BlockCompressReaderMT, ZstdDecompressor);
         }
+#else
+        PROTECT(output); // unreachable, but rchk warns if stack is empty
 #endif
     } else {
         if (shuffle) {
