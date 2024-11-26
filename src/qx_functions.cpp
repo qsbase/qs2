@@ -195,7 +195,8 @@ bool c_qs_free(void *buffer) {
     _BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, ErrorType::r_error> block_io(myFile);                                       \
     R_UnserializeInit<_BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, ErrorType::r_error>>(&in, (R_pstream_data_t)(&block_io)); \
     DO_JMPBUF_QS_READ();                                                                                                      \
-    DO_UNWIND_PROTECT_QS_READ(qs_read_impl, decltype(block_io), in);
+    DO_UNWIND_PROTECT_QS_READ(qs_read_impl, decltype(block_io), in); \
+    PROTECT(output);
 
 // [[Rcpp::export(rng = false)]]
 SEXP qs_read(const std::string& file, const bool validate_checksum = false, const int nthreads = 1) {
@@ -226,7 +227,7 @@ SEXP qs_read(const std::string& file, const bool validate_checksum = false, cons
     struct R_inpstream_st in;
     SEXP output = R_NilValue;
     if (nthreads > 1) {
-#if RCPP_PARALLEL_USE_TBB
+#if RCPP_PARALLEL_USE_TBB != 0
         tbb::global_control gc(tbb::global_control::parameter::max_allowed_parallelism, nthreads);
         if (shuffle) {
             DO_QS_READ(IfStreamReader, BlockCompressReaderMT, ZstdShuffleDecompressor);
@@ -242,6 +243,7 @@ SEXP qs_read(const std::string& file, const bool validate_checksum = false, cons
         }
     }
     return output;
+    UNPROTECT(1);
     UNWIND_PROTECT_END();
     return R_NilValue;
 }
@@ -269,7 +271,7 @@ SEXP qs_deserialize_impl(CVectorIn& myFile, const bool validate_checksum = false
     struct R_inpstream_st in;
     SEXP output = R_NilValue;
     if (nthreads > 1) {
-#if RCPP_PARALLEL_USE_TBB
+#if RCPP_PARALLEL_USE_TBB != 0
         tbb::global_control gc(tbb::global_control::parameter::max_allowed_parallelism, nthreads);
         if (shuffle) {
             DO_QS_READ(CVectorIn, BlockCompressReaderMT, ZstdShuffleDecompressor);
@@ -284,6 +286,7 @@ SEXP qs_deserialize_impl(CVectorIn& myFile, const bool validate_checksum = false
             DO_QS_READ(CVectorIn, BlockCompressReader, ZstdDecompressor);
         }
     }
+    UNPROTECT(1);
     return output;
     UNWIND_PROTECT_END();
     return R_NilValue;
@@ -409,8 +412,7 @@ bool c_qd_free(void *buffer) {
     QdataDeserializer<_BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, ErrorType::cpp_error>> deserializer(reader, use_alt_rep); \
     output = PROTECT(deserializer.read_object());                                                                             \
     deserializer.read_object_data();                                                                                          \
-    reader.finish();                                                                                                          \
-    UNPROTECT(1);
+    reader.finish();
 
 // [[Rcpp::export(rng = false)]]
 SEXP qd_read(const std::string& file, const bool use_alt_rep = false, const bool validate_checksum = false, const int nthreads = 1) {
@@ -438,7 +440,7 @@ SEXP qd_read(const std::string& file, const bool use_alt_rep = false, const bool
 
     SEXP output = R_NilValue;
     if (nthreads > 1) {
-#if RCPP_PARALLEL_USE_TBB
+#if RCPP_PARALLEL_USE_TBB != 0
         tbb::global_control gc(tbb::global_control::parameter::max_allowed_parallelism, nthreads);
         if (shuffle) {
             DO_QD_READ(IfStreamReader, BlockCompressReaderMT, ZstdShuffleDecompressor);
@@ -453,6 +455,7 @@ SEXP qd_read(const std::string& file, const bool use_alt_rep = false, const bool
             DO_QD_READ(IfStreamReader, BlockCompressReader, ZstdDecompressor);
         }
     }
+    UNPROTECT(1);
     return output;
 }
 
@@ -477,7 +480,7 @@ SEXP qd_deserialize_impl(CVectorIn& myFile, const bool use_alt_rep = false, cons
 
     SEXP output = R_NilValue;
     if (nthreads > 1) {
-#if RCPP_PARALLEL_USE_TBB
+#if RCPP_PARALLEL_USE_TBB != 0
         tbb::global_control gc(tbb::global_control::parameter::max_allowed_parallelism, nthreads);
         if (shuffle) {
             DO_QD_READ(CVectorIn, BlockCompressReaderMT, ZstdShuffleDecompressor);
@@ -492,6 +495,7 @@ SEXP qd_deserialize_impl(CVectorIn& myFile, const bool use_alt_rep = false, cons
             DO_QD_READ(CVectorIn, BlockCompressReader, ZstdDecompressor);
         }
     }
+    UNPROTECT(1);
     return output;
 }
 
