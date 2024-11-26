@@ -114,18 +114,23 @@ SEXP qs_save(SEXP object, const std::string& file, const int compress_level = 3,
         tbb::global_control gc(tbb::global_control::parameter::max_allowed_parallelism, nthreads);
         if (shuffle) {
             DO_QS_SAVE(OfStreamWriter, BlockCompressWriterMT, ZstdShuffleCompressor, xxHashEnv);
+            PROTECT(output);
         } else {
             DO_QS_SAVE(OfStreamWriter, BlockCompressWriterMT, ZstdCompressor, xxHashEnv);
+            PROTECT(output);
         }
 #endif
     } else {
         if (shuffle) {
             DO_QS_SAVE(OfStreamWriter, BlockCompressWriter, ZstdShuffleCompressor, xxHashEnv);
+            PROTECT(output);
         } else {
             DO_QS_SAVE(OfStreamWriter, BlockCompressWriter, ZstdCompressor, xxHashEnv);
+            PROTECT(output);
         }
     }
     write_qx_hash(myFile, hash);
+    UNPROTECT(1);
     return output;
     UNWIND_PROTECT_END();
     return R_NilValue;
