@@ -98,13 +98,28 @@ inline void write_qdata_header(stream_writer & writer, const bool shuffle) {
 
 // only valid for stream_writer than can seek
 // this should be the last operation since the output position is moved
-template <typename stream_writer>
-inline void write_qx_hash(stream_writer & writer, const uint64_t value) {
+// template <typename stream_writer>
+// inline void write_qx_hash(stream_writer & writer, const uint64_t value) {
+//     if(value != 0) {
+//         writer.seekp(HEADER_HASH_POSITION);
+//         writer.writeInteger(value);
+//     }
+// }
+
+inline void write_qx_hash(OfStreamWriter & writer, const uint64_t value) {
     if(value != 0) {
         writer.seekp(HEADER_HASH_POSITION);
         writer.writeInteger(value);
     }
 }
+
+inline void write_qx_hash(CVectorOut & writer, const uint64_t value) {
+    if(value != 0) {
+        writer.seekp(HEADER_HASH_POSITION);
+        writer.writeInteger(value);
+    }
+}
+
 
 template <typename stream_reader>
 inline void read_qdata_header(stream_reader & reader, bool & shuffle, uint64_t & hash) {
