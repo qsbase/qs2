@@ -56,13 +56,21 @@ struct RerrorUnwind {
         throw RerrorUnwind{cont_token}; \
     } \
 
-
-#define DO_UNWIND_PROTECT(_FUNCTION_, _IO_TYPE_, _ARGS_) \
+#define DO_UNWIND_PROTECT_QS_READ(_FUNCTION_, _IO_TYPE_, _ARGS_) \
     output = R_UnwindProtect(_FUNCTION_ < _IO_TYPE_ >, (void*)(& _ARGS_), [](void* jmpbuf, Rboolean jump) { \
         if (jump == TRUE) { \
             longjmp(*static_cast<std::jmp_buf*>(jmpbuf), 1); \
         } \
     }, &jmpbuf, static_cast<SEXP>(cont_token))
+
+
+#define DO_UNWIND_PROTECT_QS_SAVE(_FUNCTION_, _IO_TYPE_, _ARGS_) \
+    R_UnwindProtect(_FUNCTION_ < _IO_TYPE_ >, (void*)(& _ARGS_), [](void* jmpbuf, Rboolean jump) { \
+        if (jump == TRUE) { \
+            longjmp(*static_cast<std::jmp_buf*>(jmpbuf), 1); \
+        } \
+    }, &jmpbuf, static_cast<SEXP>(cont_token))
+
 
 #endif
 

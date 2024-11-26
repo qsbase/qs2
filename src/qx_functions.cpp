@@ -87,7 +87,7 @@ void qx_export_functions(DllInfo* dll);
     R_SerializeInit(&out, block_io);                                                                                   \
     qsSaveImplArgs args = {object, hash, &out};                                                                        \
     DO_JMPBUF_QS_SAVE();                                                                                               \
-    DO_UNWIND_PROTECT(qs_save_impl, decltype(block_io), args);
+    DO_UNWIND_PROTECT_QS_SAVE(qs_save_impl, decltype(block_io), args);
 
 // [[Rcpp::export(rng = false, invisible = true)]]
 SEXP qs_save(SEXP object, const std::string& file, const int compress_level = 3, const bool shuffle = true, const int nthreads = 1) {
@@ -107,31 +107,25 @@ SEXP qs_save(SEXP object, const std::string& file, const int compress_level = 3,
 
     UNWIND_PROTECT_BEGIN()
     struct R_outpstream_st out;
-    SEXP output = R_NilValue;
     uint64_t hash = 0;
     if (nthreads > 1) {
 #if RCPP_PARALLEL_USE_TBB
         tbb::global_control gc(tbb::global_control::parameter::max_allowed_parallelism, nthreads);
         if (shuffle) {
             DO_QS_SAVE(OfStreamWriter, BlockCompressWriterMT, ZstdShuffleCompressor, xxHashEnv);
-            PROTECT(output);
         } else {
             DO_QS_SAVE(OfStreamWriter, BlockCompressWriterMT, ZstdCompressor, xxHashEnv);
-            PROTECT(output);
         }
 #endif
     } else {
         if (shuffle) {
             DO_QS_SAVE(OfStreamWriter, BlockCompressWriter, ZstdShuffleCompressor, xxHashEnv);
-            PROTECT(output);
         } else {
             DO_QS_SAVE(OfStreamWriter, BlockCompressWriter, ZstdCompressor, xxHashEnv);
-            PROTECT(output);
         }
     }
     write_qx_hash(myFile, hash);
-    UNPROTECT(1);
-    return output;
+    return R_NilValue;
     UNWIND_PROTECT_END();
     return R_NilValue;
 }
@@ -150,7 +144,6 @@ CVectorOut qs_serialize_impl(SEXP object, const int compress_level = 3, const bo
 
     UNWIND_PROTECT_BEGIN()
     struct R_outpstream_st out;
-    SEXP output = R_NilValue;
     uint64_t hash = 0;
     if (nthreads > 1) {
 #if RCPP_PARALLEL_USE_TBB
@@ -171,7 +164,6 @@ CVectorOut qs_serialize_impl(SEXP object, const int compress_level = 3, const bo
     uint64_t len = myFile.tellp();
     write_qx_hash(myFile, hash);  // must be done after getting length (position) from tellp
     myFile.seekp(len);
-    (void)output;  // unused variable
     return myFile;
     UNWIND_PROTECT_END();
     return CVectorOut{};
@@ -203,7 +195,7 @@ bool c_qs_free(void *buffer) {
     _BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, ErrorType::r_error> block_io(myFile);                                       \
     R_UnserializeInit<_BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, ErrorType::r_error>>(&in, (R_pstream_data_t)(&block_io)); \
     DO_JMPBUF_QS_READ();                                                                                                      \
-    DO_UNWIND_PROTECT(qs_read_impl, decltype(block_io), in);
+    DO_UNWIND_PROTECT_QS_READ(qs_read_impl, decltype(block_io), in);
 
 // [[Rcpp::export(rng = false)]]
 SEXP qs_read(const std::string& file, const bool validate_checksum = false, const int nthreads = 1) {
