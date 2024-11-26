@@ -245,8 +245,8 @@ SEXP qs_read(const std::string& file, const bool validate_checksum = false, cons
             DO_QS_READ(IfStreamReader, BlockCompressReader, ZstdDecompressor);
         }
     }
-    return output;
     UNPROTECT(1);
+    return output;
     UNWIND_PROTECT_END();
     return R_NilValue;
 }
