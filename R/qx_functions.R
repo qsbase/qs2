@@ -206,7 +206,7 @@ NULL
 #'
 #' @param file A file name/path.
 #'
-#' @return The uncompressed serialization.
+#' @return A list containing uncompressed binary serialization and metadata.
 #' @export
 #' @name qx_dump
 #'

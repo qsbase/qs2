@@ -184,11 +184,12 @@ struct ZstdShuffleDecompressor {
             std::memcpy(dst + output_blocksize - remainder, shuffleblock.get() + output_blocksize - remainder, remainder);
             return output_blocksize;
         } else {
-            if(srcSize > MAX_BLOCKSIZE) {
+            if(srcSize > MAX_ZBLOCKSIZE) {
                 return COMPRESSION_ERROR; // 0 indicates an error
             }
             auto output_blocksize = ZSTD_decompressDCtx(dctx, dst, dstCapacity, src, srcSize);
             if(ZSTD_isError(output_blocksize)) {
+
                 return COMPRESSION_ERROR; // 0 indicates an error
             }
             return output_blocksize;

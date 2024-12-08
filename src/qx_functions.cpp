@@ -523,7 +523,7 @@ List qx_dump(const std::string& file) {
     }
     qxHeaderInfo header_info = read_qx_header(myFile);
 
-    std::tuple<std::vector<std::vector<unsigned char>>, std::vector<std::vector<unsigned char>>, std::string> output;
+    std::tuple<std::vector<std::vector<unsigned char>>, std::vector<std::vector<unsigned char>>, std::vector<int>, std::string> output;
     if (header_info.shuffle) {
         output = qx_dump_impl<IfStreamReader, ZstdShuffleDecompressor>(myFile);
     } else {
@@ -537,9 +537,11 @@ List qx_dump(const std::string& file) {
         _["shuffle"] = header_info.shuffle,
         _["file_endian"] = header_info.file_endian,
         _["stored_hash"] = header_info.stored_hash,
-        _["computed_hash"] = std::get<2>(output),
+        _["computed_hash"] = std::get<3>(output),
         _["zblocks"] = std::get<0>(output),
-        _["blocks"] = std::get<1>(output));
+        _["blocks"] = std::get<1>(output),
+        _["block_shuffled"] = std::get<2>(output)
+    );
 }
 
 // [[Rcpp::export(rng = false)]]
