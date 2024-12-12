@@ -10,7 +10,7 @@ qx_dump(file)
 \item{file}{A file name/path.}
 }
 \value{
-The uncompressed serialization.
+A list containing uncompressed binary serialization and metadata.
 }
 \description{
 Exports the uncompressed binary serialization to a list of raw vectors for both \code{qs2} and \code{qdata} formats.
