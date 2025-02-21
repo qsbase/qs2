@@ -7,13 +7,13 @@
 xxhash_raw(data)
 }
 \arguments{
-\item{data}{The data to hash}
+\item{data}{The data to hash.}
 }
 \value{
-The 64-bit hash
+The 64-bit hash.
 }
 \description{
-Calculates 64-bit XXH3 hash
+Calculates a 64-bit XXH3 hash.
 }
 \examples{
 x <- as.raw(c(1,2,3))

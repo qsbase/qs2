@@ -4,16 +4,19 @@
 \alias{qd_read}
 \title{qd_read}
 \usage{
-qd_read(file, use_alt_rep = FALSE, validate_checksum=FALSE, nthreads = 1L)
+qd_read(file,
+         use_alt_rep = qopt("use_alt_rep"),
+         validate_checksum = qopt("validate_checksum"),
+         nthreads = qopt("nthreads"))
 }
 \arguments{
 \item{file}{The file name/path.}
 
-\item{use_alt_rep}{Use ALTREP when reading in string data (default \code{FALSE}).}
+\item{use_alt_rep}{Use ALTREP when reading in string data (default: qopt("use_alt_rep"), initial value is FALSE).}
 
-\item{validate_checksum}{Whether to validate the stored checksum in the file (default \code{FALSE}). This can be used to test for file corruption but has a performance penality.}
+\item{validate_checksum}{Whether to validate the stored checksum in the file (default: qopt("validate_checksum"), initial value is FALSE).}
 
-\item{nthreads}{The number of threads to use when reading data (default: \code{1}).}
+\item{nthreads}{The number of threads to use when reading data (default: qopt("nthreads"), initial value is 1L).}
 }
 \value{
 The object stored in \code{file}.
@@ -23,11 +26,11 @@ Reads an object that was saved to disk in the \code{qdata} format.
 }
 \examples{
 x <- data.frame(int = sample(1e3, replace=TRUE),
-        num = rnorm(1e3),
-        char = sample(state.name, 1e3, replace=TRUE),
-        stringsAsFactors = FALSE)
+         num = rnorm(1e3),
+         char = sample(state.name, 1e3, replace=TRUE),
+         stringsAsFactors = FALSE)
 myfile <- tempfile()
 qd_save(x, myfile)
 x2 <- qd_read(myfile)
-identical(x, x2) # returns true
+identical(x, x2) # returns TRUE
 }

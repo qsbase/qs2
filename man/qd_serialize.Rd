@@ -4,23 +4,27 @@
 \alias{qd_serialize}
 \title{qd_serialize}
 \usage{
-qd_serialize(object, compress_level = 3L, shuffle = TRUE, 
-warn_unsupported_types = TRUE, nthreads = 1L)
+qd_serialize(object,
+         compress_level = qopt("compress_level"),
+         shuffle = qopt("shuffle"),
+         warn_unsupported_types = qopt("warn_unsupported_types"),
+         nthreads = qopt("nthreads"))
 }
 \arguments{
 \item{object}{The object to save.}
 
-\item{compress_level}{The compression level used (default 3).
+\item{compress_level}{The compression level used (default: qopt("compress_level"), initial value is 3L.
 
-The maximum and minimum possible values depends on the version of ZSTD library used.
-As of ZSTD 1.5.6 the maximum compression level is 22, and the minimum is -131072. Usually, values in the low positive range offer very good performance in terms
+The maximum and minimum possible values depend on the version of the ZSTD library used.
+As of ZSTD 1.5.6 the maximum compression level is 22, and the minimum is -131072.
+Usually, values in the low positive range offer very good performance in terms
 of speed and compression.}
 
-\item{shuffle}{Whether to allow byte shuffling when compressing data (default: \code{TRUE}).}
+\item{shuffle}{Whether to allow byte shuffling when compressing data (default: qopt("shuffle"), initial value is TRUE).}
 
-\item{warn_unsupported_types}{Whether to warn when saving an object with an unsupported type (default \code{TRUE}).}
+\item{warn_unsupported_types}{Whether to warn when saving an object with an unsupported type (default: qopt("warn_unsupported_types"), initial value is TRUE).}
 
-\item{nthreads}{The number of threads to use when compressing data (default: \code{1}).}
+\item{nthreads}{The number of threads to use when compressing data (default: qopt("nthreads"), initial value is 1L.}
 }
 \value{
 The serialized object as a raw vector.
@@ -30,10 +34,10 @@ Serializes an object to a raw vector using the \code{qdata} format.
 }
 \examples{
 x <- data.frame(int = sample(1e3, replace=TRUE),
-        num = rnorm(1e3),
-        char = sample(state.name, 1e3, replace=TRUE),
-        stringsAsFactors = FALSE)
+         num = rnorm(1e3),
+         char = sample(state.name, 1e3, replace=TRUE),
+         stringsAsFactors = FALSE)
 xserialized <- qd_serialize(x)
 x2 <- qd_deserialize(xserialized)
-identical(x, x2) # returns true
+identical(x, x2) # returns TRUE
 }

@@ -37,6 +37,55 @@ SEXP c_qd_deserialize(const unsigned char * buffer, const size_t len, const bool
   return fun(buffer, len, use_alt_rep, validate_checksum, nthreads);
 }
 
+int qs2_get_compress_level() {
+  static int (*fun)() = (int (*)()) R_GetCCallable("qs2", "qs2_get_compress_level");
+  return fun();
+}
+void qs2_set_compress_level(int value) {
+  static void (*fun)(int) = (void (*)(int)) R_GetCCallable("qs2", "qs2_set_compress_level");
+  fun(value);
+}
+bool qs2_get_shuffle() {
+  static bool (*fun)() = (bool (*)()) R_GetCCallable("qs2", "qs2_get_shuffle");
+  return fun();
+}
+void qs2_set_shuffle(bool value) {
+  static void (*fun)(bool) = (void (*)(bool)) R_GetCCallable("qs2", "qs2_set_shuffle");
+  fun(value);
+}
+int qs2_get_nthreads() {
+  static int (*fun)() = (int (*)()) R_GetCCallable("qs2", "qs2_get_nthreads");
+  return fun();
+}
+void qs2_set_nthreads(int value) {
+  static void (*fun)(int) = (void (*)(int)) R_GetCCallable("qs2", "qs2_set_nthreads");
+  fun(value);
+}
+bool qs2_get_validate_checksum() {
+  static bool (*fun)() = (bool (*)()) R_GetCCallable("qs2", "qs2_get_validate_checksum");
+  return fun();
+}
+void qs2_set_validate_checksum(bool value) {
+  static void (*fun)(bool) = (void (*)(bool)) R_GetCCallable("qs2", "qs2_set_validate_checksum");
+  fun(value);
+}
+bool qs2_get_warn_unsupported_types() {
+  static bool (*fun)() = (bool (*)()) R_GetCCallable("qs2", "qs2_get_warn_unsupported_types");
+  return fun();
+}
+void qs2_set_warn_unsupported_types(bool value) {
+  static void (*fun)(bool) = (void (*)(bool)) R_GetCCallable("qs2", "qs2_set_warn_unsupported_types");
+  fun(value);
+}
+bool qs2_get_use_alt_rep() {
+  static bool (*fun)() = (bool (*)()) R_GetCCallable("qs2", "qs2_get_use_alt_rep");
+  return fun();
+}
+void qs2_set_use_alt_rep(bool value) {
+  static void (*fun)(bool) = (void (*)(bool)) R_GetCCallable("qs2", "qs2_set_use_alt_rep");
+  fun(value);
+}
+
 #ifdef __cplusplus
 }
 #endif

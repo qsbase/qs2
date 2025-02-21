@@ -10,7 +10,7 @@ zstd_compress_bound(size)
 \item{size}{An integer size}
 }
 \value{
-maximum compressed size
+Maximum compressed size.
 }
 \description{
 Exports the compress bound function from the zstd library. Returns the maximum potential compressed size of an object of length \code{size}.

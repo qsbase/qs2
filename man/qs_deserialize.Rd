@@ -4,14 +4,16 @@
 \alias{qs_deserialize}
 \title{qs_deserialize}
 \usage{
-qs_deserialize(input, validate_checksum = FALSE, nthreads = 1L)
+qs_deserialize(input,
+         validate_checksum = qopt("validate_checksum"),
+         nthreads = qopt("nthreads"))
 }
 \arguments{
 \item{input}{The raw vector to deserialize.}
 
-\item{validate_checksum}{Whether to validate the stored checksum in the file (default \code{FALSE}). This can be used to test for file corruption but has a performance penality.}
+\item{validate_checksum}{Whether to validate the stored checksum in the file (default: qopt("validate_checksum"), initial value is FALSE).}
 
-\item{nthreads}{The number of threads to use when reading data (default: \code{1}).}
+\item{nthreads}{The number of threads to use when reading data (default: qopt("nthreads"), initial value is 1L).}
 }
 \value{
 The deserialized object.
@@ -21,10 +23,10 @@ Deserializes a raw vector to an object using the \code{qs2} format.
 }
 \examples{
 x <- data.frame(int = sample(1e3, replace=TRUE),
-        num = rnorm(1e3),
-        char = sample(state.name, 1e3, replace=TRUE),
-        stringsAsFactors = FALSE)
+         num = rnorm(1e3),
+         char = sample(state.name, 1e3, replace=TRUE),
+         stringsAsFactors = FALSE)
 xserialized <- qs_serialize(x)
 x2 <- qs_deserialize(xserialized)
-identical(x, x2) # returns true
+identical(x, x2) # returns TRUE
 }

@@ -18,9 +18,9 @@ For testing and exploratory purposes mainly.
 }
 \examples{
 x <- data.frame(int = sample(1e3, replace=TRUE),
-        num = rnorm(1e3),
-        char = sample(state.name, 1e3, replace=TRUE),
-        stringsAsFactors = FALSE)
+         num = rnorm(1e3),
+         char = sample(state.name, 1e3, replace=TRUE),
+         stringsAsFactors = FALSE)
 myfile <- tempfile()
 qs_save(x, myfile)
 binary_data <- qx_dump(myfile)

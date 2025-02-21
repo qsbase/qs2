@@ -554,6 +554,31 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <span id="cb8-28"><a href="#cb8-28" aria-hidden="true"></a><span class="co">stopifnot(test_qd_serialize(x) == x)</span></span>
 <span id="cb8-29"><a href="#cb8-29" aria-hidden="true"></a><span class="co">*/</span></span></code></pre></div>
 </div>
+<div id="global-options-for-qs2" class="section level1">
+<h1>Global Options for qs2</h1>
+<p>The following global options control the behavior of the <code>qs2</code> functions. These global options can be queried or modified using <code>qopt</code> function.</p>
+<ul>
+<li><p><strong>compress_level</strong><br />
+The default compression level used when compressing data.<br />
+<strong>Default:</strong> <code>3L</code></p></li>
+<li><p><strong>shuffle</strong><br />
+A logical flag indicating whether to allow byte shuffling during compression.<br />
+<strong>Default:</strong> <code>TRUE</code></p></li>
+<li><p><strong>nthreads</strong><br />
+The number of threads used for compression and decompression.<br />
+<strong>Default:</strong> <code>1L</code></p></li>
+<li><p><strong>validate_checksum</strong><br />
+A logical flag indicating whether to validate the stored checksum when reading data.<br />
+<strong>Default:</strong> <code>FALSE</code></p></li>
+<li><p><strong>warn_unsupported_types</strong><br />
+For <code>qd_save</code>, a logical flag indicating whether to warn when saving an object with unsupported types.<br />
+<strong>Default:</strong> <code>TRUE</code></p></li>
+<li><p><strong>use_alt_rep</strong><br />
+For <code>qd_read</code>, a logical flag indicating whether to use ALTREP when reading in string data.<br />
+<strong>Default:</strong> <code>FALSE</code></p></li>
+</ul>
+<hr />
+</div>
 
 
 

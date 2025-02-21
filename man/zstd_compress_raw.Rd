@@ -4,7 +4,7 @@
 \alias{zstd_compress_raw}
 \title{Zstd compression}
 \usage{
-zstd_compress_raw(data, compress_level)
+zstd_compress_raw(data, compress_level = qopt("compress_level"))
 }
 \arguments{
 \item{data}{Raw vector to be compressed.}

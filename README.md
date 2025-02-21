@@ -174,3 +174,39 @@ stopifnot(test_qs_serialize(x) == x)
 stopifnot(test_qd_serialize(x) == x)
 */
 ```
+
+# Global Options for qs2
+
+The following global options control the behavior of the `qs2`
+functions. These global options can be queried or modified using `qopt`
+function.
+
+  - **compress\_level**  
+    The default compression level used when compressing data.  
+    **Default:** `3L`
+
+  - **shuffle**  
+    A logical flag indicating whether to allow byte shuffling during
+    compression.  
+    **Default:** `TRUE`
+
+  - **nthreads**  
+    The number of threads used for compression and decompression.  
+    **Default:** `1L`
+
+  - **validate\_checksum**  
+    A logical flag indicating whether to validate the stored checksum
+    when reading data.  
+    **Default:** `FALSE`
+
+  - **warn\_unsupported\_types**  
+    For `qd_save`, a logical flag indicating whether to warn when saving
+    an object with unsupported types.  
+    **Default:** `TRUE`
+
+  - **use\_alt\_rep**  
+    For `qd_read`, a logical flag indicating whether to use ALTREP when
+    reading in string data.  
+    **Default:** `FALSE`
+
+-----

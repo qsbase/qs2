@@ -12,7 +12,7 @@ blosc_shuffle_raw(data, bytesofsize)
 \item{bytesofsize}{Either \code{4} or \code{8}.}
 }
 \value{
-The shuffled vector
+The shuffled vector.
 }
 \description{
 Shuffles a raw vector using BLOSC shuffle routines.

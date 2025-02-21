@@ -10,6 +10,8 @@ export(qd_serialize)
 export(qd_deserialize)
 export(qx_dump)
 
+export(qopt)
+
 export("qs_to_rds")
 export("rds_to_qs")
 

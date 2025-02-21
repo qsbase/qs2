@@ -1,4 +1,7 @@
-Version 0.1.4
+Version 0.1.5
+    * Add global parameters for serialization arguments, see `Global Options for qs2` in the README / vignette
+
+Version 0.1.4 (2024-12-12)
     * Fix for decompression error edge case (https://github.com/qsbase/qs2/issues/7)
 
 Version 0.1.3 (2024-12-02)

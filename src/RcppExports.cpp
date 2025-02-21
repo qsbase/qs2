@@ -10,6 +10,114 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// qs2_get_compress_level
+int qs2_get_compress_level();
+RcppExport SEXP _qs2_qs2_get_compress_level() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    rcpp_result_gen = Rcpp::wrap(qs2_get_compress_level());
+    return rcpp_result_gen;
+END_RCPP
+}
+// qs2_set_compress_level
+void qs2_set_compress_level(int value);
+RcppExport SEXP _qs2_qs2_set_compress_level(SEXP valueSEXP) {
+BEGIN_RCPP
+    Rcpp::traits::input_parameter< int >::type value(valueSEXP);
+    qs2_set_compress_level(value);
+    return R_NilValue;
+END_RCPP
+}
+// qs2_get_shuffle
+bool qs2_get_shuffle();
+RcppExport SEXP _qs2_qs2_get_shuffle() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    rcpp_result_gen = Rcpp::wrap(qs2_get_shuffle());
+    return rcpp_result_gen;
+END_RCPP
+}
+// qs2_set_shuffle
+void qs2_set_shuffle(bool value);
+RcppExport SEXP _qs2_qs2_set_shuffle(SEXP valueSEXP) {
+BEGIN_RCPP
+    Rcpp::traits::input_parameter< bool >::type value(valueSEXP);
+    qs2_set_shuffle(value);
+    return R_NilValue;
+END_RCPP
+}
+// qs2_get_nthreads
+int qs2_get_nthreads();
+RcppExport SEXP _qs2_qs2_get_nthreads() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    rcpp_result_gen = Rcpp::wrap(qs2_get_nthreads());
+    return rcpp_result_gen;
+END_RCPP
+}
+// qs2_set_nthreads
+void qs2_set_nthreads(int value);
+RcppExport SEXP _qs2_qs2_set_nthreads(SEXP valueSEXP) {
+BEGIN_RCPP
+    Rcpp::traits::input_parameter< int >::type value(valueSEXP);
+    qs2_set_nthreads(value);
+    return R_NilValue;
+END_RCPP
+}
+// qs2_get_validate_checksum
+bool qs2_get_validate_checksum();
+RcppExport SEXP _qs2_qs2_get_validate_checksum() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    rcpp_result_gen = Rcpp::wrap(qs2_get_validate_checksum());
+    return rcpp_result_gen;
+END_RCPP
+}
+// qs2_set_validate_checksum
+void qs2_set_validate_checksum(bool value);
+RcppExport SEXP _qs2_qs2_set_validate_checksum(SEXP valueSEXP) {
+BEGIN_RCPP
+    Rcpp::traits::input_parameter< bool >::type value(valueSEXP);
+    qs2_set_validate_checksum(value);
+    return R_NilValue;
+END_RCPP
+}
+// qs2_get_warn_unsupported_types
+bool qs2_get_warn_unsupported_types();
+RcppExport SEXP _qs2_qs2_get_warn_unsupported_types() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    rcpp_result_gen = Rcpp::wrap(qs2_get_warn_unsupported_types());
+    return rcpp_result_gen;
+END_RCPP
+}
+// qs2_set_warn_unsupported_types
+void qs2_set_warn_unsupported_types(bool value);
+RcppExport SEXP _qs2_qs2_set_warn_unsupported_types(SEXP valueSEXP) {
+BEGIN_RCPP
+    Rcpp::traits::input_parameter< bool >::type value(valueSEXP);
+    qs2_set_warn_unsupported_types(value);
+    return R_NilValue;
+END_RCPP
+}
+// qs2_get_use_alt_rep
+bool qs2_get_use_alt_rep();
+RcppExport SEXP _qs2_qs2_get_use_alt_rep() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    rcpp_result_gen = Rcpp::wrap(qs2_get_use_alt_rep());
+    return rcpp_result_gen;
+END_RCPP
+}
+// qs2_set_use_alt_rep
+void qs2_set_use_alt_rep(bool value);
+RcppExport SEXP _qs2_qs2_set_use_alt_rep(SEXP valueSEXP) {
+BEGIN_RCPP
+    Rcpp::traits::input_parameter< bool >::type value(valueSEXP);
+    qs2_set_use_alt_rep(value);
+    return R_NilValue;
+END_RCPP
+}
 // qs_save
 SEXP qs_save(SEXP object, const std::string& file, const int compress_level, const bool shuffle, const int nthreads);
 RcppExport SEXP _qs2_qs_save(SEXP objectSEXP, SEXP fileSEXP, SEXP compress_levelSEXP, SEXP shuffleSEXP, SEXP nthreadsSEXP) {
@@ -154,32 +262,32 @@ BEGIN_RCPP
 END_RCPP
 }
 // internal_set_blocksize
-int internal_set_blocksize(const int size);
+int internal_set_blocksize(int size);
 RcppExport SEXP _qs2_internal_set_blocksize(SEXP sizeSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< const int >::type size(sizeSEXP);
+    Rcpp::traits::input_parameter< int >::type size(sizeSEXP);
     rcpp_result_gen = Rcpp::wrap(internal_set_blocksize(size));
     return rcpp_result_gen;
 END_RCPP
 }
 // internal_is_utf8_locale
-int internal_is_utf8_locale(const int size);
+int internal_is_utf8_locale(int size);
 RcppExport SEXP _qs2_internal_is_utf8_locale(SEXP sizeSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< const int >::type size(sizeSEXP);
+    Rcpp::traits::input_parameter< int >::type size(sizeSEXP);
     rcpp_result_gen = Rcpp::wrap(internal_is_utf8_locale(size));
     return rcpp_result_gen;
 END_RCPP
 }
 // zstd_compress_raw
-std::vector<unsigned char> zstd_compress_raw(SEXP const data, const int compress_level);
+std::vector<unsigned char> zstd_compress_raw(SEXP const data, int compress_level);
 RcppExport SEXP _qs2_zstd_compress_raw(SEXP dataSEXP, SEXP compress_levelSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< SEXP const >::type data(dataSEXP);
-    Rcpp::traits::input_parameter< const int >::type compress_level(compress_levelSEXP);
+    Rcpp::traits::input_parameter< int >::type compress_level(compress_levelSEXP);
     rcpp_result_gen = Rcpp::wrap(zstd_compress_raw(data, compress_level));
     return rcpp_result_gen;
 END_RCPP
@@ -195,11 +303,11 @@ BEGIN_RCPP
 END_RCPP
 }
 // zstd_compress_bound
-int zstd_compress_bound(const int size);
+int zstd_compress_bound(int size);
 RcppExport SEXP _qs2_zstd_compress_bound(SEXP sizeSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< const int >::type size(sizeSEXP);
+    Rcpp::traits::input_parameter< int >::type size(sizeSEXP);
     rcpp_result_gen = Rcpp::wrap(zstd_compress_bound(size));
     return rcpp_result_gen;
 END_RCPP
@@ -278,6 +386,18 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_qs2_qs2_get_compress_level", (DL_FUNC) &_qs2_qs2_get_compress_level, 0},
+    {"_qs2_qs2_set_compress_level", (DL_FUNC) &_qs2_qs2_set_compress_level, 1},
+    {"_qs2_qs2_get_shuffle", (DL_FUNC) &_qs2_qs2_get_shuffle, 0},
+    {"_qs2_qs2_set_shuffle", (DL_FUNC) &_qs2_qs2_set_shuffle, 1},
+    {"_qs2_qs2_get_nthreads", (DL_FUNC) &_qs2_qs2_get_nthreads, 0},
+    {"_qs2_qs2_set_nthreads", (DL_FUNC) &_qs2_qs2_set_nthreads, 1},
+    {"_qs2_qs2_get_validate_checksum", (DL_FUNC) &_qs2_qs2_get_validate_checksum, 0},
+    {"_qs2_qs2_set_validate_checksum", (DL_FUNC) &_qs2_qs2_set_validate_checksum, 1},
+    {"_qs2_qs2_get_warn_unsupported_types", (DL_FUNC) &_qs2_qs2_get_warn_unsupported_types, 0},
+    {"_qs2_qs2_set_warn_unsupported_types", (DL_FUNC) &_qs2_qs2_set_warn_unsupported_types, 1},
+    {"_qs2_qs2_get_use_alt_rep", (DL_FUNC) &_qs2_qs2_get_use_alt_rep, 0},
+    {"_qs2_qs2_set_use_alt_rep", (DL_FUNC) &_qs2_qs2_set_use_alt_rep, 1},
     {"_qs2_qs_save", (DL_FUNC) &_qs2_qs_save, 5},
     {"_qs2_qs_serialize", (DL_FUNC) &_qs2_qs_serialize, 4},
     {"_qs2_qs_read", (DL_FUNC) &_qs2_qs_read, 3},
