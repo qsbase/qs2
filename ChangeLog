@@ -1,4 +1,5 @@
 Version 0.1.5
+    * Fix `_u8` literal operator to align with C++23 (-Wdeprecated-literal-operator)
     * Add global parameters for serialization arguments, see `Global Options for qs2` in the README / vignette
 
 Version 0.1.4 (2024-12-12)

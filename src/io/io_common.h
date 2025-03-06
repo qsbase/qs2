@@ -84,7 +84,7 @@ inline void throw_error<ErrorType::r_error>(const std::string msg) {
 }
 
 // https://stackoverflow.com/a/36835959/2723734
-inline constexpr unsigned char operator "" _u8(unsigned long long arg) noexcept {
+inline constexpr unsigned char operator ""_u8(unsigned long long arg) noexcept {
     return static_cast<uint8_t>(arg);
 }
 

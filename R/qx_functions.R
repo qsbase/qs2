@@ -1,24 +1,24 @@
 shared_params_save <- function(file_output=TRUE, warn_unsupported_types=FALSE) {
   c('@param object The object to save.',
     '@param file The file name/path.'[file_output],
-    '@param compress_level The compression level used (default: qopt("compress_level"), initial value is 3L.',
+    '@param compress_level The compression level used (the initial value is 3L).',
     '',
     'The maximum and minimum possible values depend on the version of the ZSTD library used.',
     'As of ZSTD 1.5.6 the maximum compression level is 22, and the minimum is -131072.',
     'Usually, values in the low positive range offer very good performance in terms',
     'of speed and compression.',
-    '@param shuffle Whether to allow byte shuffling when compressing data (default: qopt("shuffle"), initial value is TRUE).',
-    '@param warn_unsupported_types Whether to warn when saving an object with an unsupported type (default: qopt("warn_unsupported_types"), initial value is TRUE).'[warn_unsupported_types],
-    '@param nthreads The number of threads to use when compressing data (default: qopt("nthreads"), initial value is 1L.'
+    '@param shuffle Whether to allow byte shuffling when compressing data (the initial value is TRUE).',
+    '@param warn_unsupported_types Whether to warn when saving an object with an unsupported type (the initial value is TRUE).'[warn_unsupported_types],
+    '@param nthreads The number of threads to use when compressing data (the initial value is 1L).'
     )
 }
 
 shared_params_read <- function(file_input=TRUE, use_alt_rep=FALSE) {
   c('@param file The file name/path.'[file_input],
     '@param input The raw vector to deserialize.'[!file_input],
-    '@param use_alt_rep Use ALTREP when reading in string data (default: qopt("use_alt_rep"), initial value is FALSE).'[use_alt_rep],
-    '@param validate_checksum Whether to validate the stored checksum in the file (default: qopt("validate_checksum"), initial value is FALSE).',
-    '@param nthreads The number of threads to use when reading data (default: qopt("nthreads"), initial value is 1L).'
+    '@param use_alt_rep Use ALTREP when reading in string data (the initial value is FALSE).'[use_alt_rep],
+    '@param validate_checksum Whether to validate the stored checksum in the file (the initial value is FALSE).',
+    '@param nthreads The number of threads to use when reading data (the initial value is 1L).'
   )
 }
 
