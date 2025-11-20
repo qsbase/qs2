@@ -384,6 +384,29 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// zstd_compress_file
+SEXP zstd_compress_file(const std::string& input_file, const std::string& output_file, const int compress_level);
+RcppExport SEXP _qs2_zstd_compress_file(SEXP input_fileSEXP, SEXP output_fileSEXP, SEXP compress_levelSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type input_file(input_fileSEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type output_file(output_fileSEXP);
+    Rcpp::traits::input_parameter< const int >::type compress_level(compress_levelSEXP);
+    rcpp_result_gen = Rcpp::wrap(zstd_compress_file(input_file, output_file, compress_level));
+    return rcpp_result_gen;
+END_RCPP
+}
+// zstd_decompress_file
+SEXP zstd_decompress_file(const std::string& input_file, const std::string& output_file);
+RcppExport SEXP _qs2_zstd_decompress_file(SEXP input_fileSEXP, SEXP output_fileSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type input_file(input_fileSEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type output_file(output_fileSEXP);
+    rcpp_result_gen = Rcpp::wrap(zstd_decompress_file(input_file, output_file));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_qs2_qs2_get_compress_level", (DL_FUNC) &_qs2_qs2_get_compress_level, 0},
@@ -422,6 +445,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_qs2_base85_decode", (DL_FUNC) &_qs2_base85_decode, 1},
     {"_qs2_c_base91_encode", (DL_FUNC) &_qs2_c_base91_encode, 1},
     {"_qs2_c_base91_decode", (DL_FUNC) &_qs2_c_base91_decode, 1},
+    {"_qs2_zstd_compress_file", (DL_FUNC) &_qs2_zstd_compress_file, 3},
+    {"_qs2_zstd_decompress_file", (DL_FUNC) &_qs2_zstd_decompress_file, 2},
     {NULL, NULL, 0}
 };
 

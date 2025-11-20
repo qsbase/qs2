@@ -70,7 +70,7 @@ inline void throw_error(const char * const msg) {
 
 template<>
 inline void throw_error<ErrorType::r_error>(const char * const msg) {
-    Rf_error(msg, "%s");
+    Rf_error("%s", msg);
 }
 
 template <ErrorType E>
@@ -80,7 +80,7 @@ inline void throw_error(const std::string msg) {
 
 template<>
 inline void throw_error<ErrorType::r_error>(const std::string msg) {
-    Rf_error(msg.c_str(), "%s");
+    Rf_error("%s", msg.c_str());
 }
 
 // https://stackoverflow.com/a/36835959/2723734

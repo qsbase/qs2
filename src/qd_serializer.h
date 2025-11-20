@@ -144,7 +144,6 @@ struct QdataSerializer {
     void write_header_cplxsxp(uint64_t length, uint64_t attr_length) {
         bool has_attrs = attr_length > 0;
         if(has_attrs) write_attr_header(attr_length);
-        if(attr_length > 0) write_attr_header(attr_length);
         if(length < MAX_32_BIT_LENGTH) {
             writer.push_pod(complex_header_32, has_attrs);
             writer.push_pod_contiguous(static_cast<uint32_t>(length) );
@@ -318,8 +317,9 @@ struct QdataSerializer {
                     cetype_t_ext enc = ref[i].encoding;
                     if(enc == cetype_t_ext::CE_NA) { // cetype_t_ext is from stringfish
                         writer.push_pod(string_header_NA);
-                    } else if ( (enc == cetype_t_ext::CE_LATIN1) || ((enc == cetype_t_ext::CE_NATIVE) && (IS_UTF8_LOCALE == 1)) ) {
+                    } else if ( (enc == cetype_t_ext::CE_LATIN1) || ((enc == cetype_t_ext::CE_NATIVE) && (IS_UTF8_LOCALE == 0)) ) {
                         // check if latin1 or (native AND IS_UTF8_LOCALE == 0), needs translation
+                        // Note: ASCII has its own cetype_t_ext and will not follow this path
                         SEXP xi = STRING_ELT(object, i); // materialize
                         const char * ci = Rf_translateCharUTF8(xi);
                         uint32_t li = strlen(ci);

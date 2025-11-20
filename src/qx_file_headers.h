@@ -121,7 +121,7 @@ inline void read_qdata_header(stream_reader & reader, bool & shuffle, uint64_t &
         throw std::runtime_error("Unknown file format detected");
     }
     uint8_t format_ver = bits[4];
-    if(format_ver > QS2_CURRENT_FORMAT_VER) {
+    if(format_ver > QDATA_CURRENT_FORMAT_VER) {
         throw std::runtime_error("qdata format may be newer; please update qdata to latest version");
     }
     uint8_t compress_alg = bits[5];

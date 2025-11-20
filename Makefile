@@ -53,6 +53,24 @@ install:
 	R CMD build . # --no-build-vignettes
 	R CMD INSTALL $(BUILD) --configure-args="--with-simd=AVX2 --with-TBB"
 
+install-arm:
+	find . -type f -exec chmod 644 {} \;
+	find . -type d -exec chmod 755 {} \;
+	chmod 755 cleanup
+	chmod 755 configure
+	# find src/ -type f -exec chmod 644 {} \;
+	# chmod 644 ChangeLog DESCRIPTION Makefile NAMESPACE README.md
+	./configure
+	./cleanup
+	Rscript -e "library(Rcpp); compileAttributes('.');"
+	Rscript -e "devtools::load_all(); roxygen2::roxygenise('.');"
+	find . -iname "*.a" -exec rm {} \;
+	find . -iname "*.o" -exec rm {} \;
+	find . -iname "*.so" -exec rm {} \;
+	R CMD build . # --no-build-vignettes
+	R CMD INSTALL $(BUILD) --configure-args="--with-TBB"
+
+
 install-compile-zstd:
 	find . -type f -exec chmod 644 {} \;
 	find . -type d -exec chmod 755 {} \;
@@ -96,3 +114,4 @@ vignette:
 test:
 	Rscript tests/qs_savem_testing.R
 	QS_EXTENDED_TESTS=1 Rscript tests/correctness_testing.R; unset QS_EXTENDED_TESTS
+	Rscript tests/utility_testing.R

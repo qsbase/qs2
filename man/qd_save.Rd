@@ -15,18 +15,18 @@ qd_save(object, file,
 
 \item{file}{The file name/path.}
 
-\item{compress_level}{The compression level used (default: qopt("compress_level"), initial value is 3L.
+\item{compress_level}{The compression level used (the initial value is 3L).
 
 The maximum and minimum possible values depend on the version of the ZSTD library used.
 As of ZSTD 1.5.6 the maximum compression level is 22, and the minimum is -131072.
 Usually, values in the low positive range offer very good performance in terms
 of speed and compression.}
 
-\item{shuffle}{Whether to allow byte shuffling when compressing data (default: qopt("shuffle"), initial value is TRUE).}
+\item{shuffle}{Whether to allow byte shuffling when compressing data (the initial value is TRUE).}
 
-\item{warn_unsupported_types}{Whether to warn when saving an object with an unsupported type (default: qopt("warn_unsupported_types"), initial value is TRUE).}
+\item{warn_unsupported_types}{Whether to warn when saving an object with an unsupported type (the initial value is TRUE).}
 
-\item{nthreads}{The number of threads to use when compressing data (default: qopt("nthreads"), initial value is 1L.}
+\item{nthreads}{The number of threads to use when compressing data (the initial value is 1L).}
 }
 \value{
 No value is returned. The file is written to disk.

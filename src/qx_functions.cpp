@@ -21,6 +21,7 @@
 #include "qs_serializer.h"
 #include "qs_unwind_protect.h"
 #include "qx_dump.h"
+#include "zstd_file_functions.h"
 
 // qs2 format functions
 // [[Rcpp::export(rng = false, invisible = true, signature = {object, file, compress_level = qopt("compress_level"), shuffle = qopt("shuffle"), nthreads = qopt("nthreads")})]]

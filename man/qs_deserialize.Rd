@@ -11,9 +11,9 @@ qs_deserialize(input,
 \arguments{
 \item{input}{The raw vector to deserialize.}
 
-\item{validate_checksum}{Whether to validate the stored checksum in the file (default: qopt("validate_checksum"), initial value is FALSE).}
+\item{validate_checksum}{Whether to validate the stored checksum in the file (the initial value is FALSE).}
 
-\item{nthreads}{The number of threads to use when reading data (default: qopt("nthreads"), initial value is 1L).}
+\item{nthreads}{The number of threads to use when reading data (the initial value is 1L).}
 }
 \value{
 The deserialized object.

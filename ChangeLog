@@ -1,4 +1,10 @@
-Version 0.1.5
+Version 0.1.6 (2025-11-19)
+    * Minor fix: for complex vectors with attributes header was written twice in `qd_save`
+    * Minor fix: for non-UTF8 environments and non-ascii strings and using `stringfish` ALTREP, `qd_save` was not correctly translating to UTF8
+    * Add zstd file utilities `zstd_compress_file` and `zstd_decompress_file`
+    * Add `tests/utility_testing.R` to test additional utility functions
+
+Version 0.1.5 (2025-03-07)
     * Fix `_u8` literal operator to align with C++23 (-Wdeprecated-literal-operator)
     * Add global parameters for serialization arguments, see `Global Options for qs2` in the README / vignette
 

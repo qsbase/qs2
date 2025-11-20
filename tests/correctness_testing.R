@@ -150,6 +150,17 @@ qs_read_rand <- function() {
 }
 
 ################################################################################################
+# Explicit tests for any bugs go here
+
+# Version 0.1.5 (and lower) CPLXSXP with attributes incorrectly writes header twice (L144-155 in qd_serializer.h)
+tmp <- tempfile(fileext = ".qd")
+x <- complex(real = c(1, 2), imaginary = c(3, 4))
+attr(x, "note") <- "test"
+qs2::qd_save(x, tmp)
+restored <- qs2::qd_read(tmp)
+stopifnot(identical(restored, x))
+
+################################################################################################
 for(format in c("qs2_memory", "qdata_memory", "qdata", "qs2")) {
 for (q in 1:reps) {
   cat("########################################\n")

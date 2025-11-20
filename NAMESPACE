@@ -12,15 +12,18 @@ export(qx_dump)
 
 export(qopt)
 
-export("qs_to_rds")
-export("rds_to_qs")
+export(qs_to_rds)
+export(rds_to_qs)
 
-export("zstd_compress_raw")
-export("zstd_decompress_raw")
-export("zstd_compress_bound")
-export("blosc_shuffle_raw")
-export("blosc_unshuffle_raw")
-export("xxhash_raw")
+export(zstd_compress_file)
+export(zstd_decompress_file)
+
+export(zstd_compress_raw)
+export(zstd_decompress_raw)
+export(zstd_compress_bound)
+export(blosc_shuffle_raw)
+export(blosc_unshuffle_raw)
+export(xxhash_raw)
 
 export(base85_decode)
 export(base85_encode)

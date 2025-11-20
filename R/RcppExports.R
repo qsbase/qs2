@@ -145,3 +145,11 @@ c_base91_decode <- function(encoded_string) {
     .Call(`_qs2_c_base91_decode`, encoded_string)
 }
 
+zstd_compress_file <- function(input_file, output_file, compress_level = qopt("compress_level")) {
+    invisible(.Call(`_qs2_zstd_compress_file`, input_file, output_file, compress_level))
+}
+
+zstd_decompress_file <- function(input_file, output_file) {
+    invisible(.Call(`_qs2_zstd_decompress_file`, input_file, output_file))
+}
+
