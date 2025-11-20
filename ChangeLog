@@ -3,6 +3,7 @@ Version 0.1.6 (2025-11-19)
     * Minor fix: for non-UTF8 environments and non-ascii strings and using `stringfish` ALTREP, `qd_save` was not correctly translating to UTF8
     * Add zstd file utilities `zstd_compress_file` and `zstd_decompress_file`
     * Add `tests/utility_testing.R` to test additional utility functions
+    * Update qdata deserializer to set class attributes without deprecated `SET_OBJECT` function
 
 Version 0.1.5 (2025-03-07)
     * Fix `_u8` literal operator to align with C++23 (-Wdeprecated-literal-operator)

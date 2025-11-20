@@ -207,6 +207,8 @@ struct QdataDeserializer {
     void read_and_assign_attributes(SEXP object, const uint32_t attr_length) {
         SEXP aptr = Rf_allocList(attr_length);
         SET_ATTRIB(object, aptr); // assign immediately for protection
+        bool set_class = false;
+        SEXP class_attr = R_NilValue;
         std::string attr_name; // use std::string here, must be null terminated for Rf_install
         for(uint64_t i=0; i<attr_length; ++i) {
             uint32_t string_len;
@@ -216,14 +218,18 @@ struct QdataDeserializer {
             SET_TAG(aptr, Rf_install(attr_name.c_str()));
             SEXP aobj = read_object();
             SETCAR(aptr, aobj);
-            // setting class name also sets object bit
-            // can also be set using Rf_classgets
-            if( strcmp(attr_name.c_str(), "class") == 0 ) {
-                if((Rf_isString(aobj)) & (Rf_xlength(aobj) >= 1)) {
-                    SET_OBJECT(object, 1);
-                }
-            }
             aptr = CDR(aptr);
+            
+            // setting class name also sets object bit
+            // SET_OBJECT is no longer part of API in R 4.6, so we use a workaround to set the object bit
+            if( (strcmp(attr_name.c_str(), "class") == 0) && Rf_isString(aobj) && (Rf_xlength(aobj) >= 1) ) {
+                set_class = true;
+                class_attr = aobj;
+            }
+
+        }
+        if(set_class) {
+            Rf_setAttrib(object, R_ClassSymbol, class_attr); // sets the object bit, class names already assigned to attributes in the for loop
         }
     }
 
