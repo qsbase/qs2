@@ -25,33 +25,33 @@
 
 // qs2 format functions
 // [[Rcpp::export(rng = false, invisible = true, signature = {object, file, compress_level = qopt("compress_level"), shuffle = qopt("shuffle"), nthreads = qopt("nthreads")})]]
-SEXP qs_save(SEXP object, const std::string& file, const int compress_level, const bool shuffle, const int nthreads);
-CVectorOut qs_serialize_impl(SEXP object, const int compress_level, const bool shuffle, const int nthreads);
+SEXP qs_save(SEXP object, const std::string& file, const int compress_level, const bool shuffle, int nthreads);
+CVectorOut qs_serialize_impl(SEXP object, const int compress_level, const bool shuffle, int nthreads);
 // [[Rcpp::export(rng = false, invisible = true, signature = {object, compress_level = qopt("compress_level"), shuffle = qopt("shuffle"), nthreads = qopt("nthreads")})]]
-SEXP qs_serialize(SEXP object, const int compress_level, const bool shuffle, const int nthreads);
-unsigned char* c_qs_serialize(SEXP object, size_t* len, const int compress_level, const bool shuffle, const int nthreads);
+SEXP qs_serialize(SEXP object, const int compress_level, const bool shuffle, int nthreads);
+unsigned char* c_qs_serialize(SEXP object, size_t* len, const int compress_level, const bool shuffle, int nthreads);
 bool c_qs_free(void* ptr);
 // [[Rcpp::export(rng = false, signature = {file, validate_checksum = qopt("validate_checksum"), nthreads = qopt("nthreads")})]]
-SEXP qs_read(const std::string& file, const bool validate_checksum, const int nthreads);
-SEXP qs_deserialize_impl(CVectorIn& myFile, const bool validate_checksum, const int nthreads);
+SEXP qs_read(const std::string& file, const bool validate_checksum, int nthreads);
+SEXP qs_deserialize_impl(CVectorIn& myFile, const bool validate_checksum, int nthreads);
 // [[Rcpp::export(rng = false, signature = {input, validate_checksum = qopt("validate_checksum"), nthreads = qopt("nthreads")})]]
-SEXP qs_deserialize(SEXP input, const bool validate_checksum, const int nthreads);
-SEXP c_qs_deserialize(const unsigned char* buffer, const size_t len, const bool validate_checksum, const int nthreads);
+SEXP qs_deserialize(SEXP input, const bool validate_checksum, int nthreads);
+SEXP c_qs_deserialize(const unsigned char* buffer, const size_t len, const bool validate_checksum, int nthreads);
 
 // qdata format functions
 // [[Rcpp::export(rng = false, invisible = true, signature = {object, file, compress_level = qopt("compress_level"), shuffle = qopt("shuffle"), warn_unsupported_types = qopt("warn_unsupported_types"), nthreads = qopt("nthreads")})]]
-SEXP qd_save(SEXP object, const std::string& file, const int compress_level, const bool shuffle, const bool warn_unsupported_types, const int nthreads);
-CVectorOut qd_serialize_impl(SEXP object, const int compress_level, const bool shuffle, const bool warn_unsupported_types, const int nthreads);
+SEXP qd_save(SEXP object, const std::string& file, const int compress_level, const bool shuffle, const bool warn_unsupported_types, int nthreads);
+CVectorOut qd_serialize_impl(SEXP object, const int compress_level, const bool shuffle, const bool warn_unsupported_types, int nthreads);
 // [[Rcpp::export(rng = false, signature = {object, compress_level = qopt("compress_level"), shuffle = qopt("shuffle"), warn_unsupported_types = qopt("warn_unsupported_types"), nthreads = qopt("nthreads")})]]
-SEXP qd_serialize(SEXP object, const int compress_level, const bool shuffle, const bool warn_unsupported_types, const int nthreads);
-unsigned char* c_qd_serialize(SEXP object, size_t* len, const int compress_level, const bool shuffle, const bool warn_unsupported_types, const int nthreads);
+SEXP qd_serialize(SEXP object, const int compress_level, const bool shuffle, const bool warn_unsupported_types, int nthreads);
+unsigned char* c_qd_serialize(SEXP object, size_t* len, const int compress_level, const bool shuffle, const bool warn_unsupported_types, int nthreads);
 bool c_qd_free(void* ptr);
 // [[Rcpp::export(rng = false, signature = {file, use_alt_rep = qopt("use_alt_rep"), validate_checksum = qopt("validate_checksum"), nthreads = qopt("nthreads")})]]
-SEXP qd_read(const std::string& file, const bool use_alt_rep, const bool validate_checksum, const int nthreads);
-SEXP qd_deserialize_impl(CVectorIn& myFile, const bool use_alt_rep, const bool validate_checksum, const int nthreads);
+SEXP qd_read(const std::string& file, const bool use_alt_rep, const bool validate_checksum, int nthreads);
+SEXP qd_deserialize_impl(CVectorIn& myFile, const bool use_alt_rep, const bool validate_checksum, int nthreads);
 // [[Rcpp::export(rng = false, signature = {input, use_alt_rep = qopt("use_alt_rep"), validate_checksum = qopt("validate_checksum"), nthreads = qopt("nthreads")})]]
-SEXP qd_deserialize(SEXP input, const bool use_alt_rep, const bool validate_checksum, const int nthreads);
-SEXP c_qd_deserialize(const unsigned char* buffer, const size_t len, const bool use_alt_rep, const bool validate_checksum, const int nthreads);
+SEXP qd_deserialize(SEXP input, const bool use_alt_rep, const bool validate_checksum, int nthreads);
+SEXP c_qd_deserialize(const unsigned char* buffer, const size_t len, const bool use_alt_rep, const bool validate_checksum, int nthreads);
 
 // qx utility functions
 // [[Rcpp::export(rng = false)]]
@@ -92,7 +92,7 @@ RawVector c_base91_decode(const std::string& encoded_string);
 // exported functions
 void qx_export_functions(DllInfo* dll);
 
-#define NTHREADS_ERR_MSG "nthreads > 1 requires TBB, see the readme and vignette for details."
+#define NTHREADS_WARNING_MSG "nthreads > 1 requested but TBB not available; using nthreads = 1"
 #define COMPRESS_LEVEL_ERR_MSG "compress_level must be an integer between " + std::to_string(ZSTD_minCLevel()) + " and " + std::to_string(ZSTD_maxCLevel()) + "."
 #define FILE_SAVE_ERR_MSG "For file " + file + ": " + "Failed to open for writing. Does the directory exist? Do you have file permissions? Is the file name long? (>255 chars)"
 #define FILE_READ_ERR_MSG "For file " + file + ": " + "Failed to open for reading. Does the file exist? Do you have file permissions? Is the file name long? (>255 chars)"
@@ -112,9 +112,12 @@ void qx_export_functions(DllInfo* dll);
     DO_JMPBUF_QS_SAVE();                                                                                               \
     DO_UNWIND_PROTECT_QS_SAVE(qs_save_impl, decltype(block_io), args);
 
-SEXP qs_save(SEXP object, const std::string& file, const int compress_level, const bool shuffle, const int nthreads) {
+SEXP qs_save(SEXP object, const std::string& file, const int compress_level, const bool shuffle, int nthreads) {
 #if RCPP_PARALLEL_USE_TBB == 0
-    if (nthreads > 1) throw_error<ErrorType::r_error>(NTHREADS_ERR_MSG);
+    if (nthreads > 1) {
+        Rf_warning("%s", NTHREADS_WARNING_MSG);
+        nthreads = 1;
+    }
 #endif
 
     if (compress_level > ZSTD_maxCLevel() || compress_level < ZSTD_minCLevel()) {
@@ -152,9 +155,12 @@ SEXP qs_save(SEXP object, const std::string& file, const int compress_level, con
     return R_NilValue;
 }
 
-CVectorOut qs_serialize_impl(SEXP object, const int compress_level, const bool shuffle, const int nthreads) {
+CVectorOut qs_serialize_impl(SEXP object, const int compress_level, const bool shuffle, int nthreads) {
 #if RCPP_PARALLEL_USE_TBB == 0
-    if (nthreads > 1) throw_error<ErrorType::r_error>(NTHREADS_ERR_MSG);
+    if (nthreads > 1) {
+        Rf_warning("%s", NTHREADS_WARNING_MSG);
+        nthreads = 1;
+    }
 #endif
 
     if (compress_level > ZSTD_maxCLevel() || compress_level < ZSTD_minCLevel()) {
@@ -191,14 +197,14 @@ CVectorOut qs_serialize_impl(SEXP object, const int compress_level, const bool s
     return CVectorOut{};
 }
 
-SEXP qs_serialize(SEXP object, const int compress_level, const bool shuffle, const int nthreads) {
+SEXP qs_serialize(SEXP object, const int compress_level, const bool shuffle, int nthreads) {
     CVectorOut result = qs_serialize_impl(object, compress_level, shuffle, nthreads);
     SEXP output = Rf_allocVector(RAWSXP, result.tellp());
     std::memcpy(RAW(output), result.data(), result.tellp());
     return output;
 }
 
-unsigned char* c_qs_serialize(SEXP object, size_t* len, const int compress_level, const bool shuffle, const int nthreads) {
+unsigned char* c_qs_serialize(SEXP object, size_t* len, const int compress_level, const bool shuffle, int nthreads) {
     if(len == nullptr) return nullptr;
     CVectorOut result = qs_serialize_impl(object, compress_level, shuffle, nthreads);
     *len = static_cast<size_t>(result.tellp());
@@ -220,9 +226,12 @@ bool c_qs_free(void *buffer) {
     DO_UNWIND_PROTECT_QS_READ(qs_read_impl, decltype(block_io), in); \
     return output;
 
-SEXP qs_read(const std::string& file, const bool validate_checksum, const int nthreads) {
+SEXP qs_read(const std::string& file, const bool validate_checksum, int nthreads) {
 #if RCPP_PARALLEL_USE_TBB == 0
-    if (nthreads > 1) throw_error<ErrorType::r_error>(NTHREADS_ERR_MSG);
+    if (nthreads > 1) {
+        Rf_warning("%s", NTHREADS_WARNING_MSG);
+        nthreads = 1;
+    }
 #endif
 
     IfStreamReader myFile(R_ExpandFileName(file.c_str()));
@@ -267,9 +276,12 @@ SEXP qs_read(const std::string& file, const bool validate_checksum, const int nt
     return R_NilValue;
 }
 
-SEXP qs_deserialize_impl(CVectorIn& myFile, const bool validate_checksum, const int nthreads) {
+SEXP qs_deserialize_impl(CVectorIn& myFile, const bool validate_checksum, int nthreads) {
 #if RCPP_PARALLEL_USE_TBB == 0
-    if (nthreads > 1) throw_error<ErrorType::r_error>(NTHREADS_ERR_MSG);
+    if (nthreads > 1) {
+        Rf_warning("%s", NTHREADS_WARNING_MSG);
+        nthreads = 1;
+    }
 #endif
 
     bool shuffle;
@@ -309,7 +321,7 @@ SEXP qs_deserialize_impl(CVectorIn& myFile, const bool validate_checksum, const 
     return R_NilValue;
 }
 
-SEXP qs_deserialize(SEXP input, const bool validate_checksum, const int nthreads) {
+SEXP qs_deserialize(SEXP input, const bool validate_checksum, int nthreads) {
     if (TYPEOF(input) != RAWSXP) {
         throw_error<ErrorType::r_error>(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
     }
@@ -317,7 +329,7 @@ SEXP qs_deserialize(SEXP input, const bool validate_checksum, const int nthreads
     return qs_deserialize_impl(myFile, validate_checksum, nthreads);
 }
 
-SEXP c_qs_deserialize(const unsigned char* buffer, const size_t len, const bool validate_checksum, const int nthreads) {
+SEXP c_qs_deserialize(const unsigned char* buffer, const size_t len, const bool validate_checksum, int nthreads) {
     CVectorIn myFile(reinterpret_cast<const char*>(buffer), static_cast<const uint64_t>(len));
     return qs_deserialize_impl(myFile, validate_checksum, nthreads);
 }
@@ -332,9 +344,12 @@ SEXP c_qs_deserialize(const unsigned char* buffer, const size_t len, const bool 
 ///////////////////////////////////////////////////////////////////////////////
 /* qdata format functions */
 
-SEXP qd_save(SEXP object, const std::string& file, const int compress_level, const bool shuffle, const bool warn_unsupported_types, const int nthreads) {
+SEXP qd_save(SEXP object, const std::string& file, const int compress_level, const bool shuffle, const bool warn_unsupported_types, int nthreads) {
 #if RCPP_PARALLEL_USE_TBB == 0
-    if (nthreads > 1) throw std::runtime_error(NTHREADS_ERR_MSG);
+    if (nthreads > 1) {
+        Rf_warning("%s", NTHREADS_WARNING_MSG);
+        nthreads = 1;
+    }
 #endif
 
     if (compress_level > ZSTD_maxCLevel() || compress_level < ZSTD_minCLevel()) {
@@ -367,9 +382,12 @@ SEXP qd_save(SEXP object, const std::string& file, const int compress_level, con
     return R_NilValue;
 }
 
-CVectorOut qd_serialize_impl(SEXP object, const int compress_level, const bool shuffle, const bool warn_unsupported_types, const int nthreads) {
+CVectorOut qd_serialize_impl(SEXP object, const int compress_level, const bool shuffle, const bool warn_unsupported_types, int nthreads) {
 #if RCPP_PARALLEL_USE_TBB == 0
-    if (nthreads > 1) throw std::runtime_error(NTHREADS_ERR_MSG);
+    if (nthreads > 1) {
+        Rf_warning("%s", NTHREADS_WARNING_MSG);
+        nthreads = 1;
+    }
 #endif
 
     if (compress_level > ZSTD_maxCLevel() || compress_level < ZSTD_minCLevel()) {
@@ -401,14 +419,14 @@ CVectorOut qd_serialize_impl(SEXP object, const int compress_level, const bool s
     return myFile;
 }
 
-SEXP qd_serialize(SEXP object, const int compress_level, const bool shuffle, const bool warn_unsupported_types, const int nthreads) {
+SEXP qd_serialize(SEXP object, const int compress_level, const bool shuffle, const bool warn_unsupported_types, int nthreads) {
     CVectorOut result = qd_serialize_impl(object, compress_level, shuffle, warn_unsupported_types, nthreads);
     SEXP output = Rf_allocVector(RAWSXP, result.tellp());
     std::memcpy(RAW(output), result.data(), result.tellp());
     return output;
 }
 
-unsigned char* c_qd_serialize(SEXP object, size_t* len, const int compress_level, const bool shuffle, const bool warn_unsupported_types, const int nthreads) {
+unsigned char* c_qd_serialize(SEXP object, size_t* len, const int compress_level, const bool shuffle, const bool warn_unsupported_types, int nthreads) {
     if(len == nullptr) { return nullptr; }
     CVectorOut result = qd_serialize_impl(object, compress_level, shuffle, warn_unsupported_types, nthreads);
     *len = static_cast<size_t>(result.tellp());
@@ -431,9 +449,12 @@ bool c_qd_free(void *buffer) {
     UNPROTECT(1);                                                                                                             \
     return output;
 
-SEXP qd_read(const std::string& file, const bool use_alt_rep, const bool validate_checksum, const int nthreads) {
+SEXP qd_read(const std::string& file, const bool use_alt_rep, const bool validate_checksum, int nthreads) {
 #if RCPP_PARALLEL_USE_TBB == 0
-    if (nthreads > 1) throw std::runtime_error(NTHREADS_ERR_MSG);
+    if (nthreads > 1) {
+        Rf_warning("%s", NTHREADS_WARNING_MSG);
+        nthreads = 1;
+    }
 #endif
 
     IfStreamReader myFile(R_ExpandFileName(file.c_str()));
@@ -474,9 +495,12 @@ SEXP qd_read(const std::string& file, const bool use_alt_rep, const bool validat
     return R_NilValue; // unreachable
 }
 
-SEXP qd_deserialize_impl(CVectorIn& myFile, const bool use_alt_rep, const bool validate_checksum, const int nthreads) {
+SEXP qd_deserialize_impl(CVectorIn& myFile, const bool use_alt_rep, const bool validate_checksum, int nthreads) {
 #if RCPP_PARALLEL_USE_TBB == 0
-    if (nthreads > 1) throw std::runtime_error(NTHREADS_ERR_MSG);
+    if (nthreads > 1) {
+        Rf_warning("%s", NTHREADS_WARNING_MSG);
+        nthreads = 1;
+    }
 #endif
 
     bool shuffle;
@@ -513,7 +537,7 @@ SEXP qd_deserialize_impl(CVectorIn& myFile, const bool use_alt_rep, const bool v
     return R_NilValue; // unreachable
 }
 
-SEXP qd_deserialize(SEXP input, const bool use_alt_rep, const bool validate_checksum, const int nthreads) {
+SEXP qd_deserialize(SEXP input, const bool use_alt_rep, const bool validate_checksum, int nthreads) {
     if (TYPEOF(input) != RAWSXP) {
         throw_error<ErrorType::r_error>(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
     }
@@ -521,7 +545,7 @@ SEXP qd_deserialize(SEXP input, const bool use_alt_rep, const bool validate_chec
     return qd_deserialize_impl(myFile, use_alt_rep, validate_checksum, nthreads);
 }
 
-SEXP c_qd_deserialize(const unsigned char* buffer, const size_t len, const bool use_alt_rep, const bool validate_checksum, const int nthreads) {
+SEXP c_qd_deserialize(const unsigned char* buffer, const size_t len, const bool use_alt_rep, const bool validate_checksum, int nthreads) {
     CVectorIn myFile(reinterpret_cast<const char*>(buffer), static_cast<const uint64_t>(len));
     return qd_deserialize_impl(myFile, use_alt_rep, validate_checksum, nthreads);
 }

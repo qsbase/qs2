@@ -16,7 +16,7 @@ qd_read(file,
 
 \item{validate_checksum}{Whether to validate the stored checksum in the file (the initial value is FALSE).}
 
-\item{nthreads}{The number of threads to use when reading data (the initial value is 1L).}
+\item{nthreads}{The number of threads to use when reading data (the initial value is 1L). When TBB is not available, values greater than 1 emit a warning and fall back to 1.}
 }
 \value{
 The object stored in \code{file}.

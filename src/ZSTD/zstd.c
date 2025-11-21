@@ -148,7 +148,8 @@
 #define ZSTD_DEPS_IO
 
 #include <stdio.h>
-#define ZSTD_DEBUG_PRINT(...) fprintf(stderr, __VA_ARGS__)
+//#define ZSTD_DEBUG_PRINT(...) fprintf(stderr, __VA_ARGS__)
+#define ZSTD_DEBUG_PRINT(...) do { } while (0)  /* TC: no-op macro remove stderr reference found during R CMD check */
 
 #endif /* ZSTD_DEPS_IO */
 #endif /* ZSTD_DEPS_NEED_IO */
@@ -45916,11 +45917,12 @@ void COVER_dictSelectionFree(COVER_dictSelection_t selection);
 static int g_displayLevel = 0;
 #endif
 #undef  DISPLAY
-#define DISPLAY(...)                                                           \
+/*#define DISPLAY(...)                                                           \
   {                                                                            \
     fprintf(stderr, __VA_ARGS__);                                              \
     fflush(stderr);                                                            \
-  }
+  }*/
+#define DISPLAY(...) do { } while (0)  /* TC: no-op macro remove stderr reference found during R CMD check */
 #undef  LOCALDISPLAYLEVEL
 #define LOCALDISPLAYLEVEL(displayLevel, l, ...)                                \
   if (displayLevel >= l) {                                                     \
@@ -46416,7 +46418,7 @@ static size_t COVER_ctx_init(COVER_ctx_t *ctx, const void *samplesBuffer,
   const unsigned nbTrainSamples = splitPoint < 1.0 ? (unsigned)((double)nbSamples * splitPoint) : nbSamples;
   const unsigned nbTestSamples = splitPoint < 1.0 ? nbSamples - nbTrainSamples : nbSamples;
   const size_t trainingSamplesSize = splitPoint < 1.0 ? COVER_sum(samplesSizes, nbTrainSamples) : totalSamplesSize;
-  const size_t testSamplesSize = splitPoint < 1.0 ? COVER_sum(samplesSizes + nbTrainSamples, nbTestSamples) : totalSamplesSize;
+  //const size_t testSamplesSize = splitPoint < 1.0 ? COVER_sum(samplesSizes + nbTrainSamples, nbTestSamples) : totalSamplesSize; /* TC: unused once DISPLAY macros became no-op */
   /* Checks */
   if (totalSamplesSize < MAX(d, sizeof(U64)) ||
       totalSamplesSize >= (size_t)COVER_MAX_SAMPLES_SIZE) {
@@ -46438,8 +46440,8 @@ static size_t COVER_ctx_init(COVER_ctx_t *ctx, const void *samplesBuffer,
   memset(ctx, 0, sizeof(*ctx));
   DISPLAYLEVEL(2, "Training on %u samples of total size %u\n", nbTrainSamples,
                (unsigned)trainingSamplesSize);
-  DISPLAYLEVEL(2, "Testing on %u samples of total size %u\n", nbTestSamples,
-               (unsigned)testSamplesSize);
+  //DISPLAYLEVEL(2, "Testing on %u samples of total size %u\n", nbTestSamples,
+  //             (unsigned)testSamplesSize); /* TC: unused once DISPLAY macros became no-op */
   ctx->samples = samples;
   ctx->samplesSizes = samplesSizes;
   ctx->nbSamples = nbSamples;
@@ -46996,12 +46998,12 @@ ZDICTLIB_STATIC_API size_t ZDICT_optimizeTrainFromBuffer_cover(
   const unsigned kMaxK = parameters->k == 0 ? 2000 : parameters->k;
   const unsigned kSteps = parameters->steps == 0 ? 40 : parameters->steps;
   const unsigned kStepSize = MAX((kMaxK - kMinK) / kSteps, 1);
-  const unsigned kIterations =
-      (1 + (kMaxD - kMinD) / 2) * (1 + (kMaxK - kMinK) / kStepSize);
+  //const unsigned kIterations =
+  //    (1 + (kMaxD - kMinD) / 2) * (1 + (kMaxK - kMinK) / kStepSize); /* TC: unused once DISPLAY macros became no-op */
   const unsigned shrinkDict = 0;
   /* Local variables */
   const int displayLevel = parameters->zParams.notificationLevel;
-  unsigned iteration = 1;
+  //unsigned iteration = 1; /* TC: unused once DISPLAY macros became no-op */
   unsigned d;
   unsigned k;
   COVER_best_t best;
@@ -47037,8 +47039,8 @@ ZDICTLIB_STATIC_API size_t ZDICT_optimizeTrainFromBuffer_cover(
   /* Turn down global display level to clean up display at level 2 and below */
   g_displayLevel = displayLevel == 0 ? 0 : displayLevel - 1;
   /* Loop through d first because each new value needs a new context */
-  LOCALDISPLAYLEVEL(displayLevel, 2, "Trying %u different sets of parameters\n",
-                    kIterations);
+  //LOCALDISPLAYLEVEL(displayLevel, 2, "Trying %u different sets of parameters\n",
+  //                  kIterations); /* TC: unused once DISPLAY macros became no-op */
   for (d = kMinD; d <= kMaxD; d += 2) {
     /* Initialize the context for this value of d */
     COVER_ctx_t ctx;
@@ -47093,9 +47095,9 @@ ZDICTLIB_STATIC_API size_t ZDICT_optimizeTrainFromBuffer_cover(
         COVER_tryParameters(data);
       }
       /* Print status */
-      LOCALDISPLAYUPDATE(displayLevel, 2, "\r%u%%       ",
-                         (unsigned)((iteration * 100) / kIterations));
-      ++iteration;
+      //LOCALDISPLAYUPDATE(displayLevel, 2, "\r%u%%       ",
+      //                   (unsigned)((iteration * 100) / kIterations));
+      //++iteration; /* TC: unused once DISPLAY macros became no-op */
     }
     COVER_best_wait(&best);
     COVER_ctx_destroy(&ctx);
@@ -49158,11 +49160,12 @@ divbwt(const unsigned char *T, unsigned char *U, int *A, int n, unsigned char * 
 static int g_displayLevel = 0;
 #endif
 #undef  DISPLAY
-#define DISPLAY(...)                                                           \
+/*#define DISPLAY(...)                                                           \
   {                                                                            \
     fprintf(stderr, __VA_ARGS__);                                              \
     fflush(stderr);                                                            \
-  }
+  }*/
+#define DISPLAY(...) do { } while (0)  /* TC: no-op macro remove stderr reference found during R CMD check */
 #undef  LOCALDISPLAYLEVEL
 #define LOCALDISPLAYLEVEL(displayLevel, l, ...)                                \
   if (displayLevel >= l) {                                                     \
@@ -49426,7 +49429,7 @@ FASTCOVER_ctx_init(FASTCOVER_ctx_t* ctx,
     const unsigned nbTrainSamples = splitPoint < 1.0 ? (unsigned)((double)nbSamples * splitPoint) : nbSamples;
     const unsigned nbTestSamples = splitPoint < 1.0 ? nbSamples - nbTrainSamples : nbSamples;
     const size_t trainingSamplesSize = splitPoint < 1.0 ? COVER_sum(samplesSizes, nbTrainSamples) : totalSamplesSize;
-    const size_t testSamplesSize = splitPoint < 1.0 ? COVER_sum(samplesSizes + nbTrainSamples, nbTestSamples) : totalSamplesSize;
+    //const size_t testSamplesSize = splitPoint < 1.0 ? COVER_sum(samplesSizes + nbTrainSamples, nbTestSamples) : totalSamplesSize; /* TC: unused once DISPLAY macros became no-op */
 
     /* Checks */
     if (totalSamplesSize < MAX(d, sizeof(U64)) ||
@@ -49452,8 +49455,8 @@ FASTCOVER_ctx_init(FASTCOVER_ctx_t* ctx,
     memset(ctx, 0, sizeof(*ctx));
     DISPLAYLEVEL(2, "Training on %u samples of total size %u\n", nbTrainSamples,
                     (unsigned)trainingSamplesSize);
-    DISPLAYLEVEL(2, "Testing on %u samples of total size %u\n", nbTestSamples,
-                    (unsigned)testSamplesSize);
+        //DISPLAYLEVEL(2, "Testing on %u samples of total size %u\n", nbTestSamples,
+        //            (unsigned)testSamplesSize); /* TC: unused once DISPLAY macros became no-op */
 
     ctx->samples = samples;
     ctx->samplesSizes = samplesSizes;
@@ -49737,14 +49740,14 @@ ZDICT_optimizeTrainFromBuffer_fastCover(
     const unsigned kMaxK = parameters->k == 0 ? 2000 : parameters->k;
     const unsigned kSteps = parameters->steps == 0 ? 40 : parameters->steps;
     const unsigned kStepSize = MAX((kMaxK - kMinK) / kSteps, 1);
-    const unsigned kIterations =
-        (1 + (kMaxD - kMinD) / 2) * (1 + (kMaxK - kMinK) / kStepSize);
+    //const unsigned kIterations =
+    //    (1 + (kMaxD - kMinD) / 2) * (1 + (kMaxK - kMinK) / kStepSize); /* TC: unused once DISPLAY macros became no-op */
     const unsigned f = parameters->f == 0 ? DEFAULT_F : parameters->f;
     const unsigned accel = parameters->accel == 0 ? DEFAULT_ACCEL : parameters->accel;
     const unsigned shrinkDict = 0;
     /* Local variables */
     const int displayLevel = (int)parameters->zParams.notificationLevel;
-    unsigned iteration = 1;
+    //unsigned iteration = 1; /* TC: unused once DISPLAY macros became no-op */
     unsigned d;
     unsigned k;
     COVER_best_t best;
@@ -49786,8 +49789,8 @@ ZDICT_optimizeTrainFromBuffer_fastCover(
     /* Turn down global display level to clean up display at level 2 and below */
     g_displayLevel = displayLevel == 0 ? 0 : displayLevel - 1;
     /* Loop through d first because each new value needs a new context */
-    LOCALDISPLAYLEVEL(displayLevel, 2, "Trying %u different sets of parameters\n",
-                      kIterations);
+    //LOCALDISPLAYLEVEL(displayLevel, 2, "Trying %u different sets of parameters\n",
+    //                  kIterations); /* TC: unused once DISPLAY macros became no-op */
     for (d = kMinD; d <= kMaxD; d += 2) {
       /* Initialize the context for this value of d */
       FASTCOVER_ctx_t ctx;
@@ -49843,9 +49846,9 @@ ZDICT_optimizeTrainFromBuffer_fastCover(
           FASTCOVER_tryParameters(data);
         }
         /* Print status */
-        LOCALDISPLAYUPDATE(displayLevel, 2, "\r%u%%       ",
-                           (unsigned)((iteration * 100) / kIterations));
-        ++iteration;
+      //LOCALDISPLAYUPDATE(displayLevel, 2, "\r%u%%       ",
+      //                   (unsigned)((iteration * 100) / kIterations));
+      //++iteration; /* TC: unused once DISPLAY macros became no-op */
       }
       COVER_best_wait(&best);
       FASTCOVER_ctx_destroy(&ctx);
@@ -49952,11 +49955,13 @@ static const U32 g_selectivity_default = 9;
 *  Console display
 ***************************************/
 #undef  DISPLAY
-#define DISPLAY(...)         do { fprintf(stderr, __VA_ARGS__); fflush( stderr ); } while (0)
+/*#define DISPLAY(...)         do { fprintf(stderr, __VA_ARGS__); fflush( stderr ); } while (0)*/
+#define DISPLAY(...) do { } while (0)  /* TC: no-op macro remove stderr reference found during R CMD check */
 #undef  DISPLAYLEVEL
-#define DISPLAYLEVEL(l, ...) do { if (notificationLevel>=l) { DISPLAY(__VA_ARGS__); } } while (0)    /* 0 : no display;   1: errors;   2: default;  3: details;  4: debug */
+/*#define DISPLAYLEVEL(l, ...) do { if (notificationLevel>=l) { DISPLAY(__VA_ARGS__); } } while (0)*/   /* 0 : no display;   1: errors;   2: default;  3: details;  4: debug */
+#define DISPLAYLEVEL(l, ...) do { } while (0)  /* TC: no-op macro remove stderr reference found during R CMD check */
 
-static clock_t ZDICT_clockSpan(clock_t nPrevious) { return clock() - nPrevious; }
+//static clock_t ZDICT_clockSpan(clock_t nPrevious) { return clock() - nPrevious; } /* TC: unused once display macros became no-op */
 
 static void ZDICT_printHex(const void* ptr, size_t length)
 {
@@ -50351,11 +50356,11 @@ static size_t ZDICT_trainBuffer_legacy(dictItem* dictList, U32 dictListSize,
     BYTE* doneMarks = (BYTE*)malloc((bufferSize+16)*sizeof(*doneMarks));   /* +16 for overflow security */
     U32* filePos = (U32*)malloc(nbFiles * sizeof(*filePos));
     size_t result = 0;
-    clock_t displayClock = 0;
-    clock_t const refreshRate = CLOCKS_PER_SEC * 3 / 10;
+    //clock_t displayClock = 0;  /* TC: unused once display macros became no-op */
+    //clock_t const refreshRate = CLOCKS_PER_SEC * 3 / 10;  /* TC: unused once display macros became no-op */
 
 #   undef  DISPLAYUPDATE
-#   define DISPLAYUPDATE(l, ...)                                   \
+/*#   define DISPLAYUPDATE(l, ...)                                   \
         do {                                                       \
             if (notificationLevel>=l) {                            \
                 if (ZDICT_clockSpan(displayClock) > refreshRate) { \
@@ -50364,7 +50369,8 @@ static size_t ZDICT_trainBuffer_legacy(dictItem* dictList, U32 dictListSize,
                 }                                                  \
                 if (notificationLevel>=4) fflush(stderr);          \
             }                                                      \
-        } while (0)
+        } while (0)*/
+#   define DISPLAYUPDATE(l, ...) do { } while (0)  /* TC: no-op macro remove stderr reference found during R CMD check */
 
     /* init */
     DISPLAYLEVEL(2, "\r%70s\r", "");   /* clean display line */
@@ -50884,7 +50890,7 @@ static size_t ZDICT_trainFromBuffer_unsafe_legacy(
     /* display best matches */
     if (params.zParams.notificationLevel>= 3) {
         unsigned const nb = MIN(25, dictList[0].pos);
-        unsigned const dictContentSize = ZDICT_dictSize(dictList);
+        //unsigned const dictContentSize = ZDICT_dictSize(dictList);  /* TC: unused once display macros became no-op */
         unsigned u;
         DISPLAYLEVEL(3, "\n %u segments found, of total size %u \n", (unsigned)dictList[0].pos-1, dictContentSize);
         DISPLAYLEVEL(3, "list %u best segments \n", nb-1);

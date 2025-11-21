@@ -1,4 +1,5 @@
-Version 0.1.6 (2025-11-19)
+Version 0.1.6 (2025-11-20)
+    * If `nthreads > 1` requested and TBB not available, fall back to `nthreads = 1` and produces a warning instead of an error
     * Minor fix: for complex vectors with attributes header was written twice in `qd_save`
     * Minor fix: for non-UTF8 environments and non-ascii strings and using `stringfish` ALTREP, `qd_save` was not correctly translating to UTF8
     * Add zstd file utilities `zstd_compress_file` and `zstd_decompress_file`

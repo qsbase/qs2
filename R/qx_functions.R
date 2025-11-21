@@ -9,7 +9,7 @@ shared_params_save <- function(file_output=TRUE, warn_unsupported_types=FALSE) {
     'of speed and compression.',
     '@param shuffle Whether to allow byte shuffling when compressing data (the initial value is TRUE).',
     '@param warn_unsupported_types Whether to warn when saving an object with an unsupported type (the initial value is TRUE).'[warn_unsupported_types],
-    '@param nthreads The number of threads to use when compressing data (the initial value is 1L).'
+    '@param nthreads The number of threads to use when compressing data (the initial value is 1L). When TBB is not available, values greater than 1 emit a warning and fall back to 1.'
     )
 }
 
@@ -18,7 +18,7 @@ shared_params_read <- function(file_input=TRUE, use_alt_rep=FALSE) {
     '@param input The raw vector to deserialize.'[!file_input],
     '@param use_alt_rep Use ALTREP when reading in string data (the initial value is FALSE).'[use_alt_rep],
     '@param validate_checksum Whether to validate the stored checksum in the file (the initial value is FALSE).',
-    '@param nthreads The number of threads to use when reading data (the initial value is 1L).'
+    '@param nthreads The number of threads to use when reading data (the initial value is 1L). When TBB is not available, values greater than 1 emit a warning and fall back to 1.'
   )
 }
 

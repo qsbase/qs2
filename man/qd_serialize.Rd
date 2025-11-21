@@ -24,7 +24,7 @@ of speed and compression.}
 
 \item{warn_unsupported_types}{Whether to warn when saving an object with an unsupported type (the initial value is TRUE).}
 
-\item{nthreads}{The number of threads to use when compressing data (the initial value is 1L).}
+\item{nthreads}{The number of threads to use when compressing data (the initial value is 1L). When TBB is not available, values greater than 1 emit a warning and fall back to 1.}
 }
 \value{
 The serialized object as a raw vector.
