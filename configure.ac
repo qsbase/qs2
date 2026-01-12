@@ -23,9 +23,13 @@ AC_ARG_WITH([zstd-lib],
             AS_HELP_STRING([--with-zstd-lib=LIB_PATH],[the location of zstd library files]),
             [zstd_lib_path=$withval])
 
+# TBB selection:
+# - default: auto (let RcppParallel decide)
+# - --without-TBB: force disable by setting RCPP_PARALLEL_USE_TBB=0
+using_tbb="auto"
 AC_ARG_WITH([TBB],
-            AS_HELP_STRING([--with-TBB],[Manually select TBB support]),
-            [using_tbb="true"])
+            AS_HELP_STRING([--without-TBB],[Disable TBB usage and force RCPP_PARALLEL_USE_TBB=0]),
+            [if test "x$withval" = "xno"; then using_tbb="false"; fi])
 
 AC_ARG_WITH([dynamic-blocksize],
             AS_HELP_STRING([--with-dynamic-blocksize],[Dynamic blocksize, for debugging and testing ONLY]),
@@ -103,22 +107,9 @@ else
 fi
 
 ########################################################
-#### Compile TBB checks, disable TBB by default
+#### Check if -latomic flag is needed (relevant when TBB may be used)
 
-if test xx$using_tbb = "xxtrue"; then
-  echo "Using TBB"
-  TBB_FLAG=""
-else
-  echo "Not using TBB"
-  TBB_FLAG="-DRCPP_PARALLEL_USE_TBB=0"
-fi
-
-########################################################
-#### Check if -latomic flag is needed, only necessary if using TBB
-
-if test xx$using_tbb = "xxtrue"; then
-  # Check if simple C++ program using atomic header can compile using AC_COMPILE_IFELSE
-  AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
+m4_define([QS2_ATOMIC_TEST_PROGRAM], [[
   #include <atomic>
   #include <cstdint>
   std::atomic<std::uint64_t> x1{0};
@@ -133,17 +124,46 @@ if test xx$using_tbb = "xxtrue"; then
     x4.store(true);
     return 0;
   }
-  ]])], [NEED_LIBATOMIC="no"], [NEED_LIBATOMIC="yes"])
+]])
 
-  if test xx$NEED_LIBATOMIC = "xxyes"; then
-    echo "Requires -latomic flag"
-    COMPILER_SPECIFIC_LIBS="-latomic"
-  else
-    echo "Does not require -latomic flag"
+if test xx$using_tbb != "xxfalse"; then
+  echo "Checking if atomic link works without -latomic"
+  AC_LINK_IFELSE([AC_LANG_SOURCE([QS2_ATOMIC_TEST_PROGRAM])],
+                 [LINK_WORKS_WITHOUT_LIBATOMIC="yes"],
+                 [LINK_WORKS_WITHOUT_LIBATOMIC="no"])
+
+  if test xx$LINK_WORKS_WITHOUT_LIBATOMIC = "xxyes"; then
     COMPILER_SPECIFIC_LIBS=""
+  else
+    echo "Checking if atomic link works with -latomic"
+    save_LIBS="$LIBS"
+    LIBS="$LIBS -latomic"
+    AC_LINK_IFELSE([AC_LANG_SOURCE([QS2_ATOMIC_TEST_PROGRAM])],
+                   [LINK_WORKS_WITH_LIBATOMIC="yes"],
+                   [LINK_WORKS_WITH_LIBATOMIC="no"])
+    LIBS="$save_LIBS"
+
+    if test xx$LINK_WORKS_WITH_LIBATOMIC = "xxyes"; then
+      COMPILER_SPECIFIC_LIBS="-latomic"
+    else
+      echo "Atomic link failed even with -latomic, disabling TBB"
+      using_tbb="false"
+      COMPILER_SPECIFIC_LIBS=""
+    fi
   fi
 else
   COMPILER_SPECIFIC_LIBS=""
+fi
+
+########################################################
+#### TBB selection (default: auto)
+
+if test xx$using_tbb = "xxfalse"; then
+  echo "TBB disabled by configure flag or missing libatomic"
+  TBB_FLAG="-DRCPP_PARALLEL_USE_TBB=0"
+else
+  echo "TBB use determined by RcppParallel"
+  TBB_FLAG=""
 fi
 
 ########################################################

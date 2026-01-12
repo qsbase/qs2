@@ -92,6 +92,53 @@ qs_save(data, "myfile.qs2")
 data <- qs_read("myfile.qs2", validate_checksum = TRUE)
 ```
 
+# Bindings to ZSTD compression library
+
+The package exposes the ZSTD compression library for both in memory data and
+file workflows.
+
+## In memory compression and decompression
+
+Use these functions when you already have raw vectors in memory and want
+direct control of compression.
+
+```{r eval=FALSE}
+x <- serialize(mtcars, connection = NULL)
+xz <- zstd_compress_raw(x, compress_level = 3)
+x2 <- zstd_decompress_raw(xz)
+stopifnot(identical(x, x2))
+```
+
+## File compression
+
+These functions mirror typical file compression tools and keep the workflow
+simple when you want explicit input and output files.
+
+```{r eval=FALSE}
+infile <- tempfile()
+writeBin(as.raw(1:5), infile)
+zfile <- tempfile(fileext = ".zst")
+zstd_compress_file(infile, zfile, compress_level = 1)
+outfile <- tempfile()
+zstd_decompress_file(zfile, outfile)
+stopifnot(identical(readBin(infile, "raw", 5), readBin(outfile, "raw", 5)))
+```
+
+## zstd_in and zstd_out
+
+These generic wrappers substitute a zstd compressed file for a normal file
+path, so you can reuse existing readers and writers without changing their
+signatures.
+
+```{r eval=FALSE}
+if (requireNamespace("data.table", quietly = TRUE)) {
+  zfile <- tempfile(fileext = ".csv.zst")
+  zstd_out(data.table::fwrite, mtcars, file = zfile)
+  dt <- zstd_in(data.table::fread, file = zfile)
+  print(nrow(dt))
+}
+```
+
 # The qdata format
 
 The package also introduces the `qdata` format which has its own serialization layout and works with only data types (vectors, lists, data frames, matrices). 

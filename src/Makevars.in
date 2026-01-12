@@ -1,5 +1,8 @@
 PKG_CPPFLAGS=-DRCPP_USE_UNWIND_PROTECT -DRCPP_NO_RTTI -DRCPP_NO_SUGAR -I../inst/include -I. @ZSTD_INCLUDE_PATH@ @SIMD_FLAG@ @DYNAMIC_BLOCKSIZE_FLAG@ -DIS_UTF8_LOCALE=$(shell "${R_HOME}/bin/Rscript" -e "cat(as.integer(identical(utils::localeToCharset()[1], 'UTF-8')))")
-PKG_CXXFLAGS = @TBB_FLAG@ $(shell ${R_HOME}/bin/Rscript -e "RcppParallel::CxxFlags()")
+# TBB selection:
+# - default: @TBB_FLAG@ is empty so RcppParallel decides (auto)
+# - configure --without-TBB forces -DRCPP_PARALLEL_USE_TBB=0 via @TBB_FLAG@
+PKG_CXXFLAGS = $(shell ${R_HOME}/bin/Rscript -e "RcppParallel::CxxFlags()") @TBB_FLAG@
 PKG_LIBS = -L. @COMPILER_SPECIFIC_LIBS@ @ZSTD_LIBS@ $(shell ${R_HOME}/bin/Rscript -e "RcppParallel::RcppParallelLibs()")
 
 LIBZSTD = ZSTD/zstd.o
@@ -11,4 +14,3 @@ libQSZSTD.a: $(LIBZSTD)
 
 clean:
 	rm -f $(SHLIB) $(OBJECTS) @ZSTD_CLEAN@
-

@@ -1,3 +1,8 @@
+Version 0.1.7 (2026-01-11)
+    * Enable TBB by default (via RcppParallel); use configure --without-TBB to force disable
+    * Add zstd file substitution helpers `zstd_in` and `zstd_out`
+    * Add ZSTD bindings section to the vignette
+
 Version 0.1.6 (2025-11-20)
     * If `nthreads > 1` requested and TBB not available, fall back to `nthreads = 1` and produces a warning instead of an error
     * Minor fix: for complex vectors with attributes header was written twice in `qd_save`

@@ -51,7 +51,7 @@ install:
 	find . -iname "*.o" -exec rm {} \;
 	find . -iname "*.so" -exec rm {} \;
 	R CMD build . # --no-build-vignettes
-	R CMD INSTALL $(BUILD) --configure-args="--with-simd=AVX2 --with-TBB"
+	R CMD INSTALL $(BUILD) --configure-args="--with-simd=AVX2"
 
 install-arm:
 	find . -type f -exec chmod 644 {} \;
@@ -68,7 +68,7 @@ install-arm:
 	find . -iname "*.o" -exec rm {} \;
 	find . -iname "*.so" -exec rm {} \;
 	R CMD build . # --no-build-vignettes
-	R CMD INSTALL $(BUILD) --configure-args="--with-TBB"
+	R CMD INSTALL $(BUILD)
 
 
 install-compile-zstd:
