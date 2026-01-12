@@ -1,7 +1,6 @@
 #' Zstd file helpers
 #'
-#' Helpers for compressing and decompressing zstd files, plus wrappers that
-#' read or write using other functions.
+#' Helpers for compressing and decompressing zstd files.
 #'
 #' @name zstd_file_functions
 NULL
@@ -12,6 +11,7 @@ NULL
 #'
 #' @usage zstd_compress_file(input_file, output_file, compress_level = qopt("compress_level"))
 #'
+#' @name zstd_compress_file
 #' @param input_file Path to the input file.
 #' @param output_file Path to the output file.
 #' @param compress_level The compression level used.
@@ -34,6 +34,7 @@ NULL
 #'
 #' @usage zstd_decompress_file(input_file, output_file)
 #' 
+#' @name zstd_decompress_file
 #' @param input_file Path to the input file.
 #' @param output_file Path to the output file.
 #' 

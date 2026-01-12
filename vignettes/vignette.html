@@ -27,46 +27,32 @@ document.addEventListener('DOMContentLoaded', function(e) {
   }
 });
 </script>
-<script>// Hide empty <a> tag within highlighted CodeBlock for screen reader accessibility (see https://github.com/jgm/pandoc/issues/6352#issuecomment-626106786) -->
-// v0.0.1
-// Written by JooYoung Seo (jooyoung@psu.edu) and Atsushi Yasumoto on June 1st, 2020.
-
-document.addEventListener('DOMContentLoaded', function() {
-  const codeList = document.getElementsByClassName("sourceCode");
-  for (var i = 0; i < codeList.length; i++) {
-    var linkList = codeList[i].getElementsByTagName('a');
-    for (var j = 0; j < linkList.length; j++) {
-      if (linkList[j].innerHTML === "") {
-        linkList[j].setAttribute('aria-hidden', 'true');
-      }
-    }
-  }
-});
-</script>
 
 <style type="text/css">
-  code{white-space: pre-wrap;}
-  span.smallcaps{font-variant: small-caps;}
-  span.underline{text-decoration: underline;}
-  div.column{display: inline-block; vertical-align: top; width: 50%;}
-  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
-  ul.task-list{list-style: none;}
-    </style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
 
 
 
 <style type="text/css">
-  code {
-    white-space: pre;
-  }
-  .sourceCode {
-    overflow: visible;
-  }
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
 </style>
 <style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
 pre > code.sourceCode { white-space: pre; position: relative; }
 pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
 div.sourceCode { margin: 1em 0; }
 pre.sourceCode { margin: 0; }
@@ -78,55 +64,54 @@ pre > code.sourceCode { white-space: pre-wrap; }
 pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
 }
 pre.numberSource code
-  { counter-reset: source-line 0; }
+{ counter-reset: source-line 0; }
 pre.numberSource code > span
-  { position: relative; left: -4em; counter-increment: source-line; }
+{ position: relative; left: -4em; counter-increment: source-line; }
 pre.numberSource code > span > a:first-child::before
-  { content: counter(source-line);
-    position: relative; left: -1em; text-align: right; vertical-align: baseline;
-    border: none; display: inline-block;
-    -webkit-touch-callout: none; -webkit-user-select: none;
-    -khtml-user-select: none; -moz-user-select: none;
-    -ms-user-select: none; user-select: none;
-    padding: 0 4px; width: 4em;
-    color: #aaaaaa;
-  }
-pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
 div.sourceCode
-  {   }
+{ }
 @media screen {
 pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
-code span.al { color: #ff0000; font-weight: bold; } /* Alert */
-code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
-code span.at { color: #7d9029; } /* Attribute */
-code span.bn { color: #40a070; } /* BaseN */
-code span.bu { } /* BuiltIn */
-code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
-code span.ch { color: #4070a0; } /* Char */
-code span.cn { color: #880000; } /* Constant */
-code span.co { color: #60a0b0; font-style: italic; } /* Comment */
-code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
-code span.do { color: #ba2121; font-style: italic; } /* Documentation */
-code span.dt { color: #902000; } /* DataType */
-code span.dv { color: #40a070; } /* DecVal */
-code span.er { color: #ff0000; font-weight: bold; } /* Error */
-code span.ex { } /* Extension */
-code span.fl { color: #40a070; } /* Float */
-code span.fu { color: #06287e; } /* Function */
-code span.im { } /* Import */
-code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
-code span.kw { color: #007020; font-weight: bold; } /* Keyword */
-code span.op { color: #666666; } /* Operator */
-code span.ot { color: #007020; } /* Other */
-code span.pp { color: #bc7a00; } /* Preprocessor */
-code span.sc { color: #4070a0; } /* SpecialChar */
-code span.ss { color: #bb6688; } /* SpecialString */
-code span.st { color: #4070a0; } /* String */
-code span.va { color: #19177c; } /* Variable */
-code span.vs { color: #4070a0; } /* VerbatimString */
-code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
-
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
 </style>
 <script>
 // apply pandoc div.sourceCode style to pre.sourceCode instead
@@ -357,50 +342,112 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 
 <p><em>qs2: a framework for efficient serialization</em></p>
-<p><code>qs2</code> is the successor to the <code>qs</code> package. The goal is to have reliable and fast performance for saving and loading objects in R.</p>
-<p>The <code>qs2</code> format directly uses R serialization (via the <code>R_Serialize</code>/<code>R_Unserialize</code> C API) while improving underlying compression and disk IO patterns. If you are familiar with the <code>qs</code> package, the benefits and usage are the same.</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="kw">qs_save</span>(data, <span class="st">&quot;myfile.qs2&quot;</span>)</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a>data &lt;-<span class="st"> </span><span class="kw">qs_read</span>(<span class="st">&quot;myfile.qs2&quot;</span>)</span></code></pre></div>
-<p>Use the file extension <code>qs2</code> to distinguish it from the original <code>qs</code> package. It is not compatible with the original <code>qs</code> format.</p>
+<p><code>qs2</code> is the successor to the <code>qs</code> package. The
+goal is to have reliable and fast performance for saving and loading
+objects in R.</p>
+<p>The <code>qs2</code> format directly uses R serialization (via the
+<code>R_Serialize</code>/<code>R_Unserialize</code> C API) while
+improving underlying compression and disk IO patterns. If you are
+familiar with the <code>qs</code> package, the benefits and usage are
+the same.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">qs_save</span>(data, <span class="st">&quot;myfile.qs2&quot;</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>data <span class="ot">&lt;-</span> <span class="fu">qs_read</span>(<span class="st">&quot;myfile.qs2&quot;</span>)</span></code></pre></div>
+<p>Use the file extension <code>qs2</code> to distinguish it from the
+original <code>qs</code> package. It is not compatible with the original
+<code>qs</code> format.</p>
 <div id="installation" class="section level2">
 <h2>Installation</h2>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a><span class="kw">install.packages</span>(<span class="st">&quot;qs2&quot;</span>)</span></code></pre></div>
-<p>On x64 Mac or Linux, you can enable multi-threading by compiling from source. It is enabled by default on Windows.</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a>remotes<span class="op">::</span><span class="kw">install_cran</span>(<span class="st">&quot;qs2&quot;</span>, <span class="dt">type =</span> <span class="st">&quot;source&quot;</span>, <span class="dt">configure.args =</span> <span class="st">&quot;--with-TBB --with-simd=AVX2&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">install.packages</span>(<span class="st">&quot;qs2&quot;</span>)</span></code></pre></div>
+<p>On x64 Mac or Linux, you can enable multi-threading by compiling from
+source. It is enabled by default on Windows.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>remotes<span class="sc">::</span><span class="fu">install_cran</span>(<span class="st">&quot;qs2&quot;</span>, <span class="at">type =</span> <span class="st">&quot;source&quot;</span>, <span class="at">configure.args =</span> <span class="st">&quot;--with-TBB --with-simd=AVX2&quot;</span>)</span></code></pre></div>
 <p>On non-x64 systems (e.g. Mac ARM) remove the AVX2 flag.</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a>remotes<span class="op">::</span><span class="kw">install_cran</span>(<span class="st">&quot;qs2&quot;</span>, <span class="dt">type =</span> <span class="st">&quot;source&quot;</span>, <span class="dt">configure.args =</span> <span class="st">&quot;--with-TBB&quot;</span>)</span></code></pre></div>
-<p>Multi-threading in <code>qs2</code> uses the <code>Intel Thread Building Blocks</code> framework via the <code>RcppParallel</code> package.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>remotes<span class="sc">::</span><span class="fu">install_cran</span>(<span class="st">&quot;qs2&quot;</span>, <span class="at">type =</span> <span class="st">&quot;source&quot;</span>, <span class="at">configure.args =</span> <span class="st">&quot;--with-TBB&quot;</span>)</span></code></pre></div>
+<p>Multi-threading in <code>qs2</code> uses the
+<code>Intel Thread Building Blocks</code> framework via the
+<code>RcppParallel</code> package.</p>
 </div>
 <div id="converting-qs2-to-rds" class="section level2">
 <h2>Converting qs2 to RDS</h2>
-<p>Because the <code>qs2</code> format directly uses R serialization, you can convert it to RDS and vice versa.</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true"></a>file_qs2 &lt;-<span class="st"> </span><span class="kw">tempfile</span>(<span class="dt">fileext =</span> <span class="st">&quot;.qs2&quot;</span>)</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true"></a>file_rds &lt;-<span class="st"> </span><span class="kw">tempfile</span>(<span class="dt">fileext =</span> <span class="st">&quot;.RDS&quot;</span>)</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true"></a>x &lt;-<span class="st"> </span><span class="kw">runif</span>(<span class="fl">1e6</span>)</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true"></a></span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true"></a><span class="co"># save `x` with qs_save</span></span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true"></a><span class="kw">qs_save</span>(x, file_qs2)</span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true"></a></span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true"></a><span class="co"># convert the file to RDS</span></span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true"></a><span class="kw">qs_to_rds</span>(<span class="dt">input_file =</span> file_qs2, <span class="dt">output_file =</span> file_rds)</span>
-<span id="cb5-10"><a href="#cb5-10" aria-hidden="true"></a></span>
-<span id="cb5-11"><a href="#cb5-11" aria-hidden="true"></a><span class="co"># read `x` back in with `readRDS`</span></span>
-<span id="cb5-12"><a href="#cb5-12" aria-hidden="true"></a>xrds &lt;-<span class="st"> </span><span class="kw">readRDS</span>(file_rds)</span>
-<span id="cb5-13"><a href="#cb5-13" aria-hidden="true"></a><span class="kw">stopifnot</span>(<span class="kw">identical</span>(x, xrds))</span></code></pre></div>
+<p>Because the <code>qs2</code> format directly uses R serialization,
+you can convert it to RDS and vice versa.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>file_qs2 <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">fileext =</span> <span class="st">&quot;.qs2&quot;</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>file_rds <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">fileext =</span> <span class="st">&quot;.RDS&quot;</span>)</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>x <span class="ot">&lt;-</span> <span class="fu">runif</span>(<span class="fl">1e6</span>)</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="co"># save `x` with qs_save</span></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="fu">qs_save</span>(x, file_qs2)</span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="co"># convert the file to RDS</span></span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a><span class="fu">qs_to_rds</span>(<span class="at">input_file =</span> file_qs2, <span class="at">output_file =</span> file_rds)</span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a></span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a><span class="co"># read `x` back in with `readRDS`</span></span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a>xrds <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(file_rds)</span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">identical</span>(x, xrds))</span></code></pre></div>
 </div>
 <div id="validating-file-integrity" class="section level2">
 <h2>Validating file integrity</h2>
-<p>The <code>qs2</code> format saves an internal checksum. This can be used to test for file corruption before deserialization via the <code>validate_checksum</code> parameter, but has a minor performance penalty.</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true"></a><span class="kw">qs_save</span>(data, <span class="st">&quot;myfile.qs2&quot;</span>)</span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true"></a>data &lt;-<span class="st"> </span><span class="kw">qs_read</span>(<span class="st">&quot;myfile.qs2&quot;</span>, <span class="dt">validate_checksum =</span> <span class="ot">TRUE</span>)</span></code></pre></div>
+<p>The <code>qs2</code> format saves an internal checksum. This can be
+used to test for file corruption before deserialization via the
+<code>validate_checksum</code> parameter, but has a minor performance
+penalty.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">qs_save</span>(data, <span class="st">&quot;myfile.qs2&quot;</span>)</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>data <span class="ot">&lt;-</span> <span class="fu">qs_read</span>(<span class="st">&quot;myfile.qs2&quot;</span>, <span class="at">validate_checksum =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
+</div>
+<div id="bindings-to-zstd-compression-library" class="section level1">
+<h1>Bindings to ZSTD compression library</h1>
+<p>The package exposes the ZSTD compression library for both in memory
+data and file workflows.</p>
+<div id="in-memory-compression-and-decompression" class="section level2">
+<h2>In memory compression and decompression</h2>
+<p>Use these functions when you already have raw vectors in memory and
+want direct control of compression.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>x <span class="ot">&lt;-</span> <span class="fu">serialize</span>(mtcars, <span class="at">connection =</span> <span class="cn">NULL</span>)</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>xz <span class="ot">&lt;-</span> <span class="fu">zstd_compress_raw</span>(x, <span class="at">compress_level =</span> <span class="dv">3</span>)</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>x2 <span class="ot">&lt;-</span> <span class="fu">zstd_decompress_raw</span>(xz)</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">identical</span>(x, x2))</span></code></pre></div>
+</div>
+<div id="file-compression" class="section level2">
+<h2>File compression</h2>
+<p>These functions mirror typical file compression tools and keep the
+workflow simple when you want explicit input and output files.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>infile <span class="ot">&lt;-</span> <span class="fu">tempfile</span>()</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="fu">writeBin</span>(<span class="fu">as.raw</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>), infile)</span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>zfile <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">fileext =</span> <span class="st">&quot;.zst&quot;</span>)</span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="fu">zstd_compress_file</span>(infile, zfile, <span class="at">compress_level =</span> <span class="dv">1</span>)</span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>outfile <span class="ot">&lt;-</span> <span class="fu">tempfile</span>()</span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="fu">zstd_decompress_file</span>(zfile, outfile)</span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">identical</span>(<span class="fu">readBin</span>(infile, <span class="st">&quot;raw&quot;</span>, <span class="dv">5</span>), <span class="fu">readBin</span>(outfile, <span class="st">&quot;raw&quot;</span>, <span class="dv">5</span>)))</span></code></pre></div>
+</div>
+<div id="zstd_in-and-zstd_out" class="section level2">
+<h2>zstd_in and zstd_out</h2>
+<p>These generic wrappers substitute a zstd compressed file for a normal
+file path, so you can add zstd compression support to existing functions
+for reading and writing data.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="co"># library(data.table)</span></span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>save_file <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">fileext =</span> <span class="st">&quot;.csv.zst&quot;</span>)</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a></span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="co"># write out zstd compressed table</span></span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a><span class="fu">zstd_out</span>(data.table<span class="sc">::</span>fwrite, mtcars, <span class="at">file =</span> save_file)</span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a></span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a><span class="co"># read in zstd compressed table</span></span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>dt <span class="ot">&lt;-</span> <span class="fu">zstd_in</span>(data.table<span class="sc">::</span>fread, <span class="at">file =</span> save_file)</span></code></pre></div>
+</div>
 </div>
 <div id="the-qdata-format" class="section level1">
 <h1>The qdata format</h1>
-<p>The package also introduces the <code>qdata</code> format which has its own serialization layout and works with only data types (vectors, lists, data frames, matrices).</p>
-<p>It will replace internal types (functions, promises, external pointers, environments, objects) with NULL. The <code>qdata</code> format differs from the <code>qs2</code> format in that it is NOT a general.</p>
-<p>The eventual goal of <code>qdata</code> is to also have interoperability with other languages, particularly <code>Python</code>.</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true"></a><span class="kw">qd_save</span>(data, <span class="st">&quot;myfile.qs2&quot;</span>)</span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true"></a>data &lt;-<span class="st"> </span><span class="kw">qd_read</span>(<span class="st">&quot;myfile.qs2&quot;</span>)</span></code></pre></div>
+<p>The package also introduces the <code>qdata</code> format which has
+its own serialization layout and works with only data types (vectors,
+lists, data frames, matrices).</p>
+<p>It will replace internal types (functions, promises, external
+pointers, environments, objects) with NULL. The <code>qdata</code>
+format differs from the <code>qs2</code> format in that it is NOT a
+general.</p>
+<p>The eventual goal of <code>qdata</code> is to also have
+interoperability with other languages, particularly
+<code>Python</code>.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="fu">qd_save</span>(data, <span class="st">&quot;myfile.qs2&quot;</span>)</span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>data <span class="ot">&lt;-</span> <span class="fu">qd_read</span>(<span class="st">&quot;myfile.qs2&quot;</span>)</span></code></pre></div>
 <div id="benchmarks" class="section level2">
 <h2>Benchmarks</h2>
 <p>A summary across 4 datasets is presented below.</p>
@@ -506,75 +553,91 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 </tbody>
 </table>
 <ul>
-<li><code>qs2</code>, <code>qdata</code> and <code>qs</code> with <code>compress_level = 3</code></li>
-<li><code>parquet</code> via the <code>arrow</code> package using zstd <code>compression_level = 3</code></li>
-<li><code>base::serialize</code> with <code>ascii = FALSE</code> and <code>xdr = FALSE</code></li>
+<li><code>qs2</code>, <code>qdata</code> and <code>qs</code> with
+<code>compress_level = 3</code></li>
+<li><code>parquet</code> via the <code>arrow</code> package using zstd
+<code>compression_level = 3</code></li>
+<li><code>base::serialize</code> with <code>ascii = FALSE</code> and
+<code>xdr = FALSE</code></li>
 </ul>
 <p><strong>Datasets used</strong></p>
 <ul>
-<li><code>1000 genomes non-coding VCF</code> 1000 genomes non-coding variants (2743 MB)</li>
-<li><code>B-cell data</code> B-cell mouse data, Greiff 2017 (1057 MB)</li>
-<li><code>IP location</code> IPV4 range data with location information (198 MB)</li>
-<li><code>Netflix movie ratings</code> Netflix ML prediction dataset (571 MB)</li>
+<li><code>1000 genomes non-coding VCF</code> 1000 genomes non-coding
+variants (2743 MB)</li>
+<li><code>B-cell data</code> B-cell mouse data, Greiff 2017 (1057
+MB)</li>
+<li><code>IP location</code> IPV4 range data with location information
+(198 MB)</li>
+<li><code>Netflix movie ratings</code> Netflix ML prediction dataset
+(571 MB)</li>
 </ul>
-<p>These datasets are openly licensed and represent a combination of numeric and text data across multiple domains. See <code>inst/analysis/datasets.R</code> on Github.</p>
+<p>These datasets are openly licensed and represent a combination of
+numeric and text data across multiple domains. See
+<code>inst/analysis/datasets.R</code> on Github.</p>
 </div>
 </div>
 </div>
 <div id="usage-in-cc" class="section level1">
 <h1>Usage in C/C++</h1>
-<p>Serialization functions can be accessed in compiled code. Below is an example using Rcpp.</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true"></a><span class="co">// [[Rcpp::depends(qs2)]]</span></span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true"></a><span class="pp">#include </span><span class="im">&lt;Rcpp.h&gt;</span></span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true"></a><span class="pp">#include </span><span class="im">&quot;qs2_external.h&quot;</span></span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true"></a><span class="kw">using</span> <span class="kw">namespace</span> Rcpp;</span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true"></a></span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true"></a><span class="co">// [[Rcpp::export]]</span></span>
-<span id="cb8-7"><a href="#cb8-7" aria-hidden="true"></a>SEXP test_qs_serialize(SEXP x) {</span>
-<span id="cb8-8"><a href="#cb8-8" aria-hidden="true"></a>  <span class="dt">size_t</span> len = <span class="dv">0</span>;</span>
-<span id="cb8-9"><a href="#cb8-9" aria-hidden="true"></a>  <span class="dt">unsigned</span> <span class="dt">char</span> * buffer = c_qs_serialize(x, &amp;len, <span class="dv">10</span>, <span class="kw">true</span>, <span class="dv">4</span>); <span class="co">// object, buffer length, compress_level, shuffle, nthreads</span></span>
-<span id="cb8-10"><a href="#cb8-10" aria-hidden="true"></a>  SEXP y = c_qs_deserialize(buffer, len, <span class="kw">false</span>, <span class="dv">4</span>);              <span class="co">// buffer, buffer length, validate_checksum, nthreads</span></span>
-<span id="cb8-11"><a href="#cb8-11" aria-hidden="true"></a>  c_qs_free(buffer);                                             <span class="co">// must manually free buffer</span></span>
-<span id="cb8-12"><a href="#cb8-12" aria-hidden="true"></a>  <span class="cf">return</span> y;</span>
-<span id="cb8-13"><a href="#cb8-13" aria-hidden="true"></a>}</span>
-<span id="cb8-14"><a href="#cb8-14" aria-hidden="true"></a></span>
-<span id="cb8-15"><a href="#cb8-15" aria-hidden="true"></a><span class="co">// [[Rcpp::export]]</span></span>
-<span id="cb8-16"><a href="#cb8-16" aria-hidden="true"></a>SEXP test_qd_serialize(SEXP x) {</span>
-<span id="cb8-17"><a href="#cb8-17" aria-hidden="true"></a>  <span class="dt">size_t</span> len = <span class="dv">0</span>;</span>
-<span id="cb8-18"><a href="#cb8-18" aria-hidden="true"></a>  <span class="dt">unsigned</span> <span class="dt">char</span> * buffer = c_qd_serialize(x, &amp;len, <span class="dv">10</span>, <span class="kw">true</span>, <span class="dv">4</span>); <span class="co">// object, buffer length, compress_level, shuffle, nthreads</span></span>
-<span id="cb8-19"><a href="#cb8-19" aria-hidden="true"></a>  SEXP y = c_qd_deserialize(buffer, len, <span class="kw">false</span>, <span class="kw">false</span>, <span class="dv">4</span>);       <span class="co">// buffer, buffer length, use_alt_rep, validate_checksum, nthreads</span></span>
-<span id="cb8-20"><a href="#cb8-20" aria-hidden="true"></a>  c_qd_free(buffer);                                             <span class="co">// must manually free buffer</span></span>
-<span id="cb8-21"><a href="#cb8-21" aria-hidden="true"></a>  <span class="cf">return</span> y;</span>
-<span id="cb8-22"><a href="#cb8-22" aria-hidden="true"></a>}</span>
-<span id="cb8-23"><a href="#cb8-23" aria-hidden="true"></a></span>
-<span id="cb8-24"><a href="#cb8-24" aria-hidden="true"></a></span>
-<span id="cb8-25"><a href="#cb8-25" aria-hidden="true"></a><span class="co">/*** R</span></span>
-<span id="cb8-26"><a href="#cb8-26" aria-hidden="true"></a><span class="co">x &lt;- runif(1e7)</span></span>
-<span id="cb8-27"><a href="#cb8-27" aria-hidden="true"></a><span class="co">stopifnot(test_qs_serialize(x) == x)</span></span>
-<span id="cb8-28"><a href="#cb8-28" aria-hidden="true"></a><span class="co">stopifnot(test_qd_serialize(x) == x)</span></span>
-<span id="cb8-29"><a href="#cb8-29" aria-hidden="true"></a><span class="co">*/</span></span></code></pre></div>
+<p>Serialization functions can be accessed in compiled code. Below is an
+example using Rcpp.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="co">// [[Rcpp::depends(qs2)]]</span></span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;Rcpp.h&gt;</span></span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a><span class="pp">#include </span><span class="im">&quot;qs2_external.h&quot;</span></span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a><span class="kw">using</span> <span class="kw">namespace</span> Rcpp<span class="op">;</span></span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a></span>
+<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a><span class="co">// [[Rcpp::export]]</span></span>
+<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a>SEXP test_qs_serialize<span class="op">(</span>SEXP x<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a>  <span class="dt">size_t</span> len <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a>  <span class="dt">unsigned</span> <span class="dt">char</span> <span class="op">*</span> buffer <span class="op">=</span> c_qs_serialize<span class="op">(</span>x<span class="op">,</span> <span class="op">&amp;</span>len<span class="op">,</span> <span class="dv">10</span><span class="op">,</span> <span class="kw">true</span><span class="op">,</span> <span class="dv">4</span><span class="op">);</span> <span class="co">// object, buffer length, compress_level, shuffle, nthreads</span></span>
+<span id="cb11-10"><a href="#cb11-10" tabindex="-1"></a>  SEXP y <span class="op">=</span> c_qs_deserialize<span class="op">(</span>buffer<span class="op">,</span> len<span class="op">,</span> <span class="kw">false</span><span class="op">,</span> <span class="dv">4</span><span class="op">);</span>              <span class="co">// buffer, buffer length, validate_checksum, nthreads</span></span>
+<span id="cb11-11"><a href="#cb11-11" tabindex="-1"></a>  c_qs_free<span class="op">(</span>buffer<span class="op">);</span>                                             <span class="co">// must manually free buffer</span></span>
+<span id="cb11-12"><a href="#cb11-12" tabindex="-1"></a>  <span class="cf">return</span> y<span class="op">;</span></span>
+<span id="cb11-13"><a href="#cb11-13" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb11-14"><a href="#cb11-14" tabindex="-1"></a></span>
+<span id="cb11-15"><a href="#cb11-15" tabindex="-1"></a><span class="co">// [[Rcpp::export]]</span></span>
+<span id="cb11-16"><a href="#cb11-16" tabindex="-1"></a>SEXP test_qd_serialize<span class="op">(</span>SEXP x<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb11-17"><a href="#cb11-17" tabindex="-1"></a>  <span class="dt">size_t</span> len <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb11-18"><a href="#cb11-18" tabindex="-1"></a>  <span class="dt">unsigned</span> <span class="dt">char</span> <span class="op">*</span> buffer <span class="op">=</span> c_qd_serialize<span class="op">(</span>x<span class="op">,</span> <span class="op">&amp;</span>len<span class="op">,</span> <span class="dv">10</span><span class="op">,</span> <span class="kw">true</span><span class="op">,</span> <span class="dv">4</span><span class="op">);</span> <span class="co">// object, buffer length, compress_level, shuffle, nthreads</span></span>
+<span id="cb11-19"><a href="#cb11-19" tabindex="-1"></a>  SEXP y <span class="op">=</span> c_qd_deserialize<span class="op">(</span>buffer<span class="op">,</span> len<span class="op">,</span> <span class="kw">false</span><span class="op">,</span> <span class="kw">false</span><span class="op">,</span> <span class="dv">4</span><span class="op">);</span>       <span class="co">// buffer, buffer length, use_alt_rep, validate_checksum, nthreads</span></span>
+<span id="cb11-20"><a href="#cb11-20" tabindex="-1"></a>  c_qd_free<span class="op">(</span>buffer<span class="op">);</span>                                             <span class="co">// must manually free buffer</span></span>
+<span id="cb11-21"><a href="#cb11-21" tabindex="-1"></a>  <span class="cf">return</span> y<span class="op">;</span></span>
+<span id="cb11-22"><a href="#cb11-22" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb11-23"><a href="#cb11-23" tabindex="-1"></a></span>
+<span id="cb11-24"><a href="#cb11-24" tabindex="-1"></a></span>
+<span id="cb11-25"><a href="#cb11-25" tabindex="-1"></a><span class="co">/*** R</span></span>
+<span id="cb11-26"><a href="#cb11-26" tabindex="-1"></a><span class="co">x &lt;- runif(1e7)</span></span>
+<span id="cb11-27"><a href="#cb11-27" tabindex="-1"></a><span class="co">stopifnot(test_qs_serialize(x) == x)</span></span>
+<span id="cb11-28"><a href="#cb11-28" tabindex="-1"></a><span class="co">stopifnot(test_qd_serialize(x) == x)</span></span>
+<span id="cb11-29"><a href="#cb11-29" tabindex="-1"></a><span class="co">*/</span></span></code></pre></div>
 </div>
 <div id="global-options-for-qs2" class="section level1">
 <h1>Global Options for qs2</h1>
-<p>The following global options control the behavior of the <code>qs2</code> functions. These global options can be queried or modified using <code>qopt</code> function.</p>
+<p>The following global options control the behavior of the
+<code>qs2</code> functions. These global options can be queried or
+modified using <code>qopt</code> function.</p>
 <ul>
 <li><p><strong>compress_level</strong><br />
 The default compression level used when compressing data.<br />
 <strong>Default:</strong> <code>3L</code></p></li>
 <li><p><strong>shuffle</strong><br />
-A logical flag indicating whether to allow byte shuffling during compression.<br />
+A logical flag indicating whether to allow byte shuffling during
+compression.<br />
 <strong>Default:</strong> <code>TRUE</code></p></li>
 <li><p><strong>nthreads</strong><br />
 The number of threads used for compression and decompression.<br />
 <strong>Default:</strong> <code>1L</code></p></li>
 <li><p><strong>validate_checksum</strong><br />
-A logical flag indicating whether to validate the stored checksum when reading data.<br />
+A logical flag indicating whether to validate the stored checksum when
+reading data.<br />
 <strong>Default:</strong> <code>FALSE</code></p></li>
 <li><p><strong>warn_unsupported_types</strong><br />
-For <code>qd_save</code>, a logical flag indicating whether to warn when saving an object with unsupported types.<br />
+For <code>qd_save</code>, a logical flag indicating whether to warn when
+saving an object with unsupported types.<br />
 <strong>Default:</strong> <code>TRUE</code></p></li>
 <li><p><strong>use_alt_rep</strong><br />
-For <code>qd_read</code>, a logical flag indicating whether to use ALTREP when reading in string data.<br />
+For <code>qd_read</code>, a logical flag indicating whether to use
+ALTREP when reading in string data.<br />
 <strong>Default:</strong> <code>FALSE</code></p></li>
 </ul>
 <hr />

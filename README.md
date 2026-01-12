@@ -78,6 +78,55 @@ qs_save(data, "myfile.qs2")
 data <- qs_read("myfile.qs2", validate_checksum = TRUE)
 ```
 
+# Bindings to ZSTD compression library
+
+The package exposes the ZSTD compression library for both in memory data
+and file workflows.
+
+## In memory compression and decompression
+
+Use these functions when you already have raw vectors in memory and want
+direct control of compression.
+
+``` r
+x <- serialize(mtcars, connection = NULL)
+xz <- zstd_compress_raw(x, compress_level = 3)
+x2 <- zstd_decompress_raw(xz)
+stopifnot(identical(x, x2))
+```
+
+## File compression
+
+These functions mirror typical file compression tools and keep the
+workflow simple when you want explicit input and output files.
+
+``` r
+infile <- tempfile()
+writeBin(as.raw(1:5), infile)
+zfile <- tempfile(fileext = ".zst")
+zstd_compress_file(infile, zfile, compress_level = 1)
+outfile <- tempfile()
+zstd_decompress_file(zfile, outfile)
+stopifnot(identical(readBin(infile, "raw", 5), readBin(outfile, "raw", 5)))
+```
+
+## zstd_in and zstd_out
+
+These generic wrappers substitute a zstd compressed file for a normal
+file path, so you can add zstd compression support to existing functions
+for reading and writing data.
+
+``` r
+# library(data.table)
+save_file <- tempfile(fileext = ".csv.zst")
+
+# write out zstd compressed table
+zstd_out(data.table::fwrite, mtcars, file = save_file)
+
+# read in zstd compressed table
+dt <- zstd_in(data.table::fread, file = save_file)
+```
+
 # The qdata format
 
 The package also introduces the `qdata` format which has its own
@@ -103,7 +152,7 @@ A summary across 4 datasets is presented below.
 #### Single-threaded
 
 | Algorithm       | Compression | Save Time (s) | Read Time (s) |
-| --------------- | ----------- | ------------- | ------------- |
+|-----------------|-------------|---------------|---------------|
 | qs2             | 7.96        | 13.4          | 50.4          |
 | qdata           | 8.45        | 10.5          | 34.8          |
 | base::serialize | 1.1         | 8.87          | 51.4          |
@@ -115,24 +164,24 @@ A summary across 4 datasets is presented below.
 #### Multi-threaded (8 threads)
 
 | Algorithm   | Compression | Save Time (s) | Read Time (s) |
-| ----------- | ----------- | ------------- | ------------- |
+|-------------|-------------|---------------|---------------|
 | qs2         | 7.96        | 3.79          | 48.1          |
 | qdata       | 8.45        | 1.98          | 33.1          |
 | fst         | 2.59        | 5.05          | 46.6          |
 | parquet     | 8.29        | 20.2          | 37.0          |
 | qs (legacy) | 7.97        | 3.21          | 52.0          |
 
-  - `qs2`, `qdata` and `qs` with `compress_level = 3`
-  - `parquet` via the `arrow` package using zstd `compression_level = 3`
-  - `base::serialize` with `ascii = FALSE` and `xdr = FALSE`
+- `qs2`, `qdata` and `qs` with `compress_level = 3`
+- `parquet` via the `arrow` package using zstd `compression_level = 3`
+- `base::serialize` with `ascii = FALSE` and `xdr = FALSE`
 
 **Datasets used**
 
-  - `1000 genomes non-coding VCF` 1000 genomes non-coding variants (2743
-    MB)
-  - `B-cell data` B-cell mouse data, Greiff 2017 (1057 MB)
-  - `IP location` IPV4 range data with location information (198 MB)
-  - `Netflix movie ratings` Netflix ML prediction dataset (571 MB)
+- `1000 genomes non-coding VCF` 1000 genomes non-coding variants (2743
+  MB)
+- `B-cell data` B-cell mouse data, Greiff 2017 (1057 MB)
+- `IP location` IPV4 range data with location information (198 MB)
+- `Netflix movie ratings` Netflix ML prediction dataset (571 MB)
 
 These datasets are openly licensed and represent a combination of
 numeric and text data across multiple domains. See
@@ -181,32 +230,32 @@ The following global options control the behavior of the `qs2`
 functions. These global options can be queried or modified using `qopt`
 function.
 
-  - **compress\_level**  
-    The default compression level used when compressing data.  
-    **Default:** `3L`
+- **compress_level**  
+  The default compression level used when compressing data.  
+  **Default:** `3L`
 
-  - **shuffle**  
-    A logical flag indicating whether to allow byte shuffling during
-    compression.  
-    **Default:** `TRUE`
+- **shuffle**  
+  A logical flag indicating whether to allow byte shuffling during
+  compression.  
+  **Default:** `TRUE`
 
-  - **nthreads**  
-    The number of threads used for compression and decompression.  
-    **Default:** `1L`
+- **nthreads**  
+  The number of threads used for compression and decompression.  
+  **Default:** `1L`
 
-  - **validate\_checksum**  
-    A logical flag indicating whether to validate the stored checksum
-    when reading data.  
-    **Default:** `FALSE`
+- **validate_checksum**  
+  A logical flag indicating whether to validate the stored checksum when
+  reading data.  
+  **Default:** `FALSE`
 
-  - **warn\_unsupported\_types**  
-    For `qd_save`, a logical flag indicating whether to warn when saving
-    an object with unsupported types.  
-    **Default:** `TRUE`
+- **warn_unsupported_types**  
+  For `qd_save`, a logical flag indicating whether to warn when saving
+  an object with unsupported types.  
+  **Default:** `TRUE`
 
-  - **use\_alt\_rep**  
-    For `qd_read`, a logical flag indicating whether to use ALTREP when
-    reading in string data.  
-    **Default:** `FALSE`
+- **use_alt_rep**  
+  For `qd_read`, a logical flag indicating whether to use ALTREP when
+  reading in string data.  
+  **Default:** `FALSE`
 
------
+------------------------------------------------------------------------

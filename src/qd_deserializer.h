@@ -5,6 +5,8 @@
 #include <Rcpp.h>
 #include <tbb/global_control.h>
 
+#include <Rversion.h>
+
 #include "qx_file_headers.h"
 #include "qd_constants.h"
 #include "io/io_common.h"
@@ -205,6 +207,19 @@ struct QdataDeserializer {
     }
 
     void read_and_assign_attributes(SEXP object, const uint32_t attr_length) {
+#if R_VERSION >= R_Version(4, 6, 0)
+        std::string attr_name;
+        for (uint64_t i = 0; i < attr_length; ++i) {
+            uint32_t string_len;
+            read_string_header(string_len);
+            attr_name.resize(string_len);
+            reader.get_data(&attr_name[0], string_len);
+            SEXP attr_sym = Rf_install(attr_name.c_str());
+            SEXP aobj = PROTECT(read_object());
+            Rf_setAttrib(object, attr_sym, aobj);
+            UNPROTECT(1); // aobj
+        }
+#else
         SEXP aptr = Rf_allocList(attr_length);
         SET_ATTRIB(object, aptr); // assign immediately for protection
         bool set_class = false;
@@ -226,11 +241,11 @@ struct QdataDeserializer {
                 set_class = true;
                 class_attr = aobj;
             }
-
         }
         if(set_class) {
             Rf_setAttrib(object, R_ClassSymbol, class_attr); // sets the object bit, class names already assigned to attributes in the for loop
         }
+#endif
     }
 
     SEXP read_object() {

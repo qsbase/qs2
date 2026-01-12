@@ -22,12 +22,10 @@ jobs:
       fail-fast: false
       matrix:
         config:
+          - {os: macOS-latest,   r: 'devel',   http-user-agent: 'release'}
           - {os: macOS-latest,   r: 'release'}
-
+          - {os: windows-latest, r: 'devel',   http-user-agent: 'release'}
           - {os: windows-latest, r: 'release'}
-          # Use 3.6 to trigger usage of RTools35
-          # - {os: windows-latest, r: '3.6'}
-
           - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release'}
           - {os: ubuntu-latest,   r: 'release'}
           - {os: ubuntu-latest,   r: 'oldrel-1'}
@@ -61,4 +59,5 @@ jobs:
 
       - uses: r-lib/actions/check-r-package@v2
         with:
+          args: 'c("--no-manual", "--as-cran")'
           upload-snapshots: true

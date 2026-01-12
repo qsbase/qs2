@@ -18,6 +18,9 @@ export(rds_to_qs)
 export(zstd_compress_file)
 export(zstd_decompress_file)
 
+export(zstd_in)
+export(zstd_out)
+
 export(zstd_compress_raw)
 export(zstd_decompress_raw)
 export(zstd_compress_bound)

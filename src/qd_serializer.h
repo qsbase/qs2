@@ -3,6 +3,7 @@
 
 
 #include <Rcpp.h>
+#include <Rversion.h>
 
 #include "qx_file_headers.h"
 #include "qd_constants.h"
@@ -26,6 +27,31 @@ struct QdataSerializer {
 
     std::vector< std::pair<SEXP, SEXP> > get_attributes(SEXP const object) {
         std::vector< std::pair<SEXP, SEXP> > attrs;
+#if R_VERSION >= R_Version(4, 6, 0)
+        struct {
+            std::vector<std::pair<SEXP, SEXP>>* attrs;
+            bool warn;
+        } ctx{&attrs, warn};
+        auto mapper = [](SEXP tag, SEXP attr_value, void* data) -> SEXP {
+            auto* c = static_cast<decltype(ctx)*>(data);
+            switch(TYPEOF(attr_value)) {
+                case LGLSXP:
+                case INTSXP:
+                case REALSXP:
+                case CPLXSXP:
+                case STRSXP:
+                case VECSXP:
+                case RAWSXP:
+                    c->attrs->push_back(std::make_pair(PRINTNAME(tag), attr_value));
+                    break;
+                default:
+                    if(c->warn) Rf_warning("Attributes of type %s are not supported in qdata format", Rf_type2char(TYPEOF(attr_value)));
+                    break;
+            }
+            return NULL;
+        };
+        R_mapAttrib(object, mapper, &ctx);
+#else
         SEXP alist = ATTRIB(object);
         while(alist != R_NilValue) {
             SEXP attr_value = CAR(alist);
@@ -46,15 +72,23 @@ struct QdataSerializer {
             }
             alist = CDR(alist);
         }
+#endif
         return attrs;
     }
 
     bool is_unmaterialized_sf_vector(SEXP const object) {
         if (! ALTREP(object)) return false; // check if ALTREP
         if(DATAPTR_OR_NULL(object) != nullptr) return false; // check if unmaterialized (returning nullptr)
+#if R_VERSION >= R_Version(4, 6, 0)
+        SEXP class_name = R_altrep_class_name(object);
+        if(class_name == R_NilValue || TYPEOF(class_name) != SYMSXP) return false;
+        const char * classname = CHAR(PRINTNAME(class_name));
+        if(std::strcmp(classname, "__sf_vec__") != 0) return false; // check if classname is __sf_vec__
+#else
         SEXP info = ATTRIB(ALTREP_CLASS(object));
         const char * classname = CHAR(PRINTNAME(CAR(info)));
         if(std::strcmp(classname, "__sf_vec__") != 0) return false; // check if classname is __sf_vec__
+#endif
         return true;
     }
 
