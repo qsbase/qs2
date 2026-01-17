@@ -77,14 +77,14 @@ struct QdataSerializer {
     }
 
     bool is_unmaterialized_sf_vector(SEXP const object) {
-        if (! ALTREP(object)) return false; // check if ALTREP
-        if(DATAPTR_OR_NULL(object) != nullptr) return false; // check if unmaterialized (returning nullptr)
 #if R_VERSION >= R_Version(4, 6, 0)
-        SEXP class_name = R_altrep_class_name(object);
-        if(class_name == R_NilValue || TYPEOF(class_name) != SYMSXP) return false;
+        SEXP class_name = R_altrep_class_name(object); // R_NilValue if not ALTREP
+        if(class_name == R_NilValue) return false;
         const char * classname = CHAR(PRINTNAME(class_name));
         if(std::strcmp(classname, "__sf_vec__") != 0) return false; // check if classname is __sf_vec__
 #else
+        if (! ALTREP(object)) return false; // check if ALTREP
+        if(DATAPTR_OR_NULL(object) != nullptr) return false; // check if unmaterialized (returning nullptr)
         SEXP info = ATTRIB(ALTREP_CLASS(object));
         const char * classname = CHAR(PRINTNAME(CAR(info)));
         if(std::strcmp(classname, "__sf_vec__") != 0) return false; // check if classname is __sf_vec__

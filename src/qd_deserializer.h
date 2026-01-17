@@ -12,10 +12,45 @@
 #include "io/io_common.h"
 
 #include "sf_external.h"
-// #include "simple_array/small_array.h"
-// #include "ankerl/unordered_dense.h"
 
 using namespace Rcpp;
+
+
+#if R_VERSION >= R_Version(4, 6, 0)
+
+SEXP get_first_attrib(SEXP object) {
+    return R_mapAttrib(object, [](SEXP, SEXP a, void*) {return a;}, nullptr);
+}
+
+struct DelayedAttribAssign {
+    std::vector<SEXP> objects;
+    void add(SEXP object) {
+        objects.push_back(object);
+    }
+    void resolve() {
+        if(objects.size() > 0) {
+            PROTECT_INDEX prot_idx;
+            for(size_t i=objects.size(); i > 0; ) {
+                --i; // Reverse iterate, starts at objects.size() - 1
+                SEXP object = objects[i];
+                SEXP aobj = get_first_attrib(object);
+                if( (i+1) == objects.size() ) {
+                    PROTECT_WITH_INDEX(aobj, &prot_idx);
+                } else {
+                    REPROTECT(aobj, prot_idx);
+                }
+                Rf_setAttrib(object, R_SpecSymbol, R_NilValue); // remove placeholder aobj from object
+                for (SEXP p = aobj; p != R_NilValue; p = CDR(p)) {
+                    SEXP tag = TAG(p);
+                    SEXP val = CAR(p);
+                    Rf_setAttrib(object, tag, val);
+                }
+            }
+            UNPROTECT(1);
+        }
+    }
+};
+#endif
 
 template<typename block_compress_reader>
 struct QdataDeserializer {
@@ -26,6 +61,10 @@ struct QdataDeserializer {
     std::vector<std::pair<SEXP, uint64_t>> real_sexp;
     std::vector<std::pair<SEXP, uint64_t>> integer_sexp; // and logical
     std::vector<std::pair<SEXP, uint64_t>> raw_sexp;
+
+#if R_VERSION >= R_Version(4, 6, 0)
+    DelayedAttribAssign delayed_attributes;
+#endif
 
     QdataDeserializer(block_compress_reader & reader, const bool use_alt_rep) : 
     reader(reader), use_alt_rep(use_alt_rep) {}
@@ -207,18 +246,25 @@ struct QdataDeserializer {
     }
 
     void read_and_assign_attributes(SEXP object, const uint32_t attr_length) {
+        if(attr_length == 0) return;
 #if R_VERSION >= R_Version(4, 6, 0)
-        std::string attr_name;
-        for (uint64_t i = 0; i < attr_length; ++i) {
+        // assign attribute placeholder immediately for protection
+        // symbol used doesn't matter as long it is not a specially intrepreted attribute symbol; it is just a placeholder
+        // R_SpecSymbol is completely unused at all in r-source code, so it should be safe
+        SEXP aptr = Rf_allocList(attr_length);
+        Rf_setAttrib(object, R_SpecSymbol, aptr);
+        std::string attr_name; // use std::string here, must be null terminated for Rf_install
+        for(uint64_t i=0; i<attr_length; ++i) {
             uint32_t string_len;
             read_string_header(string_len);
             attr_name.resize(string_len);
             reader.get_data(&attr_name[0], string_len);
-            SEXP attr_sym = Rf_install(attr_name.c_str());
-            SEXP aobj = PROTECT(read_object());
-            Rf_setAttrib(object, attr_sym, aobj);
-            UNPROTECT(1); // aobj
+            SET_TAG(aptr, Rf_install(attr_name.c_str()));
+            SEXP aobj = read_object();
+            SETCAR(aptr, aobj);
+            aptr = CDR(aptr);
         }
+        delayed_attributes.add(object);
 #else
         SEXP aptr = Rf_allocList(attr_length);
         SET_ATTRIB(object, aptr); // assign immediately for protection
@@ -236,7 +282,7 @@ struct QdataDeserializer {
             aptr = CDR(aptr);
             
             // setting class name also sets object bit
-            // SET_OBJECT is no longer part of API in R 4.6, so we use a workaround to set the object bit
+            // SET_OBJECT is no longer part of API in R 4.5, so we use a workaround to set the object bit
             if( (strcmp(attr_name.c_str(), "class") == 0) && Rf_isString(aobj) && (Rf_xlength(aobj) >= 1) ) {
                 set_class = true;
                 class_attr = aobj;
@@ -377,6 +423,10 @@ struct QdataDeserializer {
             uint64_t object_length = x.second;
             reader.get_data( reinterpret_cast<char*>(RAW(object)), object_length );
         }
+
+#if R_VERSION >= R_Version(4, 6, 0)
+        delayed_attributes.resolve();
+#endif
     }
 };
 

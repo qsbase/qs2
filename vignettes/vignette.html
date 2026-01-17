@@ -358,11 +358,9 @@ original <code>qs</code> package. It is not compatible with the original
 <div id="installation" class="section level2">
 <h2>Installation</h2>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">install.packages</span>(<span class="st">&quot;qs2&quot;</span>)</span></code></pre></div>
-<p>On x64 Mac or Linux, you can enable multi-threading by compiling from
-source. It is enabled by default on Windows.</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>remotes<span class="sc">::</span><span class="fu">install_cran</span>(<span class="st">&quot;qs2&quot;</span>, <span class="at">type =</span> <span class="st">&quot;source&quot;</span>, <span class="at">configure.args =</span> <span class="st">&quot;--with-TBB --with-simd=AVX2&quot;</span>)</span></code></pre></div>
-<p>On non-x64 systems (e.g. Mac ARM) remove the AVX2 flag.</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>remotes<span class="sc">::</span><span class="fu">install_cran</span>(<span class="st">&quot;qs2&quot;</span>, <span class="at">type =</span> <span class="st">&quot;source&quot;</span>, <span class="at">configure.args =</span> <span class="st">&quot;--with-TBB&quot;</span>)</span></code></pre></div>
+<p>On x64 Mac or Linux (x86 only), you can gain a little more
+performance with the following configure flag:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>remotes<span class="sc">::</span><span class="fu">install_cran</span>(<span class="st">&quot;qs2&quot;</span>, <span class="at">type =</span> <span class="st">&quot;source&quot;</span>, <span class="at">configure.args =</span> <span class="st">&quot;--with-simd=AVX2&quot;</span>)</span></code></pre></div>
 <p>Multi-threading in <code>qs2</code> uses the
 <code>Intel Thread Building Blocks</code> framework via the
 <code>RcppParallel</code> package.</p>
@@ -371,19 +369,19 @@ source. It is enabled by default on Windows.</p>
 <h2>Converting qs2 to RDS</h2>
 <p>Because the <code>qs2</code> format directly uses R serialization,
 you can convert it to RDS and vice versa.</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>file_qs2 <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">fileext =</span> <span class="st">&quot;.qs2&quot;</span>)</span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>file_rds <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">fileext =</span> <span class="st">&quot;.RDS&quot;</span>)</span>
-<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>x <span class="ot">&lt;-</span> <span class="fu">runif</span>(<span class="fl">1e6</span>)</span>
-<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a></span>
-<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="co"># save `x` with qs_save</span></span>
-<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="fu">qs_save</span>(x, file_qs2)</span>
-<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a></span>
-<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="co"># convert the file to RDS</span></span>
-<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a><span class="fu">qs_to_rds</span>(<span class="at">input_file =</span> file_qs2, <span class="at">output_file =</span> file_rds)</span>
-<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a></span>
-<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a><span class="co"># read `x` back in with `readRDS`</span></span>
-<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a>xrds <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(file_rds)</span>
-<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">identical</span>(x, xrds))</span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>file_qs2 <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">fileext =</span> <span class="st">&quot;.qs2&quot;</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>file_rds <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">fileext =</span> <span class="st">&quot;.RDS&quot;</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>x <span class="ot">&lt;-</span> <span class="fu">runif</span>(<span class="fl">1e6</span>)</span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="co"># save `x` with qs_save</span></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="fu">qs_save</span>(x, file_qs2)</span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a></span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="co"># convert the file to RDS</span></span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a><span class="fu">qs_to_rds</span>(<span class="at">input_file =</span> file_qs2, <span class="at">output_file =</span> file_rds)</span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a></span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a><span class="co"># read `x` back in with `readRDS`</span></span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a>xrds <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(file_rds)</span>
+<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">identical</span>(x, xrds))</span></code></pre></div>
 </div>
 <div id="validating-file-integrity" class="section level2">
 <h2>Validating file integrity</h2>
@@ -391,8 +389,8 @@ you can convert it to RDS and vice versa.</p>
 used to test for file corruption before deserialization via the
 <code>validate_checksum</code> parameter, but has a minor performance
 penalty.</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">qs_save</span>(data, <span class="st">&quot;myfile.qs2&quot;</span>)</span>
-<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>data <span class="ot">&lt;-</span> <span class="fu">qs_read</span>(<span class="st">&quot;myfile.qs2&quot;</span>, <span class="at">validate_checksum =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="fu">qs_save</span>(data, <span class="st">&quot;myfile.qs2&quot;</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>data <span class="ot">&lt;-</span> <span class="fu">qs_read</span>(<span class="st">&quot;myfile.qs2&quot;</span>, <span class="at">validate_checksum =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
 </div>
 <div id="bindings-to-zstd-compression-library" class="section level1">
 <h1>Bindings to ZSTD compression library</h1>
@@ -402,36 +400,36 @@ data and file workflows.</p>
 <h2>In memory compression and decompression</h2>
 <p>Use these functions when you already have raw vectors in memory and
 want direct control of compression.</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>x <span class="ot">&lt;-</span> <span class="fu">serialize</span>(mtcars, <span class="at">connection =</span> <span class="cn">NULL</span>)</span>
-<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>xz <span class="ot">&lt;-</span> <span class="fu">zstd_compress_raw</span>(x, <span class="at">compress_level =</span> <span class="dv">3</span>)</span>
-<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>x2 <span class="ot">&lt;-</span> <span class="fu">zstd_decompress_raw</span>(xz)</span>
-<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">identical</span>(x, x2))</span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>x <span class="ot">&lt;-</span> <span class="fu">serialize</span>(mtcars, <span class="at">connection =</span> <span class="cn">NULL</span>)</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>xz <span class="ot">&lt;-</span> <span class="fu">zstd_compress_raw</span>(x, <span class="at">compress_level =</span> <span class="dv">3</span>)</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>x2 <span class="ot">&lt;-</span> <span class="fu">zstd_decompress_raw</span>(xz)</span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">identical</span>(x, x2))</span></code></pre></div>
 </div>
 <div id="file-compression" class="section level2">
 <h2>File compression</h2>
 <p>These functions mirror typical file compression tools and keep the
 workflow simple when you want explicit input and output files.</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>infile <span class="ot">&lt;-</span> <span class="fu">tempfile</span>()</span>
-<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="fu">writeBin</span>(<span class="fu">as.raw</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>), infile)</span>
-<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>zfile <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">fileext =</span> <span class="st">&quot;.zst&quot;</span>)</span>
-<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="fu">zstd_compress_file</span>(infile, zfile, <span class="at">compress_level =</span> <span class="dv">1</span>)</span>
-<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>outfile <span class="ot">&lt;-</span> <span class="fu">tempfile</span>()</span>
-<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="fu">zstd_decompress_file</span>(zfile, outfile)</span>
-<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">identical</span>(<span class="fu">readBin</span>(infile, <span class="st">&quot;raw&quot;</span>, <span class="dv">5</span>), <span class="fu">readBin</span>(outfile, <span class="st">&quot;raw&quot;</span>, <span class="dv">5</span>)))</span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>infile <span class="ot">&lt;-</span> <span class="fu">tempfile</span>()</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="fu">writeBin</span>(<span class="fu">as.raw</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>), infile)</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>zfile <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">fileext =</span> <span class="st">&quot;.zst&quot;</span>)</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="fu">zstd_compress_file</span>(infile, zfile, <span class="at">compress_level =</span> <span class="dv">1</span>)</span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>outfile <span class="ot">&lt;-</span> <span class="fu">tempfile</span>()</span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="fu">zstd_decompress_file</span>(zfile, outfile)</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">identical</span>(<span class="fu">readBin</span>(infile, <span class="st">&quot;raw&quot;</span>, <span class="dv">5</span>), <span class="fu">readBin</span>(outfile, <span class="st">&quot;raw&quot;</span>, <span class="dv">5</span>)))</span></code></pre></div>
 </div>
 <div id="zstd_in-and-zstd_out" class="section level2">
 <h2>zstd_in and zstd_out</h2>
 <p>These generic wrappers substitute a zstd compressed file for a normal
 file path, so you can add zstd compression support to existing functions
 for reading and writing data.</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="co"># library(data.table)</span></span>
-<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>save_file <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">fileext =</span> <span class="st">&quot;.csv.zst&quot;</span>)</span>
-<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a></span>
-<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="co"># write out zstd compressed table</span></span>
-<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a><span class="fu">zstd_out</span>(data.table<span class="sc">::</span>fwrite, mtcars, <span class="at">file =</span> save_file)</span>
-<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a></span>
-<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a><span class="co"># read in zstd compressed table</span></span>
-<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>dt <span class="ot">&lt;-</span> <span class="fu">zstd_in</span>(data.table<span class="sc">::</span>fread, <span class="at">file =</span> save_file)</span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="co"># library(data.table)</span></span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>save_file <span class="ot">&lt;-</span> <span class="fu">tempfile</span>(<span class="at">fileext =</span> <span class="st">&quot;.csv.zst&quot;</span>)</span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a></span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="co"># write out zstd compressed table</span></span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a><span class="fu">zstd_out</span>(data.table<span class="sc">::</span>fwrite, mtcars, <span class="at">file =</span> save_file)</span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a></span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="co"># read in zstd compressed table</span></span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a>dt <span class="ot">&lt;-</span> <span class="fu">zstd_in</span>(data.table<span class="sc">::</span>fread, <span class="at">file =</span> save_file)</span></code></pre></div>
 </div>
 </div>
 <div id="the-qdata-format" class="section level1">
@@ -446,8 +444,8 @@ general.</p>
 <p>The eventual goal of <code>qdata</code> is to also have
 interoperability with other languages, particularly
 <code>Python</code>.</p>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="fu">qd_save</span>(data, <span class="st">&quot;myfile.qs2&quot;</span>)</span>
-<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>data <span class="ot">&lt;-</span> <span class="fu">qd_read</span>(<span class="st">&quot;myfile.qs2&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">qd_save</span>(data, <span class="st">&quot;myfile.qs2&quot;</span>)</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>data <span class="ot">&lt;-</span> <span class="fu">qd_read</span>(<span class="st">&quot;myfile.qs2&quot;</span>)</span></code></pre></div>
 <div id="benchmarks" class="section level2">
 <h2>Benchmarks</h2>
 <p>A summary across 4 datasets is presented below.</p>
@@ -581,35 +579,35 @@ numeric and text data across multiple domains. See
 <h1>Usage in C/C++</h1>
 <p>Serialization functions can be accessed in compiled code. Below is an
 example using Rcpp.</p>
-<div class="sourceCode" id="cb11"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="co">// [[Rcpp::depends(qs2)]]</span></span>
-<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;Rcpp.h&gt;</span></span>
-<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a><span class="pp">#include </span><span class="im">&quot;qs2_external.h&quot;</span></span>
-<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a><span class="kw">using</span> <span class="kw">namespace</span> Rcpp<span class="op">;</span></span>
-<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a></span>
-<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a><span class="co">// [[Rcpp::export]]</span></span>
-<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a>SEXP test_qs_serialize<span class="op">(</span>SEXP x<span class="op">)</span> <span class="op">{</span></span>
-<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a>  <span class="dt">size_t</span> len <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a>  <span class="dt">unsigned</span> <span class="dt">char</span> <span class="op">*</span> buffer <span class="op">=</span> c_qs_serialize<span class="op">(</span>x<span class="op">,</span> <span class="op">&amp;</span>len<span class="op">,</span> <span class="dv">10</span><span class="op">,</span> <span class="kw">true</span><span class="op">,</span> <span class="dv">4</span><span class="op">);</span> <span class="co">// object, buffer length, compress_level, shuffle, nthreads</span></span>
-<span id="cb11-10"><a href="#cb11-10" tabindex="-1"></a>  SEXP y <span class="op">=</span> c_qs_deserialize<span class="op">(</span>buffer<span class="op">,</span> len<span class="op">,</span> <span class="kw">false</span><span class="op">,</span> <span class="dv">4</span><span class="op">);</span>              <span class="co">// buffer, buffer length, validate_checksum, nthreads</span></span>
-<span id="cb11-11"><a href="#cb11-11" tabindex="-1"></a>  c_qs_free<span class="op">(</span>buffer<span class="op">);</span>                                             <span class="co">// must manually free buffer</span></span>
-<span id="cb11-12"><a href="#cb11-12" tabindex="-1"></a>  <span class="cf">return</span> y<span class="op">;</span></span>
-<span id="cb11-13"><a href="#cb11-13" tabindex="-1"></a><span class="op">}</span></span>
-<span id="cb11-14"><a href="#cb11-14" tabindex="-1"></a></span>
-<span id="cb11-15"><a href="#cb11-15" tabindex="-1"></a><span class="co">// [[Rcpp::export]]</span></span>
-<span id="cb11-16"><a href="#cb11-16" tabindex="-1"></a>SEXP test_qd_serialize<span class="op">(</span>SEXP x<span class="op">)</span> <span class="op">{</span></span>
-<span id="cb11-17"><a href="#cb11-17" tabindex="-1"></a>  <span class="dt">size_t</span> len <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb11-18"><a href="#cb11-18" tabindex="-1"></a>  <span class="dt">unsigned</span> <span class="dt">char</span> <span class="op">*</span> buffer <span class="op">=</span> c_qd_serialize<span class="op">(</span>x<span class="op">,</span> <span class="op">&amp;</span>len<span class="op">,</span> <span class="dv">10</span><span class="op">,</span> <span class="kw">true</span><span class="op">,</span> <span class="dv">4</span><span class="op">);</span> <span class="co">// object, buffer length, compress_level, shuffle, nthreads</span></span>
-<span id="cb11-19"><a href="#cb11-19" tabindex="-1"></a>  SEXP y <span class="op">=</span> c_qd_deserialize<span class="op">(</span>buffer<span class="op">,</span> len<span class="op">,</span> <span class="kw">false</span><span class="op">,</span> <span class="kw">false</span><span class="op">,</span> <span class="dv">4</span><span class="op">);</span>       <span class="co">// buffer, buffer length, use_alt_rep, validate_checksum, nthreads</span></span>
-<span id="cb11-20"><a href="#cb11-20" tabindex="-1"></a>  c_qd_free<span class="op">(</span>buffer<span class="op">);</span>                                             <span class="co">// must manually free buffer</span></span>
-<span id="cb11-21"><a href="#cb11-21" tabindex="-1"></a>  <span class="cf">return</span> y<span class="op">;</span></span>
-<span id="cb11-22"><a href="#cb11-22" tabindex="-1"></a><span class="op">}</span></span>
-<span id="cb11-23"><a href="#cb11-23" tabindex="-1"></a></span>
-<span id="cb11-24"><a href="#cb11-24" tabindex="-1"></a></span>
-<span id="cb11-25"><a href="#cb11-25" tabindex="-1"></a><span class="co">/*** R</span></span>
-<span id="cb11-26"><a href="#cb11-26" tabindex="-1"></a><span class="co">x &lt;- runif(1e7)</span></span>
-<span id="cb11-27"><a href="#cb11-27" tabindex="-1"></a><span class="co">stopifnot(test_qs_serialize(x) == x)</span></span>
-<span id="cb11-28"><a href="#cb11-28" tabindex="-1"></a><span class="co">stopifnot(test_qd_serialize(x) == x)</span></span>
-<span id="cb11-29"><a href="#cb11-29" tabindex="-1"></a><span class="co">*/</span></span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="co">// [[Rcpp::depends(qs2)]]</span></span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;Rcpp.h&gt;</span></span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a><span class="pp">#include </span><span class="im">&quot;qs2_external.h&quot;</span></span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a><span class="kw">using</span> <span class="kw">namespace</span> Rcpp<span class="op">;</span></span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a></span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a><span class="co">// [[Rcpp::export]]</span></span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a>SEXP test_qs_serialize<span class="op">(</span>SEXP x<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a>  <span class="dt">size_t</span> len <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a>  <span class="dt">unsigned</span> <span class="dt">char</span> <span class="op">*</span> buffer <span class="op">=</span> c_qs_serialize<span class="op">(</span>x<span class="op">,</span> <span class="op">&amp;</span>len<span class="op">,</span> <span class="dv">10</span><span class="op">,</span> <span class="kw">true</span><span class="op">,</span> <span class="dv">4</span><span class="op">);</span> <span class="co">// object, buffer length, compress_level, shuffle, nthreads</span></span>
+<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a>  SEXP y <span class="op">=</span> c_qs_deserialize<span class="op">(</span>buffer<span class="op">,</span> len<span class="op">,</span> <span class="kw">false</span><span class="op">,</span> <span class="dv">4</span><span class="op">);</span>              <span class="co">// buffer, buffer length, validate_checksum, nthreads</span></span>
+<span id="cb10-11"><a href="#cb10-11" tabindex="-1"></a>  c_qs_free<span class="op">(</span>buffer<span class="op">);</span>                                             <span class="co">// must manually free buffer</span></span>
+<span id="cb10-12"><a href="#cb10-12" tabindex="-1"></a>  <span class="cf">return</span> y<span class="op">;</span></span>
+<span id="cb10-13"><a href="#cb10-13" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb10-14"><a href="#cb10-14" tabindex="-1"></a></span>
+<span id="cb10-15"><a href="#cb10-15" tabindex="-1"></a><span class="co">// [[Rcpp::export]]</span></span>
+<span id="cb10-16"><a href="#cb10-16" tabindex="-1"></a>SEXP test_qd_serialize<span class="op">(</span>SEXP x<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb10-17"><a href="#cb10-17" tabindex="-1"></a>  <span class="dt">size_t</span> len <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb10-18"><a href="#cb10-18" tabindex="-1"></a>  <span class="dt">unsigned</span> <span class="dt">char</span> <span class="op">*</span> buffer <span class="op">=</span> c_qd_serialize<span class="op">(</span>x<span class="op">,</span> <span class="op">&amp;</span>len<span class="op">,</span> <span class="dv">10</span><span class="op">,</span> <span class="kw">true</span><span class="op">,</span> <span class="dv">4</span><span class="op">);</span> <span class="co">// object, buffer length, compress_level, shuffle, nthreads</span></span>
+<span id="cb10-19"><a href="#cb10-19" tabindex="-1"></a>  SEXP y <span class="op">=</span> c_qd_deserialize<span class="op">(</span>buffer<span class="op">,</span> len<span class="op">,</span> <span class="kw">false</span><span class="op">,</span> <span class="kw">false</span><span class="op">,</span> <span class="dv">4</span><span class="op">);</span>       <span class="co">// buffer, buffer length, use_alt_rep, validate_checksum, nthreads</span></span>
+<span id="cb10-20"><a href="#cb10-20" tabindex="-1"></a>  c_qd_free<span class="op">(</span>buffer<span class="op">);</span>                                             <span class="co">// must manually free buffer</span></span>
+<span id="cb10-21"><a href="#cb10-21" tabindex="-1"></a>  <span class="cf">return</span> y<span class="op">;</span></span>
+<span id="cb10-22"><a href="#cb10-22" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb10-23"><a href="#cb10-23" tabindex="-1"></a></span>
+<span id="cb10-24"><a href="#cb10-24" tabindex="-1"></a></span>
+<span id="cb10-25"><a href="#cb10-25" tabindex="-1"></a><span class="co">/*** R</span></span>
+<span id="cb10-26"><a href="#cb10-26" tabindex="-1"></a><span class="co">x &lt;- runif(1e7)</span></span>
+<span id="cb10-27"><a href="#cb10-27" tabindex="-1"></a><span class="co">stopifnot(test_qs_serialize(x) == x)</span></span>
+<span id="cb10-28"><a href="#cb10-28" tabindex="-1"></a><span class="co">stopifnot(test_qd_serialize(x) == x)</span></span>
+<span id="cb10-29"><a href="#cb10-29" tabindex="-1"></a><span class="co">*/</span></span></code></pre></div>
 </div>
 <div id="global-options-for-qs2" class="section level1">
 <h1>Global Options for qs2</h1>
