@@ -18,7 +18,7 @@ LazyData: true
 Biarch: true
 Depends: R (>= 3.5.0)
 Imports: 
-    Rcpp, stringfish (>= 0.15.1)
+    Rcpp, stringfish (>= 0.18.0)
 LinkingTo: Rcpp, stringfish, RcppParallel
 Suggests: knitr, rmarkdown, dplyr, data.table, stringi
 SystemRequirements: GNU make
