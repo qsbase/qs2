@@ -1,7 +1,7 @@
-Version 0.1.7 (2026-01-11)
+Version 0.1.7 (2026-01-18)
     * Replace `ATTRIB` and `SET_ATTRIB` calls (no longer in API)
     * Enable TBB by default (via RcppParallel); use configure --without-TBB to force disable
-    * Add zstd file substitution helpers `zstd_in` and `zstd_out`
+    * Add ZSTD file substitution helpers `zstd_in` and `zstd_out`
     * Add ZSTD bindings section to the vignette
 
 Version 0.1.6 (2025-11-20)
