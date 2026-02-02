@@ -11,8 +11,8 @@ qs_cache(
   cache_dir = ".cache",
   clear = FALSE,
   prompt = TRUE,
-  qsave_params = list(),
-  qread_params = list(),
+  qs_save_params = list(),
+  qs_read_params = list(),
   verbose = TRUE
 )
 }
@@ -29,9 +29,9 @@ qs_cache(
 
 \item{prompt}{Whether to prompt before clearing.}
 
-\item{qsave_params}{List of parameters passed on to \code{qs_save}.}
+\item{qs_save_params}{List of parameters passed on to \code{qs_save}.}
 
-\item{qread_params}{List of parameters passed on to \code{qs_read}.}
+\item{qs_read_params}{List of parameters passed on to \code{qs_read}.}
 
 \item{verbose}{Boolean. If \code{TRUE}, the function prints an informative message regarding the status of cached objects.}
 }
@@ -59,13 +59,13 @@ b <- 5
 result <- qs_cache({a + b},
                  name="aplusb",
                  cache_dir = cache_dir,
-                 qsave_params = list(compress_level = 5))
+                 qs_save_params = list(compress_level = 5))
 
 # cached
 result <- qs_cache({a + b},
                  name="aplusb",
                  cache_dir = cache_dir,
-                 qsave_params = list(compress_level = 5))
+                 qs_save_params = list(compress_level = 5))
 
 # clear cached result
 qs_cache(name="aplusb", clear=TRUE, prompt=FALSE, cache_dir = cache_dir)

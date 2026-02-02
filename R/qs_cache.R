@@ -18,8 +18,8 @@
 #' @param cache_dir The directory to store cached files in.
 #' @param clear Set to `TRUE` to clear the cache (see details).
 #' @param prompt Whether to prompt before clearing.
-#' @param qsave_params List of parameters passed on to `qs_save`.
-#' @param qread_params List of parameters passed on to `qs_read`.
+#' @param qs_save_params List of parameters passed on to `qs_save`.
+#' @param qs_read_params List of parameters passed on to `qs_read`.
 #' @param verbose Boolean. If `TRUE`, the function prints an informative message regarding the status of cached objects. 
 #'
 #' @examples
@@ -32,17 +32,17 @@
 #' result <- qs_cache({a + b},
 #'                  name="aplusb",
 #'                  cache_dir = cache_dir,
-#'                  qsave_params = list(compress_level = 5))
+#'                  qs_save_params = list(compress_level = 5))
 #'
 #' # cached
 #' result <- qs_cache({a + b},
 #'                  name="aplusb",
 #'                  cache_dir = cache_dir,
-#'                  qsave_params = list(compress_level = 5))
+#'                  qs_save_params = list(compress_level = 5))
 #'
 #' # clear cached result
 #' qs_cache(name="aplusb", clear=TRUE, prompt=FALSE, cache_dir = cache_dir)
-qs_cache <- function(expr, name, envir = parent.frame(), cache_dir = ".cache", clear = FALSE, prompt = TRUE, qsave_params = list(), qread_params = list(), verbose = TRUE) {
+qs_cache <- function(expr, name, envir = parent.frame(), cache_dir = ".cache", clear = FALSE, prompt = TRUE, qs_save_params = list(), qs_read_params = list(), verbose = TRUE) {
   if (clear) {
     if (missing(name)) {
       files <- list.files(cache_dir, pattern = ".qs2$", full.names = TRUE)
@@ -76,8 +76,8 @@ qs_cache <- function(expr, name, envir = parent.frame(), cache_dir = ".cache", c
       if (verbose) {
         message("cached")
       }
-      qread_params$file <- file
-      return(do.call(qs_read, args = qread_params, envir = envir))
+      qs_read_params$file <- file
+      return(do.call(qs_read, args = qs_read_params, envir = envir))
     } else {
       if (verbose) {
         message("not cached")
@@ -86,9 +86,9 @@ qs_cache <- function(expr, name, envir = parent.frame(), cache_dir = ".cache", c
         dir.create(cache_dir, recursive = TRUE)
       }
       object <- eval(expr, envir = envir)
-      qsave_params$object <- object
-      qsave_params$file <- file
-      do.call(qs_save, qsave_params)
+      qs_save_params$object <- object
+      qs_save_params$file <- file
+      do.call(qs_save, qs_save_params)
       return(object)
     }
   }
