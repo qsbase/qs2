@@ -150,7 +150,6 @@ qs_read_rand <- function() {
 }
 
 ################################################################################################
-# Explicit tests for any bugs go here
 
 # Version 0.1.5 (and lower) CPLXSXP with attributes incorrectly writes header twice (L144-155 in qd_serializer.h)
 tmp <- tempfile(fileext = ".qd")
@@ -158,6 +157,25 @@ x <- complex(real = c(1, 2), imaginary = c(3, 4))
 attr(x, "note") <- "test"
 qs2::qd_save(x, tmp)
 restored <- qs2::qd_read(tmp)
+stopifnot(identical(restored, x))
+
+# Version 0.1.8: compute hash by default and warn on mismatch
+# Hash mismatch should warn (not error) when validate_checksum = FALSE
+tmp <- tempfile(fileext = ".qs2")
+x <- list(a = 1:5, b = "hello")
+qs2::qs_save(x, tmp, nthreads = 1)
+stored_hash <- qs2:::internal_compute_qx_hash(tmp)
+bad_hash <- if (stored_hash != "1") "1" else "2"
+qs2:::internal_write_qx_hash(tmp, bad_hash)
+warning_msg <- NULL
+restored <- withCallingHandlers(
+  qs2::qs_read(tmp, validate_checksum = FALSE, nthreads = 1),
+  warning = function(w) {
+    warning_msg <<- conditionMessage(w)
+    invokeRestart("muffleWarning")
+  }
+)
+stopifnot(grepl("hash mismatch", warning_msg, fixed = TRUE))
 stopifnot(identical(restored, x))
 
 ################################################################################################

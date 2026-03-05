@@ -11,7 +11,7 @@ qs_read(file,
 \arguments{
 \item{file}{The file name/path.}
 
-\item{validate_checksum}{Whether to validate the stored checksum in the file (the initial value is FALSE).}
+\item{validate_checksum}{If TRUE, validate checksum before deserialization and error on mismatch (or missing checksum). If FALSE, checksum is computed during read and mismatches (or missing checksum) produce a warning after reading (the initial value is FALSE).}
 
 \item{nthreads}{The number of threads to use when reading data (the initial value is 1L). When TBB is not available, values greater than 1 emit a warning and fall back to 1.}
 }

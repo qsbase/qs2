@@ -42,8 +42,7 @@ qs_to_rds <- function(input_file, output_file, compress_level = 6) {
 #' @param output_file The `qs2` file to write.
 #' @param compress_level The zstd compression level to use when writing the `qs2` file. See the `qs_save` help file for more details on this parameter.
 #' 
-#' @details The `shuffle` parameters is currently not supported when converting from `RDS` to `qs2`.
-#' When reading the resulting `qs2` file, `validate_checksum` must be set to `FALSE`.
+#' @details The `shuffle` parameter is currently not supported when converting from `RDS` to `qs2`.
 #' @return No value is returned. The converted file is written to disk.
 #' 
 #' @examples
@@ -53,7 +52,7 @@ qs_to_rds <- function(input_file, output_file, compress_level = 6) {
 #' x <- runif(1e6)
 #' saveRDS(x, rds_tmp)
 #' rds_to_qs(input_file = rds_tmp, output_file = qs_tmp)
-#' x2 <- qs_read(qs_tmp, validate_checksum = FALSE)
+#' x2 <- qs_read(qs_tmp, validate_checksum = TRUE)
 #' stopifnot(identical(x, x2))
 #' @export
 rds_to_qs <- function(input_file, output_file, compress_level = 3) {
@@ -69,7 +68,6 @@ rds_to_qs <- function(input_file, output_file, compress_level = 3) {
   while(TRUE) {
     block <- readBin(in_con, "raw", n = MAX_BLOCKSIZE)
     if(length(block) == 0) break;
-    blocksize <- length(block)
     zblock <- zstd_compress_raw(block, compress_level)
     zblocksize <- as.integer(length(zblock)) # make sure we write out an integer
     writeBin(zblocksize, out_con)
@@ -77,4 +75,7 @@ rds_to_qs <- function(input_file, output_file, compress_level = 3) {
   }
   close(in_con)
   close(out_con)
+
+  computed_hash <- internal_compute_qx_hash(output_file)
+  internal_write_qx_hash(output_file, computed_hash)
 }

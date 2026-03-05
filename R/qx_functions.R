@@ -17,7 +17,7 @@ shared_params_read <- function(file_input=TRUE, use_alt_rep=FALSE) {
   c('@param file The file name/path.'[file_input],
     '@param input The raw vector to deserialize.'[!file_input],
     '@param use_alt_rep Use ALTREP when reading in string data (the initial value is FALSE).'[use_alt_rep],
-    '@param validate_checksum Whether to validate the stored checksum in the file (the initial value is FALSE).',
+    '@param validate_checksum If TRUE, validate checksum before deserialization and error on mismatch (or missing checksum). If FALSE, checksum is computed during read and mismatches (or missing checksum) produce a warning after reading (the initial value is FALSE).',
     '@param nthreads The number of threads to use when reading data (the initial value is 1L). When TBB is not available, values greater than 1 emit a warning and fall back to 1.'
   )
 }

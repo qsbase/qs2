@@ -90,4 +90,29 @@ recovered <- do.call(c, qd$blocks)
 stopifnot(identical(unserialize(recovered), obj))
 stopifnot(identical(qd$stored_hash, qd$computed_hash))
 
+cat("Testing qs_to_rds and rds_to_qs with large random strings...\n")
+large_strings <- stringfish::random_strings(
+  N = 1e6,
+  string_size = 23,
+  vector_mode = "normal"
+)
+
+tmp_qs_large <- tempfile(fileext = ".qs2")
+tmp_rds_large <- tempfile(fileext = ".rds")
+tmp_qs_from_rds <- tempfile(fileext = ".qs2")
+
+qs_save(large_strings, tmp_qs_large, compress_level = 1L)
+qs_to_rds(tmp_qs_large, tmp_rds_large, compress_level = 1L)
+from_rds <- readRDS(tmp_rds_large)
+stopifnot(identical(from_rds, large_strings))
+
+rds_to_qs(tmp_rds_large, tmp_qs_from_rds, compress_level = 1L)
+from_qs <- qs_read(tmp_qs_from_rds, validate_checksum = TRUE)
+stopifnot(identical(from_qs, large_strings))
+qd_large <- qx_dump(tmp_qs_from_rds)
+stopifnot(identical(qd_large$stored_hash, qd_large$computed_hash))
+
+rm(from_rds, from_qs, large_strings)
+invisible(gc())
+
 cat("Utility tests completed.\n")

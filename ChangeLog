@@ -1,3 +1,8 @@
+Version 0.1.8 (2026-03-03)
+    * Add `xxhash` checks by and throw warning on mismatch by default
+    * Fix usage of `Rf_error` error handling (https://github.com/qsbase/qs2/issues/26)
+    * Fix performance bug, use correct shuffle flag at high compress levels
+
 Version 0.1.7 (2026-01-18)
     * Replace `ATTRIB` and `SET_ATTRIB` calls (no longer in API)
     * Enable TBB by default (via RcppParallel); use configure --without-TBB to force disable

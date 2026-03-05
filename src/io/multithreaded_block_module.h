@@ -2,6 +2,7 @@
 #define _QS2_MULTITHREADED_BLOCK_MODULE_H
 
 #include "io/io_common.h"
+#include "io/xxhash_module.h"
 
 #include <tbb/concurrent_queue.h>
 #include <tbb/concurrent_vector.h>
@@ -267,6 +268,7 @@ struct BlockCompressReaderMT {
     // template class objects
     stream_reader & myFile;
     tbb::enumerable_thread_specific<decompressor> dp;
+    xxHashEnv hp;
 
     // intermediate data objects
     tbb::concurrent_queue<std::shared_ptr<char[]>> available_zblocks;
@@ -297,6 +299,7 @@ struct BlockCompressReaderMT {
     // template class objects
     myFile(f),
     dp(),
+    hp(),
 
     // intermediate data objects
     available_zblocks(),
@@ -335,6 +338,8 @@ struct BlockCompressReaderMT {
                 fc.stop();
                 return zblock;
             }
+            hp.update(zsize);
+            hp.update(zblock.block.get(), bytes_read);
             zblock.blocksize = zsize;
             zblock.blocknumber = blocks_to_process.fetch_add(1);
             return zblock;
@@ -356,6 +361,8 @@ struct BlockCompressReaderMT {
                 end_of_file.store(true);
                 return false;
             }
+            hp.update(zsize);
+            hp.update(zblock.block.get(), bytes_read);
             zblock.blocksize = zsize;
             zblock.blocknumber = blocks_to_process.fetch_add(1);
             return true;
@@ -434,6 +441,9 @@ struct BlockCompressReaderMT {
     void cleanup_and_throw(std::string msg) {
         cleanup();
         throw_error<E>(msg.c_str());
+    }
+    uint64_t get_hash_digest() {
+        return hp.digest();
     }
 
     void get_data(char * outbuffer, const uint64_t len) {

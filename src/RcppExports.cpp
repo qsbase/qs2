@@ -384,6 +384,27 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// internal_compute_qx_hash
+std::string internal_compute_qx_hash(const std::string& file);
+RcppExport SEXP _qs2_internal_compute_qx_hash(SEXP fileSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type file(fileSEXP);
+    rcpp_result_gen = Rcpp::wrap(internal_compute_qx_hash(file));
+    return rcpp_result_gen;
+END_RCPP
+}
+// internal_write_qx_hash
+SEXP internal_write_qx_hash(const std::string& file, const std::string& hash_string);
+RcppExport SEXP _qs2_internal_write_qx_hash(SEXP fileSEXP, SEXP hash_stringSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type file(fileSEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type hash_string(hash_stringSEXP);
+    rcpp_result_gen = Rcpp::wrap(internal_write_qx_hash(file, hash_string));
+    return rcpp_result_gen;
+END_RCPP
+}
 // zstd_compress_file
 SEXP zstd_compress_file(const std::string& input_file, const std::string& output_file, const int compress_level);
 RcppExport SEXP _qs2_zstd_compress_file(SEXP input_fileSEXP, SEXP output_fileSEXP, SEXP compress_levelSEXP) {
@@ -445,6 +466,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_qs2_base85_decode", (DL_FUNC) &_qs2_base85_decode, 1},
     {"_qs2_c_base91_encode", (DL_FUNC) &_qs2_c_base91_encode, 1},
     {"_qs2_c_base91_decode", (DL_FUNC) &_qs2_c_base91_decode, 1},
+    {"_qs2_internal_compute_qx_hash", (DL_FUNC) &_qs2_internal_compute_qx_hash, 1},
+    {"_qs2_internal_write_qx_hash", (DL_FUNC) &_qs2_internal_write_qx_hash, 2},
     {"_qs2_zstd_compress_file", (DL_FUNC) &_qs2_zstd_compress_file, 3},
     {"_qs2_zstd_decompress_file", (DL_FUNC) &_qs2_zstd_decompress_file, 2},
     {NULL, NULL, 0}
