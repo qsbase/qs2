@@ -17,6 +17,7 @@
 #include "qoptions.h" // global default parameters
 #include "qd_deserializer.h"
 #include "qd_serializer.h"
+#include "r_error_policy.h"
 #include "qs_deserializer.h"
 #include "qs_serializer.h"
 #include "qs_unwind_protect.h"
@@ -110,7 +111,7 @@ void qx_export_functions(DllInfo* dll);
 /* qs2 format functions */
 
 #define DO_QS_SAVE(_STREAM_WRITER_, _BASE_CLASS_, _COMPRESSOR_, _HASHER_)                                              \
-    _BASE_CLASS_<_STREAM_WRITER_, _COMPRESSOR_, _HASHER_, ErrorType::r_error, false> block_io(myFile, compress_level); \
+    _BASE_CLASS_<_STREAM_WRITER_, _COMPRESSOR_, _HASHER_, RErrorPolicy, false> block_io(myFile, compress_level);       \
     R_SerializeInit(&out, block_io);                                                                                   \
     qsSaveImplArgs args = {object, hash, &out};                                                                        \
     DO_JMPBUF_QS_SAVE();                                                                                               \
@@ -125,12 +126,12 @@ SEXP qs_save(SEXP object, const std::string& file, const int compress_level, con
 #endif
 
     if (compress_level > ZSTD_maxCLevel() || compress_level < ZSTD_minCLevel()) {
-        throw_error<ErrorType::cpp_error>(COMPRESS_LEVEL_ERR_MSG);
+        throw_error<StdErrorPolicy>(COMPRESS_LEVEL_ERR_MSG);
     }
 
     OfStreamWriter myFile(R_ExpandFileName(file.c_str()));
     if (!myFile.isValid()) {
-        throw_error<ErrorType::cpp_error>(FILE_SAVE_ERR_MSG);
+        throw_error<StdErrorPolicy>(FILE_SAVE_ERR_MSG);
     }
     write_qs2_header(myFile, shuffle);
 
@@ -168,7 +169,7 @@ CVectorOut qs_serialize_impl(SEXP object, const int compress_level, const bool s
 #endif
 
     if (compress_level > ZSTD_maxCLevel() || compress_level < ZSTD_minCLevel()) {
-        throw_error<ErrorType::cpp_error>(COMPRESS_LEVEL_ERR_MSG);
+        throw_error<StdErrorPolicy>(COMPRESS_LEVEL_ERR_MSG);
     }
 
     CVectorOut myFile;
@@ -223,8 +224,8 @@ bool c_qs_free(void *buffer) {
 
 // DO_UNWIND_PROTECT macro assigns SEXP output
 #define DO_QS_READ(_STREAM_READER_, _BASE_CLASS_, _DECOMPRESSOR_, _RUNTIME_HASH_)                                             \
-    _BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, ErrorType::r_error> block_io(myFile);                                       \
-    R_UnserializeInit<_BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, ErrorType::r_error>>(&in, (R_pstream_data_t)(&block_io)); \
+    _BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, RErrorPolicy> block_io(myFile);                                             \
+    R_UnserializeInit<_BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, RErrorPolicy>>(&in, (R_pstream_data_t)(&block_io));       \
     DO_JMPBUF_QS_READ();                                                                                                      \
     DO_UNWIND_PROTECT_QS_READ(qs_read_impl, decltype(block_io), in);                                                          \
     block_io.finish();                                                                                                        \
@@ -240,7 +241,7 @@ SEXP qs_read(const std::string& file, const bool validate_checksum, int nthreads
 
     IfStreamReader myFile(R_ExpandFileName(file.c_str()));
     if (!myFile.isValid()) {
-        throw_error<ErrorType::cpp_error>(FILE_READ_ERR_MSG);
+        throw_error<StdErrorPolicy>(FILE_READ_ERR_MSG);
     }
 
     bool shuffle;
@@ -248,11 +249,11 @@ SEXP qs_read(const std::string& file, const bool validate_checksum, int nthreads
     read_qs2_header(myFile, shuffle, stored_hash);
     if (validate_checksum) {
         if (stored_hash == 0) {
-            throw_error<ErrorType::cpp_error>(NO_HASH_ERR_MSG);
+            throw_error<StdErrorPolicy>(NO_HASH_ERR_MSG);
         }
         uint64_t computed_hash = read_qx_hash(myFile);
         if (computed_hash != stored_hash) {
-            throw_error<ErrorType::cpp_error>(HASH_MISMATCH_ERR_MSG);
+            throw_error<StdErrorPolicy>(HASH_MISMATCH_ERR_MSG);
         }
     }
 
@@ -301,11 +302,11 @@ SEXP qs_deserialize_impl(CVectorIn& myFile, const bool validate_checksum, int nt
     read_qs2_header(myFile, shuffle, stored_hash);
     if (validate_checksum) {
         if (stored_hash == 0) {
-            throw_error<ErrorType::cpp_error>(IN_MEMORY_NO_HASH_ERR_MSG);
+            throw_error<StdErrorPolicy>(IN_MEMORY_NO_HASH_ERR_MSG);
         }
         uint64_t computed_hash = read_qx_hash(myFile);
         if (computed_hash != stored_hash) {
-            throw_error<ErrorType::cpp_error>(IN_MEMORY_HASH_MISMATCH_ERR_MSG);
+            throw_error<StdErrorPolicy>(IN_MEMORY_HASH_MISMATCH_ERR_MSG);
         }
     }
 
@@ -343,7 +344,7 @@ SEXP qs_deserialize_impl(CVectorIn& myFile, const bool validate_checksum, int nt
 
 SEXP qs_deserialize(SEXP input, const bool validate_checksum, int nthreads) {
     if (TYPEOF(input) != RAWSXP) {
-        throw_error<ErrorType::cpp_error>(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
+        throw_error<StdErrorPolicy>(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
     }
     CVectorIn myFile(reinterpret_cast<char*>(RAW(input)), Rf_xlength(input));
     return qs_deserialize_impl(myFile, validate_checksum, nthreads);
@@ -355,8 +356,8 @@ SEXP c_qs_deserialize(const unsigned char* buffer, const size_t len, const bool 
 }
 
 #define DO_QD_SAVE(_STREAM_WRITER_, _BASE_CLASS_, _COMPRESSOR_, _HASHER_)                                                                          \
-    _BASE_CLASS_<_STREAM_WRITER_, _COMPRESSOR_, _HASHER_, ErrorType::cpp_error, true> writer(myFile, compress_level);                              \
-    QdataSerializer<_BASE_CLASS_<_STREAM_WRITER_, _COMPRESSOR_, _HASHER_, ErrorType::cpp_error, true>> serializer(writer, warn_unsupported_types); \
+    _BASE_CLASS_<_STREAM_WRITER_, _COMPRESSOR_, _HASHER_, StdErrorPolicy, true> writer(myFile, compress_level);                                   \
+    QdataSerializer<_BASE_CLASS_<_STREAM_WRITER_, _COMPRESSOR_, _HASHER_, StdErrorPolicy, true>> serializer(writer, warn_unsupported_types);      \
     serializer.write_object(object);                                                                                                               \
     serializer.write_object_data();                                                                                                                \
     hash = writer.finish();
@@ -373,7 +374,7 @@ SEXP qd_save(SEXP object, const std::string& file, const int compress_level, con
 #endif
 
     if (compress_level > ZSTD_maxCLevel() || compress_level < ZSTD_minCLevel()) {
-        throw_error<ErrorType::cpp_error>(COMPRESS_LEVEL_ERR_MSG);
+        throw_error<StdErrorPolicy>(COMPRESS_LEVEL_ERR_MSG);
     }
 
     OfStreamWriter myFile(R_ExpandFileName(file.c_str()));
@@ -411,7 +412,7 @@ CVectorOut qd_serialize_impl(SEXP object, const int compress_level, const bool s
 #endif
 
     if (compress_level > ZSTD_maxCLevel() || compress_level < ZSTD_minCLevel()) {
-        throw_error<ErrorType::cpp_error>(COMPRESS_LEVEL_ERR_MSG);
+        throw_error<StdErrorPolicy>(COMPRESS_LEVEL_ERR_MSG);
     }
 
     CVectorOut myFile;
@@ -461,8 +462,8 @@ bool c_qd_free(void *buffer) {
 
 // DO_QD_READ macro assigns SEXP output
 #define DO_QD_READ(_STREAM_READER_, _BASE_CLASS_, _DECOMPRESSOR_, _RUNTIME_HASH_)                                             \
-    _BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, ErrorType::cpp_error> reader(myFile);                                       \
-    QdataDeserializer<_BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, ErrorType::cpp_error>> deserializer(reader, use_alt_rep); \
+    _BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, StdErrorPolicy> reader(myFile);                                             \
+    QdataDeserializer<_BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, StdErrorPolicy>> deserializer(reader, use_alt_rep);       \
     output = PROTECT(deserializer.read_object());                                                                             \
     deserializer.read_object_data();                                                                                          \
     reader.finish();                                                                                                          \
@@ -490,7 +491,7 @@ SEXP qd_read(const std::string& file, const bool use_alt_rep, const bool validat
         }
         uint64_t computed_hash = read_qx_hash(myFile);
         if (computed_hash != stored_hash) {
-            throw_error<ErrorType::cpp_error>(HASH_MISMATCH_ERR_MSG);
+            throw_error<StdErrorPolicy>(HASH_MISMATCH_ERR_MSG);
         }
     }
 
@@ -539,7 +540,7 @@ SEXP qd_deserialize_impl(CVectorIn& myFile, const bool use_alt_rep, const bool v
         }
         uint64_t computed_hash = read_qx_hash(myFile);
         if (computed_hash != stored_hash) {
-            throw_error<ErrorType::cpp_error>(IN_MEMORY_HASH_MISMATCH_ERR_MSG);
+            throw_error<StdErrorPolicy>(IN_MEMORY_HASH_MISMATCH_ERR_MSG);
         }
     }
 
@@ -573,7 +574,7 @@ SEXP qd_deserialize_impl(CVectorIn& myFile, const bool use_alt_rep, const bool v
 
 SEXP qd_deserialize(SEXP input, const bool use_alt_rep, const bool validate_checksum, int nthreads) {
     if (TYPEOF(input) != RAWSXP) {
-        throw_error<ErrorType::cpp_error>(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
+        throw_error<StdErrorPolicy>(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
     }
     CVectorIn myFile(reinterpret_cast<char*>(RAW(input)), Rf_xlength(input));
     return qd_deserialize_impl(myFile, use_alt_rep, validate_checksum, nthreads);
@@ -654,7 +655,7 @@ int internal_is_utf8_locale(const int size) {
 std::string internal_compute_qx_hash(const std::string& file) {
     IfStreamReader myFile(R_ExpandFileName(file.c_str()));
     if (!myFile.isValid()) {
-        throw_error<ErrorType::cpp_error>(FILE_READ_ERR_MSG);
+        throw_error<StdErrorPolicy>(FILE_READ_ERR_MSG);
     }
     myFile.seekg(24);
     return std::to_string(read_qx_hash(myFile));
@@ -663,7 +664,7 @@ std::string internal_compute_qx_hash(const std::string& file) {
 // [[Rcpp::export(rng = false, invisible = true)]]
 SEXP internal_write_qx_hash(const std::string& file, const std::string& hash_string) {
     if (hash_string.empty()) {
-        throw_error<ErrorType::cpp_error>("internal_write_qx_hash: empty hash string");
+        throw_error<StdErrorPolicy>("internal_write_qx_hash: empty hash string");
     }
 
     size_t parsed_chars = 0;
@@ -671,20 +672,20 @@ SEXP internal_write_qx_hash(const std::string& file, const std::string& hash_str
     try {
         hash_value = std::stoull(hash_string, &parsed_chars, 10);
     } catch (...) {
-        throw_error<ErrorType::cpp_error>("internal_write_qx_hash: hash string is not a valid unsigned integer");
+        throw_error<StdErrorPolicy>("internal_write_qx_hash: hash string is not a valid unsigned integer");
     }
     if (parsed_chars != hash_string.size()) {
-        throw_error<ErrorType::cpp_error>("internal_write_qx_hash: hash string is not a valid unsigned integer");
+        throw_error<StdErrorPolicy>("internal_write_qx_hash: hash string is not a valid unsigned integer");
     }
 
     std::fstream out(R_ExpandFileName(file.c_str()), std::ios::in | std::ios::out | std::ios::binary);
     if (!out.is_open()) {
-        throw_error<ErrorType::cpp_error>(FILE_SAVE_ERR_MSG);
+        throw_error<StdErrorPolicy>(FILE_SAVE_ERR_MSG);
     }
     out.seekp(HEADER_HASH_POSITION);
     out.write(reinterpret_cast<const char*>(&hash_value), sizeof(hash_value));
     if (!out) {
-        throw_error<ErrorType::cpp_error>("internal_write_qx_hash: failed to write hash");
+        throw_error<StdErrorPolicy>("internal_write_qx_hash: failed to write hash");
     }
     return R_NilValue;
 }
@@ -694,50 +695,50 @@ SEXP internal_write_qx_hash(const std::string& file, const std::string& hash_str
 
 std::vector<unsigned char> zstd_compress_raw(SEXP const data, const int compress_level) {
     if (TYPEOF(data) != RAWSXP) {
-        throw_error<ErrorType::cpp_error>(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
+        throw_error<StdErrorPolicy>(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
     }
     if (compress_level > ZSTD_maxCLevel() || compress_level < ZSTD_minCLevel()) {
-        throw_error<ErrorType::cpp_error>(COMPRESS_LEVEL_ERR_MSG);
+        throw_error<StdErrorPolicy>(COMPRESS_LEVEL_ERR_MSG);
     }
     size_t xsize = static_cast<size_t>(Rf_xlength(data));
     size_t zbound = ZSTD_compressBound(xsize);
     if (ZSTD_isError(zbound)) {
-        throw_error<ErrorType::cpp_error>(std::string("zstd_compress_raw failed: ") + ZSTD_getErrorName(zbound));
+        throw_error<StdErrorPolicy>(std::string("zstd_compress_raw failed: ") + ZSTD_getErrorName(zbound));
     }
     const char* xdata = reinterpret_cast<const char*>(RAW(data));
     std::vector<unsigned char> ret(zbound);
     char* retdata = reinterpret_cast<char*>(ret.data());
     size_t zsize = ZSTD_compress(retdata, zbound, xdata, xsize, compress_level);
     if (ZSTD_isError(zsize)) {
-        throw_error<ErrorType::cpp_error>(std::string("zstd_compress_raw failed: ") + ZSTD_getErrorName(zsize));
+        throw_error<StdErrorPolicy>(std::string("zstd_compress_raw failed: ") + ZSTD_getErrorName(zsize));
     }
     ret.resize(zsize);
     return ret;
 }
 RawVector zstd_decompress_raw(SEXP const data) {
     if (TYPEOF(data) != RAWSXP) {
-        throw_error<ErrorType::cpp_error>(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
+        throw_error<StdErrorPolicy>(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
     }
     size_t zsize = static_cast<size_t>(Rf_xlength(data));
     const char* xdata = reinterpret_cast<const char*>(RAW(data));
     unsigned long long retsize = ZSTD_getFrameContentSize(xdata, zsize);
     if (retsize == ZSTD_CONTENTSIZE_ERROR) {
-        throw_error<ErrorType::cpp_error>("zstd_decompress_raw failed: input is not a valid zstd frame");
+        throw_error<StdErrorPolicy>("zstd_decompress_raw failed: input is not a valid zstd frame");
     }
     if (retsize == ZSTD_CONTENTSIZE_UNKNOWN) {
-        throw_error<ErrorType::cpp_error>("zstd_decompress_raw failed: frame size is unknown");
+        throw_error<StdErrorPolicy>("zstd_decompress_raw failed: frame size is unknown");
     }
     if (retsize > static_cast<unsigned long long>(R_XLEN_T_MAX)) {
-        throw_error<ErrorType::cpp_error>("zstd_decompress_raw failed: output is too large for an R raw vector");
+        throw_error<StdErrorPolicy>("zstd_decompress_raw failed: output is too large for an R raw vector");
     }
     RawVector ret(static_cast<R_xlen_t>(retsize));
     char* retdata = reinterpret_cast<char*>(RAW(ret));
     size_t decoded_size = ZSTD_decompress(retdata, static_cast<size_t>(retsize), xdata, zsize);
     if (ZSTD_isError(decoded_size)) {
-        throw_error<ErrorType::cpp_error>(std::string("zstd_decompress_raw failed: ") + ZSTD_getErrorName(decoded_size));
+        throw_error<StdErrorPolicy>(std::string("zstd_decompress_raw failed: ") + ZSTD_getErrorName(decoded_size));
     }
     if (decoded_size != static_cast<size_t>(retsize)) {
-        throw_error<ErrorType::cpp_error>("zstd_decompress_raw failed: decoded size mismatch");
+        throw_error<StdErrorPolicy>("zstd_decompress_raw failed: decoded size mismatch");
     }
     return ret;
 }
@@ -758,7 +759,7 @@ std::vector<unsigned char> blosc_shuffle_raw(SEXP const data, int bytesofsize) {
 
 std::vector<unsigned char> blosc_unshuffle_raw(SEXP const data, int bytesofsize) {
     if (TYPEOF(data) != RAWSXP) {
-        throw_error<ErrorType::cpp_error>(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
+        throw_error<StdErrorPolicy>(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
     }
     if (bytesofsize != 4 && bytesofsize != 8) throw std::runtime_error("bytesofsize must be 4 or 8");
     uint64_t blocksize = Rf_xlength(data);
@@ -773,7 +774,7 @@ std::vector<unsigned char> blosc_unshuffle_raw(SEXP const data, int bytesofsize)
 
 std::string xxhash_raw(SEXP const data) {
     if (TYPEOF(data) != RAWSXP) {
-        throw_error<ErrorType::cpp_error>(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
+        throw_error<StdErrorPolicy>(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
     }
     uint64_t xsize = Rf_xlength(data);
     uint8_t* xdata = reinterpret_cast<uint8_t*>(RAW(data));

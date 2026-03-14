@@ -54,7 +54,7 @@ struct OrderedPtr {
 // sequencer requires copy constructor for message, which means using shared_ptr
 // would be better if we could use unique_ptr
 // nthreads must be >= 2
-template <class stream_writer, class compressor, class hasher, ErrorType E, bool direct_mem>
+template <class stream_writer, class compressor, class hasher, class error_policy, bool direct_mem>
 struct BlockCompressWriterMT {
     // template class objects
     stream_writer & myFile;
@@ -194,7 +194,7 @@ struct BlockCompressWriterMT {
     }
     void cleanup_and_throw(std::string msg) {
         cleanup();
-        throw_error<E>(msg.c_str());
+        throw_error<error_policy>(msg.c_str());
     }
 
     void push_data(const char * const inbuffer, const uint64_t len) {
@@ -263,7 +263,7 @@ struct BlockCompressWriterMT {
     }
 };
 
-template <class stream_reader, class decompressor, ErrorType E> 
+template <class stream_reader, class decompressor, class error_policy>
 struct BlockCompressReaderMT {
     // template class objects
     stream_reader & myFile;
@@ -440,7 +440,7 @@ struct BlockCompressReaderMT {
     }
     void cleanup_and_throw(std::string msg) {
         cleanup();
-        throw_error<E>(msg.c_str());
+        throw_error<error_policy>(msg.c_str());
     }
     uint64_t get_hash_digest() {
         return hp.digest();

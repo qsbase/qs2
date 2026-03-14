@@ -5,7 +5,7 @@
 #include "io/xxhash_module.h"
 
 // direct_mem switch does nothing, but is kept for parity with MT code
-template <class stream_writer, class compressor, class hasher, ErrorType E, bool direct_mem>
+template <class stream_writer, class compressor, class hasher, class error_policy, bool direct_mem>
 struct BlockCompressWriter {
     stream_writer & myFile;
     compressor cp;
@@ -50,7 +50,7 @@ struct BlockCompressWriter {
         // nothing
     }
     void cleanup_and_throw(const std::string msg) {
-        throw_error<E>(msg.c_str());
+        throw_error<error_policy>(msg.c_str());
     }
     void push_data(const char * const inbuffer, const uint64_t len) {
         uint64_t current_pointer_consumed = 0;
@@ -106,7 +106,7 @@ struct BlockCompressWriter {
     }
 };
 
-template <class stream_reader, class decompressor, ErrorType E> 
+template <class stream_reader, class decompressor, class error_policy>
 struct BlockCompressReader {
     stream_reader & myFile;
     decompressor dp;
@@ -162,7 +162,7 @@ struct BlockCompressReader {
         // nothing
     }
     void cleanup_and_throw(const std::string msg) {
-        throw_error<E>(msg.c_str());
+        throw_error<error_policy>(msg.c_str());
     }
     uint64_t get_hash_digest() {
         return hp.digest();

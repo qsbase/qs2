@@ -2,6 +2,7 @@
 #define _QS2_ZSTD_FILE_FUNCTIONS_H
 
 #include <Rcpp.h>
+#include "io/error_policy.h"
 #include "io/zstd_file.h"
 
 using namespace Rcpp;
@@ -9,7 +10,7 @@ using namespace Rcpp;
 // [[Rcpp::export(rng = false, invisible = true, signature = {input_file, output_file, compress_level = qopt("compress_level")})]]
 SEXP zstd_compress_file(const std::string& input_file, const std::string& output_file, const int compress_level) {
     if (compress_level > ZSTD_maxCLevel() || compress_level < ZSTD_minCLevel()) {
-        throw_error<ErrorType::cpp_error>("compress_level out of range for zstd");
+        throw_error<StdErrorPolicy>("compress_level out of range for zstd");
     }
 
     const std::string input_path = R_ExpandFileName(input_file.c_str());
@@ -17,7 +18,7 @@ SEXP zstd_compress_file(const std::string& input_file, const std::string& output
 
     std::ifstream in(input_path, std::ios::binary);
     if (!in) {
-        throw_error<ErrorType::cpp_error>(std::string("Failed to open input file: ") + input_file);
+        throw_error<StdErrorPolicy>(std::string("Failed to open input file: ") + input_file);
     }
 
     ZstdWriter writer(output_path, compress_level);
@@ -30,7 +31,7 @@ SEXP zstd_compress_file(const std::string& input_file, const std::string& output
         }
     }
     if (!in.eof()) {
-        throw_error<ErrorType::cpp_error>(std::string("Error while reading input file: ") + input_file);
+        throw_error<StdErrorPolicy>(std::string("Error while reading input file: ") + input_file);
     }
     writer.close();
     return R_NilValue;
@@ -44,7 +45,7 @@ SEXP zstd_decompress_file(const std::string& input_file, const std::string& outp
     ZstdReader reader(input_path, 1 << 20);
     std::ofstream out(output_path, std::ios::binary);
     if (!out) {
-        throw_error<ErrorType::cpp_error>(std::string("Failed to open output file for writing: ") + output_file);
+        throw_error<StdErrorPolicy>(std::string("Failed to open output file for writing: ") + output_file);
     }
 
     std::vector<char> buffer(1 << 20);
@@ -52,7 +53,7 @@ SEXP zstd_decompress_file(const std::string& input_file, const std::string& outp
     while (got > 0) {
         out.write(buffer.data(), static_cast<std::streamsize>(got));
         if (!out) {
-            throw_error<ErrorType::cpp_error>(std::string("Error while writing output file: ") + output_file);
+            throw_error<StdErrorPolicy>(std::string("Error while writing output file: ") + output_file);
         }
         got = reader.read(buffer.data(), buffer.size());
     }

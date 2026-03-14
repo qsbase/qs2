@@ -1,12 +1,13 @@
 #ifndef _QS2_IO_COMMON_H
 #define _QS2_IO_COMMON_H
 
-#include <Rcpp.h> // only needed for Rf_error
 #include <fstream>
 #include <cstdint>
 #include <memory>
 #include <cstring>
 #include <algorithm>
+
+#include "error_policy.h"
 
 #include "zstd.h"
 #include "xxhash/xxhash.c"
@@ -59,29 +60,6 @@ static constexpr uint32_t SHUFFLE_MASK = (1ULL << 31);
 #else
     #define MAKE_SHARED_BLOCK_ASSIGNMENT(SIZE) std::shared_ptr<char[]>(new char[SIZE])
 #endif
-
-enum class ErrorType { r_error, cpp_error };
-
-// default including cpp_error
-template <ErrorType E>
-inline void throw_error(const char * const msg) {
-    throw std::runtime_error(msg);
-}
-
-template<>
-inline void throw_error<ErrorType::r_error>(const char * const msg) {
-    (Rf_error)("%s", msg);
-}
-
-template <ErrorType E>
-inline void throw_error(const std::string msg) {
-    throw std::runtime_error(msg.c_str());
-}
-
-template<>
-inline void throw_error<ErrorType::r_error>(const std::string msg) {
-    (Rf_error)("%s", msg.c_str());
-}
 
 // https://stackoverflow.com/a/36835959/2723734
 inline constexpr unsigned char operator ""_u8(unsigned long long arg) noexcept {
