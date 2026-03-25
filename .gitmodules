@@ -1,0 +1,3 @@
+[submodule "inst/include/qdata-cpp"]
+	path = inst/include/qdata-cpp
+	url = https://github.com/qsbase/qdata-cpp.git

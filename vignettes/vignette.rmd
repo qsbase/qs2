@@ -190,6 +190,8 @@ A summary across 4 datasets is presented below.
 These datasets are openly licensed and represent a combination of numeric and text data across multiple domains. See `inst/analysis/datasets.R` on Github.
 
 
+
+
 # Usage in C/C++
 
 Serialization functions can be accessed in compiled code. Below is an example using Rcpp.
@@ -202,27 +204,34 @@ using namespace Rcpp;
 
 // [[Rcpp::export]]
 SEXP test_qs_serialize(SEXP x) {
-  size_t len = 0;
-  unsigned char * buffer = c_qs_serialize(x, &len, 10, true, 4); // object, buffer length, compress_level, shuffle, nthreads
-  SEXP y = c_qs_deserialize(buffer, len, false, 4);              // buffer, buffer length, validate_checksum, nthreads
-  c_qs_free(buffer);                                             // must manually free buffer
-  return y;
+  SEXP buffer = qs_serialize(x, 10, true, 4);
+  return qs_deserialize(buffer, false, 4);
 }
 
 // [[Rcpp::export]]
 SEXP test_qd_serialize(SEXP x) {
-  size_t len = 0;
-  unsigned char * buffer = c_qd_serialize(x, &len, 10, true, 4); // object, buffer length, compress_level, shuffle, nthreads
-  SEXP y = c_qd_deserialize(buffer, len, false, false, 4);       // buffer, buffer length, use_alt_rep, validate_checksum, nthreads
-  c_qd_free(buffer);                                             // must manually free buffer
-  return y;
+  SEXP buffer = qd_serialize(x, 10, true, true, 4);
+  return qd_deserialize(buffer, false, false, 4);
 }
 
+// [[Rcpp::export]]
+SEXP test_qs_save(SEXP x, const std::string& path) {
+  qs_save(x, path, 10, true, 4);
+  return qs_read(path, false, 4);
+}
+
+// [[Rcpp::export]]
+SEXP test_qd_save(SEXP x, const std::string& path) {
+  qd_save(x, path, 10, true, true, 4);
+  return qd_read(path, false, false, 4);
+}
 
 /*** R
 x <- runif(1e7)
-stopifnot(test_qs_serialize(x) == x)
-stopifnot(test_qd_serialize(x) == x)
+stopifnot(identical(test_qs_serialize(x), x))
+stopifnot(identical(test_qd_serialize(x), x))
+stopifnot(identical(test_qs_save(x, tempfile(fileext = ".qs2")), x))
+stopifnot(identical(test_qd_save(x, tempfile(fileext = ".qd")), x))
 */
 ```
 

@@ -586,28 +586,35 @@ example using Rcpp.</p>
 <span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a></span>
 <span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a><span class="co">// [[Rcpp::export]]</span></span>
 <span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a>SEXP test_qs_serialize<span class="op">(</span>SEXP x<span class="op">)</span> <span class="op">{</span></span>
-<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a>  <span class="dt">size_t</span> len <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a>  <span class="dt">unsigned</span> <span class="dt">char</span> <span class="op">*</span> buffer <span class="op">=</span> c_qs_serialize<span class="op">(</span>x<span class="op">,</span> <span class="op">&amp;</span>len<span class="op">,</span> <span class="dv">10</span><span class="op">,</span> <span class="kw">true</span><span class="op">,</span> <span class="dv">4</span><span class="op">);</span> <span class="co">// object, buffer length, compress_level, shuffle, nthreads</span></span>
-<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a>  SEXP y <span class="op">=</span> c_qs_deserialize<span class="op">(</span>buffer<span class="op">,</span> len<span class="op">,</span> <span class="kw">false</span><span class="op">,</span> <span class="dv">4</span><span class="op">);</span>              <span class="co">// buffer, buffer length, validate_checksum, nthreads</span></span>
-<span id="cb10-11"><a href="#cb10-11" tabindex="-1"></a>  c_qs_free<span class="op">(</span>buffer<span class="op">);</span>                                             <span class="co">// must manually free buffer</span></span>
-<span id="cb10-12"><a href="#cb10-12" tabindex="-1"></a>  <span class="cf">return</span> y<span class="op">;</span></span>
-<span id="cb10-13"><a href="#cb10-13" tabindex="-1"></a><span class="op">}</span></span>
-<span id="cb10-14"><a href="#cb10-14" tabindex="-1"></a></span>
-<span id="cb10-15"><a href="#cb10-15" tabindex="-1"></a><span class="co">// [[Rcpp::export]]</span></span>
-<span id="cb10-16"><a href="#cb10-16" tabindex="-1"></a>SEXP test_qd_serialize<span class="op">(</span>SEXP x<span class="op">)</span> <span class="op">{</span></span>
-<span id="cb10-17"><a href="#cb10-17" tabindex="-1"></a>  <span class="dt">size_t</span> len <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb10-18"><a href="#cb10-18" tabindex="-1"></a>  <span class="dt">unsigned</span> <span class="dt">char</span> <span class="op">*</span> buffer <span class="op">=</span> c_qd_serialize<span class="op">(</span>x<span class="op">,</span> <span class="op">&amp;</span>len<span class="op">,</span> <span class="dv">10</span><span class="op">,</span> <span class="kw">true</span><span class="op">,</span> <span class="dv">4</span><span class="op">);</span> <span class="co">// object, buffer length, compress_level, shuffle, nthreads</span></span>
-<span id="cb10-19"><a href="#cb10-19" tabindex="-1"></a>  SEXP y <span class="op">=</span> c_qd_deserialize<span class="op">(</span>buffer<span class="op">,</span> len<span class="op">,</span> <span class="kw">false</span><span class="op">,</span> <span class="kw">false</span><span class="op">,</span> <span class="dv">4</span><span class="op">);</span>       <span class="co">// buffer, buffer length, use_alt_rep, validate_checksum, nthreads</span></span>
-<span id="cb10-20"><a href="#cb10-20" tabindex="-1"></a>  c_qd_free<span class="op">(</span>buffer<span class="op">);</span>                                             <span class="co">// must manually free buffer</span></span>
-<span id="cb10-21"><a href="#cb10-21" tabindex="-1"></a>  <span class="cf">return</span> y<span class="op">;</span></span>
+<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a>  SEXP buffer <span class="op">=</span> qs_serialize<span class="op">(</span>x<span class="op">,</span> <span class="dv">10</span><span class="op">,</span> <span class="kw">true</span><span class="op">,</span> <span class="dv">4</span><span class="op">);</span></span>
+<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a>  <span class="cf">return</span> qs_deserialize<span class="op">(</span>buffer<span class="op">,</span> <span class="kw">false</span><span class="op">,</span> <span class="dv">4</span><span class="op">);</span></span>
+<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb10-11"><a href="#cb10-11" tabindex="-1"></a></span>
+<span id="cb10-12"><a href="#cb10-12" tabindex="-1"></a><span class="co">// [[Rcpp::export]]</span></span>
+<span id="cb10-13"><a href="#cb10-13" tabindex="-1"></a>SEXP test_qd_serialize<span class="op">(</span>SEXP x<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb10-14"><a href="#cb10-14" tabindex="-1"></a>  SEXP buffer <span class="op">=</span> qd_serialize<span class="op">(</span>x<span class="op">,</span> <span class="dv">10</span><span class="op">,</span> <span class="kw">true</span><span class="op">,</span> <span class="kw">true</span><span class="op">,</span> <span class="dv">4</span><span class="op">);</span></span>
+<span id="cb10-15"><a href="#cb10-15" tabindex="-1"></a>  <span class="cf">return</span> qd_deserialize<span class="op">(</span>buffer<span class="op">,</span> <span class="kw">false</span><span class="op">,</span> <span class="kw">false</span><span class="op">,</span> <span class="dv">4</span><span class="op">);</span></span>
+<span id="cb10-16"><a href="#cb10-16" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb10-17"><a href="#cb10-17" tabindex="-1"></a></span>
+<span id="cb10-18"><a href="#cb10-18" tabindex="-1"></a><span class="co">// [[Rcpp::export]]</span></span>
+<span id="cb10-19"><a href="#cb10-19" tabindex="-1"></a>SEXP test_qs_save<span class="op">(</span>SEXP x<span class="op">,</span> <span class="at">const</span> <span class="bu">std::</span>string<span class="op">&amp;</span> path<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb10-20"><a href="#cb10-20" tabindex="-1"></a>  qs_save<span class="op">(</span>x<span class="op">,</span> path<span class="op">,</span> <span class="dv">10</span><span class="op">,</span> <span class="kw">true</span><span class="op">,</span> <span class="dv">4</span><span class="op">);</span></span>
+<span id="cb10-21"><a href="#cb10-21" tabindex="-1"></a>  <span class="cf">return</span> qs_read<span class="op">(</span>path<span class="op">,</span> <span class="kw">false</span><span class="op">,</span> <span class="dv">4</span><span class="op">);</span></span>
 <span id="cb10-22"><a href="#cb10-22" tabindex="-1"></a><span class="op">}</span></span>
 <span id="cb10-23"><a href="#cb10-23" tabindex="-1"></a></span>
-<span id="cb10-24"><a href="#cb10-24" tabindex="-1"></a></span>
-<span id="cb10-25"><a href="#cb10-25" tabindex="-1"></a><span class="co">/*** R</span></span>
-<span id="cb10-26"><a href="#cb10-26" tabindex="-1"></a><span class="co">x &lt;- runif(1e7)</span></span>
-<span id="cb10-27"><a href="#cb10-27" tabindex="-1"></a><span class="co">stopifnot(test_qs_serialize(x) == x)</span></span>
-<span id="cb10-28"><a href="#cb10-28" tabindex="-1"></a><span class="co">stopifnot(test_qd_serialize(x) == x)</span></span>
-<span id="cb10-29"><a href="#cb10-29" tabindex="-1"></a><span class="co">*/</span></span></code></pre></div>
+<span id="cb10-24"><a href="#cb10-24" tabindex="-1"></a><span class="co">// [[Rcpp::export]]</span></span>
+<span id="cb10-25"><a href="#cb10-25" tabindex="-1"></a>SEXP test_qd_save<span class="op">(</span>SEXP x<span class="op">,</span> <span class="at">const</span> <span class="bu">std::</span>string<span class="op">&amp;</span> path<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb10-26"><a href="#cb10-26" tabindex="-1"></a>  qd_save<span class="op">(</span>x<span class="op">,</span> path<span class="op">,</span> <span class="dv">10</span><span class="op">,</span> <span class="kw">true</span><span class="op">,</span> <span class="kw">true</span><span class="op">,</span> <span class="dv">4</span><span class="op">);</span></span>
+<span id="cb10-27"><a href="#cb10-27" tabindex="-1"></a>  <span class="cf">return</span> qd_read<span class="op">(</span>path<span class="op">,</span> <span class="kw">false</span><span class="op">,</span> <span class="kw">false</span><span class="op">,</span> <span class="dv">4</span><span class="op">);</span></span>
+<span id="cb10-28"><a href="#cb10-28" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb10-29"><a href="#cb10-29" tabindex="-1"></a></span>
+<span id="cb10-30"><a href="#cb10-30" tabindex="-1"></a><span class="co">/*** R</span></span>
+<span id="cb10-31"><a href="#cb10-31" tabindex="-1"></a><span class="co">x &lt;- runif(1e7)</span></span>
+<span id="cb10-32"><a href="#cb10-32" tabindex="-1"></a><span class="co">stopifnot(identical(test_qs_serialize(x), x))</span></span>
+<span id="cb10-33"><a href="#cb10-33" tabindex="-1"></a><span class="co">stopifnot(identical(test_qd_serialize(x), x))</span></span>
+<span id="cb10-34"><a href="#cb10-34" tabindex="-1"></a><span class="co">stopifnot(identical(test_qs_save(x, tempfile(fileext = &quot;.qs2&quot;)), x))</span></span>
+<span id="cb10-35"><a href="#cb10-35" tabindex="-1"></a><span class="co">stopifnot(identical(test_qd_save(x, tempfile(fileext = &quot;.qd&quot;)), x))</span></span>
+<span id="cb10-36"><a href="#cb10-36" tabindex="-1"></a><span class="co">*/</span></span></code></pre></div>
 </div>
 <div id="global-options-for-qs2" class="section level1">
 <h1>Global Options for qs2</h1>

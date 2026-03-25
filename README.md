@@ -194,27 +194,34 @@ using namespace Rcpp;
 
 // [[Rcpp::export]]
 SEXP test_qs_serialize(SEXP x) {
-  size_t len = 0;
-  unsigned char * buffer = c_qs_serialize(x, &len, 10, true, 4); // object, buffer length, compress_level, shuffle, nthreads
-  SEXP y = c_qs_deserialize(buffer, len, false, 4);              // buffer, buffer length, validate_checksum, nthreads
-  c_qs_free(buffer);                                             // must manually free buffer
-  return y;
+  SEXP buffer = qs_serialize(x, 10, true, 4);
+  return qs_deserialize(buffer, false, 4);
 }
 
 // [[Rcpp::export]]
 SEXP test_qd_serialize(SEXP x) {
-  size_t len = 0;
-  unsigned char * buffer = c_qd_serialize(x, &len, 10, true, 4); // object, buffer length, compress_level, shuffle, nthreads
-  SEXP y = c_qd_deserialize(buffer, len, false, false, 4);       // buffer, buffer length, use_alt_rep, validate_checksum, nthreads
-  c_qd_free(buffer);                                             // must manually free buffer
-  return y;
+  SEXP buffer = qd_serialize(x, 10, true, true, 4);
+  return qd_deserialize(buffer, false, false, 4);
 }
 
+// [[Rcpp::export]]
+SEXP test_qs_save(SEXP x, const std::string& path) {
+  qs_save(x, path, 10, true, 4);
+  return qs_read(path, false, 4);
+}
+
+// [[Rcpp::export]]
+SEXP test_qd_save(SEXP x, const std::string& path) {
+  qd_save(x, path, 10, true, true, 4);
+  return qd_read(path, false, false, 4);
+}
 
 /*** R
 x <- runif(1e7)
-stopifnot(test_qs_serialize(x) == x)
-stopifnot(test_qd_serialize(x) == x)
+stopifnot(identical(test_qs_serialize(x), x))
+stopifnot(identical(test_qd_serialize(x), x))
+stopifnot(identical(test_qs_save(x, tempfile(fileext = ".qs2")), x))
+stopifnot(identical(test_qd_save(x, tempfile(fileext = ".qd")), x))
 */
 ```
 
@@ -224,32 +231,32 @@ The following global options control the behavior of the `qs2`
 functions. These global options can be queried or modified using `qopt`
 function.
 
-- **compress_level**  
-  The default compression level used when compressing data.  
+- **compress_level**\
+  The default compression level used when compressing data.\
   **Default:** `3L`
 
-- **shuffle**  
+- **shuffle**\
   A logical flag indicating whether to allow byte shuffling during
-  compression.  
+  compression.\
   **Default:** `TRUE`
 
-- **nthreads**  
-  The number of threads used for compression and decompression.  
+- **nthreads**\
+  The number of threads used for compression and decompression.\
   **Default:** `1L`
 
-- **validate_checksum**  
+- **validate_checksum**\
   A logical flag indicating whether to validate the stored checksum when
-  reading data.  
+  reading data.\
   **Default:** `FALSE`
 
-- **warn_unsupported_types**  
+- **warn_unsupported_types**\
   For `qd_save`, a logical flag indicating whether to warn when saving
-  an object with unsupported types.  
+  an object with unsupported types.\
   **Default:** `TRUE`
 
-- **use_alt_rep**  
+- **use_alt_rep**\
   For `qd_read`, a logical flag indicating whether to use ALTREP when
-  reading in string data.  
+  reading in string data.\
   **Default:** `FALSE`
 
 ------------------------------------------------------------------------

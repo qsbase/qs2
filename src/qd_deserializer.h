@@ -8,7 +8,6 @@
 #include <Rversion.h>
 
 #include "qx_file_headers.h"
-#include "qd_constants.h"
 #include "io/io_common.h"
 
 #include "sf_external.h"

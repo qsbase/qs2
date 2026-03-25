@@ -30,3 +30,4 @@ configure~
 *.gz
 *.json
 context
+context/*
