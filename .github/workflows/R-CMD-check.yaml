@@ -12,6 +12,9 @@ on:
 
 name: R-CMD-check
 
+permissions:
+  contents: read
+
 jobs:
   R-CMD-check:
     runs-on: ${{ matrix.config.os }}
@@ -42,7 +45,9 @@ jobs:
       - name: Windows CRLF fix
         run: git config --global core.autocrlf false
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - uses: r-lib/actions/setup-pandoc@v2
 
