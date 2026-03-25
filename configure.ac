@@ -77,7 +77,7 @@ elif test "xx$PKGCONF" != "xx"; then
       ZSTD_INCLUDE_PATH=`"${PKGCONF}" --cflags-only-I libzstd`
       COMPILE_ZSTD="false"
     else
-      echo "zstd ${VERSION_STRING} library detected but is lower than bundled version (1.5.2) -- compiling from source"
+      echo "zstd ${VERSION_STRING} library detected but is lower than bundled version (1.5.6) -- compiling from source"
       COMPILE_ZSTD="true"
     fi
   else
