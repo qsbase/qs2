@@ -8,6 +8,16 @@ PATH_TO_CPP_COMPILER=`"${R_HOME}/bin/R" CMD config CXX`
 AC_PROG_CXX([$PATH_TO_CPP_COMPILER])
 echo "C++ compiler: $PATH_TO_CPP_COMPILER"
 
+R_VERSION_STRING=`"${R_HOME}/bin/Rscript" -e "cat(as.character(getRversion()))"`
+R_NEEDS_EXPLICIT_CXX17=`"${R_HOME}/bin/Rscript" -e "cat(as.integer(getRversion() < '4.3.0'))"`
+if test "x$R_NEEDS_EXPLICIT_CXX17" = "x1"; then
+  echo "R ${R_VERSION_STRING} detected -- explicitly requesting C++17"
+  CXX_STD_LINE="CXX_STD = CXX17"
+else
+  echo "R ${R_VERSION_STRING} detected -- using R default C++ standard"
+  CXX_STD_LINE="# CXX17 is the default for R >= 4.3.0"
+fi
+
 ########################################################
 ### Configure args
 
@@ -189,6 +199,7 @@ AC_SUBST([ZSTD_CLEAN], $ZSTD_CLEAN)
 AC_SUBST([DYNAMIC_BLOCKSIZE_FLAG], $DYNAMIC_BLOCKSIZE_FLAG)
 AC_SUBST([TBB_FLAG], $TBB_FLAG)
 AC_SUBST([SIMD_FLAG], $SIMD_FLAG)
+AC_SUBST([CXX_STD_LINE], $CXX_STD_LINE)
 
 AC_CONFIG_FILES([src/Makevars])
 AC_OUTPUT

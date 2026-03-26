@@ -610,6 +610,7 @@ PACKAGE_URL=''
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
+CXX_STD_LINE
 SIMD_FLAG
 TBB_FLAG
 DYNAMIC_BLOCKSIZE_FLAG
@@ -2779,6 +2780,16 @@ ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
 
 echo "C++ compiler: $PATH_TO_CPP_COMPILER"
 
+R_VERSION_STRING=`"${R_HOME}/bin/Rscript" -e "cat(as.character(getRversion()))"`
+R_NEEDS_EXPLICIT_CXX17=`"${R_HOME}/bin/Rscript" -e "cat(as.integer(getRversion() < '4.3.0'))"`
+if test "x$R_NEEDS_EXPLICIT_CXX17" = "x1"; then
+  echo "R ${R_VERSION_STRING} detected -- explicitly requesting C++17"
+  CXX_STD_LINE="CXX_STD = CXX17"
+else
+  echo "R ${R_VERSION_STRING} detected -- using R default C++ standard"
+  CXX_STD_LINE="# CXX17 is the default for R >= 4.3.0"
+fi
+
 ########################################################
 ### Configure args
 
@@ -2872,7 +2883,7 @@ elif test "xx$PKGCONF" != "xx"; then
       ZSTD_INCLUDE_PATH=`"${PKGCONF}" --cflags-only-I libzstd`
       COMPILE_ZSTD="false"
     else
-      echo "zstd ${VERSION_STRING} library detected but is lower than bundled version (1.5.2) -- compiling from source"
+      echo "zstd ${VERSION_STRING} library detected but is lower than bundled version (1.5.6) -- compiling from source"
       COMPILE_ZSTD="true"
     fi
   else
@@ -3027,6 +3038,8 @@ DYNAMIC_BLOCKSIZE_FLAG=$DYNAMIC_BLOCKSIZE_FLAG
 TBB_FLAG=$TBB_FLAG
 
 SIMD_FLAG=$SIMD_FLAG
+
+CXX_STD_LINE=$CXX_STD_LINE
 
 
 ac_config_files="$ac_config_files src/Makevars"
