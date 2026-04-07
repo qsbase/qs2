@@ -113,12 +113,17 @@ void qx_export_functions(DllInfo* dll);
 ///////////////////////////////////////////////////////////////////////////////
 /* qs2 format functions */
 
-#define DO_QS_SAVE(_STREAM_WRITER_, _BASE_CLASS_, _COMPRESSOR_, _HASHER_)                                              \
-    _BASE_CLASS_<_STREAM_WRITER_, _COMPRESSOR_, _HASHER_, RErrorPolicy, false> block_io(myFile, compress_level);       \
-    R_SerializeInit(&out, block_io);                                                                                   \
-    qsSaveImplArgs args = {object, hash, &out};                                                                        \
-    DO_JMPBUF_QS_SAVE();                                                                                               \
-    DO_UNWIND_PROTECT_QS_SAVE(qs_save_impl, decltype(block_io), args);
+#define DO_QS_SAVE(_STREAM_WRITER_, _BASE_CLASS_, _COMPRESSOR_, _HASHER_)                                                  \
+    _BASE_CLASS_<_STREAM_WRITER_, _COMPRESSOR_, _HASHER_, RErrorPolicy, false> block_io(myFile, compress_level);           \
+    qs_with_unwind_cleanup(                                                                                                \
+        block_io,                                                                                                          \
+        [&]() {                                                                                                            \
+            struct R_outpstream_st out;                                                                                    \
+            R_SerializeInit(&out, block_io);                                                                               \
+            qsSaveImplArgs args = {object, hash, &out};                                                                    \
+            Rcpp::unwindProtect(qs_save_impl<decltype(block_io)>, static_cast<void*>(&args));                              \
+        },                                                                                                                 \
+        "Object save interrupted, file may be incomplete");
 
 SEXP qs_save(SEXP object, const std::string& file, const int compress_level, const bool shuffle, int nthreads) {
 #if RCPP_PARALLEL_USE_TBB == 0
@@ -138,8 +143,6 @@ SEXP qs_save(SEXP object, const std::string& file, const int compress_level, con
     }
     write_qs2_header(myFile, shuffle);
 
-    UNWIND_PROTECT_BEGIN()
-    struct R_outpstream_st out;
     uint64_t hash = 0;
     if (nthreads > 1) {
 #if RCPP_PARALLEL_USE_TBB
@@ -159,8 +162,6 @@ SEXP qs_save(SEXP object, const std::string& file, const int compress_level, con
     }
     write_qx_hash(myFile, hash);
     return R_NilValue;
-    UNWIND_PROTECT_END();
-    return R_NilValue;
 }
 
 MemoryBuffer qs_serialize_impl(SEXP object, const int compress_level, const bool shuffle, int nthreads) {
@@ -178,8 +179,6 @@ MemoryBuffer qs_serialize_impl(SEXP object, const int compress_level, const bool
     MemoryWriter myFile;
     write_qs2_header(myFile, shuffle);
 
-    UNWIND_PROTECT_BEGIN()
-    struct R_outpstream_st out;
     uint64_t hash = 0;
     if (nthreads > 1) {
 #if RCPP_PARALLEL_USE_TBB
@@ -201,8 +200,6 @@ MemoryBuffer qs_serialize_impl(SEXP object, const int compress_level, const bool
     write_qx_hash(myFile, hash);  // must be done after getting length (position) from tellp
     myFile.seekp(len);
     return myFile.take_bytes(static_cast<std::size_t>(len));
-    UNWIND_PROTECT_END();
-    return MemoryBuffer{};
 }
 
 SEXP qs_serialize(SEXP object, const int compress_level, const bool shuffle, int nthreads) {
@@ -210,14 +207,15 @@ SEXP qs_serialize(SEXP object, const int compress_level, const bool shuffle, int
     return RawVector(result.begin(), result.end());
 }
 
-// DO_UNWIND_PROTECT macro assigns SEXP output
 #define DO_QS_READ(_STREAM_READER_, _BASE_CLASS_, _DECOMPRESSOR_, _RUNTIME_HASH_)                                             \
     _BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, RErrorPolicy> block_io(myFile);                                             \
-    R_UnserializeInit<_BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, RErrorPolicy>>(&in, (R_pstream_data_t)(&block_io));       \
-    DO_JMPBUF_QS_READ();                                                                                                      \
-    DO_UNWIND_PROTECT_QS_READ(qs_read_impl, decltype(block_io), in);                                                          \
-    block_io.finish();                                                                                                        \
-    _RUNTIME_HASH_ = block_io.get_hash_digest();
+    output = qs_with_unwind_cleanup(block_io, [&]() -> SEXP {                                                                 \
+        struct R_inpstream_st in;                                                                                             \
+        R_UnserializeInit<_BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, RErrorPolicy>>(&in, (R_pstream_data_t)(&block_io)); \
+        SEXP protected_output = Rcpp::unwindProtect(qs_read_impl<decltype(block_io)>, static_cast<void*>(&in));              \
+        _RUNTIME_HASH_ = block_io.get_hash_digest();                                                                          \
+        return protected_output;                                                                                              \
+    });
 
 SEXP qs_read(const std::string& file, const bool validate_checksum, int nthreads) {
 #if RCPP_PARALLEL_USE_TBB == 0
@@ -245,8 +243,6 @@ SEXP qs_read(const std::string& file, const bool validate_checksum, int nthreads
         }
     }
 
-    UNWIND_PROTECT_BEGIN()
-    struct R_inpstream_st in;
     SEXP output = R_NilValue;
     uint64_t runtime_hash = 0;
     if (nthreads > 1) {
@@ -273,8 +269,6 @@ SEXP qs_read(const std::string& file, const bool validate_checksum, int nthreads
         }
     }
     return output;
-    UNWIND_PROTECT_END();
-    return R_NilValue;
 }
 
 SEXP qs_deserialize_impl(MemoryReader& myFile, const bool validate_checksum, int nthreads) {
@@ -298,8 +292,6 @@ SEXP qs_deserialize_impl(MemoryReader& myFile, const bool validate_checksum, int
         }
     }
 
-    UNWIND_PROTECT_BEGIN()
-    struct R_inpstream_st in;
     SEXP output = R_NilValue;
     uint64_t runtime_hash = 0;
     if (nthreads > 1) {
@@ -326,8 +318,6 @@ SEXP qs_deserialize_impl(MemoryReader& myFile, const bool validate_checksum, int
         }
     }
     return output;
-    UNWIND_PROTECT_END();
-    return R_NilValue;
 }
 
 SEXP qs_deserialize(SEXP input, const bool validate_checksum, int nthreads) {

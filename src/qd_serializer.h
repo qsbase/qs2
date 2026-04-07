@@ -13,46 +13,21 @@
 
 using namespace Rcpp;
 
-constexpr std::size_t ascii_high_bit_mask() {
-    std::size_t mask = 0;
-    for(std::size_t i = 0; i < sizeof(std::size_t); ++i) {
-        mask = (mask << 8) | 0x80U;
+inline bool qd_is_ascii(SEXP x) {
+#if (R_VERSION >= R_Version(4, 5, 0))
+  return Rf_charIsASCII(x);
+#else
+  const auto* ptr = reinterpret_cast<const unsigned char*>(CHAR(x));
+  const auto len = static_cast<std::size_t>(Rf_xlength(x));
+  for (std::size_t i = 0; i < len; ++i) {
+    if ((ptr[i] & 0x80U) != 0) {
+      return false;
     }
-    return mask;
+  }
+  return true;
+#endif
 }
 
-inline bool checkAscii(const char * const data, std::size_t len) {
-    const auto * ptr = reinterpret_cast<const unsigned char*>(data);
-
-    while(len > 0 && (reinterpret_cast<std::uintptr_t>(ptr) & (sizeof(std::size_t) - 1)) != 0) {
-        if((*ptr & 0x80U) != 0) {
-            return false;
-        }
-        ++ptr;
-        --len;
-    }
-
-    constexpr std::size_t high_bit_mask = ascii_high_bit_mask();
-    while(len >= sizeof(std::size_t)) {
-        std::size_t chunk = 0;
-        std::memcpy(&chunk, ptr, sizeof(chunk));
-        if((chunk & high_bit_mask) != 0) {
-            return false;
-        }
-        ptr += sizeof(std::size_t);
-        len -= sizeof(std::size_t);
-    }
-
-    while(len > 0) {
-        if((*ptr & 0x80U) != 0) {
-            return false;
-        }
-        ++ptr;
-        --len;
-    }
-
-    return true;
-}
 
 template<typename block_compress_writer>
 struct QdataSerializer {
@@ -380,7 +355,7 @@ struct QdataSerializer {
                     const char * ci = CHAR(xi);
                     // STRING_ELT materializes ALTREP-backed strings as needed.
                     bool needs_translation = (enc == cetype_t::CE_LATIN1) ||
-                                                ((enc == cetype_t::CE_NATIVE) && (IS_UTF8_LOCALE == 0) && !checkAscii(ci, li));
+                                                ((enc == cetype_t::CE_NATIVE) && (IS_UTF8_LOCALE == 0) && !qd_is_ascii(xi));
                     if(needs_translation) {
                         ci = Rf_translateCharUTF8(xi);
                         li = strlen(ci);

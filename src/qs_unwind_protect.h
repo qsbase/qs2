@@ -2,99 +2,64 @@
 #define _QS2_QS_UNWIND_PROTECT_H_
 
 #include <Rcpp.h>
-#include <csetjmp>
+#include <Rcpp/unwindProtect.h>
+#include <utility>
 
-#define SINGLE_ARG(...) __VA_ARGS__
-
-
-
-// struct Guardian {
-//     int x;
-//     Guardian() : x(0) {}
-//     ~Guardian() {
-//         std::cout << "Guardian destructor" << std::endl;
-//     }
-// };
-
-// template <typename io_type>
-// inline void throw_unwind(void * args, Rboolean jump) {
-//     if(jump) {
-//         std::pair<SEXP, void *> * throw_unwind_args = static_cast<std::pair<SEXP, void *>*>(args);
-//         // std::tuple<SEXP, Guardian*, io_type*> * throw_unwind_args = static_cast<std::tuple<SEXP, Guardian*, io_type*>*>(args);
-//         io_type * io = throw_unwind_args->second;
-//         Guardian * jump_guardian = std::get<1>( *throw_unwind_args );
-//         io->cleanup();
-//         throw RerrorUnwind{throw_unwind_args->first};
-//     }
-// }
-
-struct RerrorUnwind {
-    SEXP cont;
-};
-
-
-#define UNWIND_PROTECT_BEGIN() \
-    Rcpp::RObject cont_token = R_MakeUnwindCont(); \
+template <typename block_io_type, typename callback_type>
+inline auto qs_with_unwind_cleanup(block_io_type& block_io, callback_type&& callback, const char* warning_msg = nullptr)
+    -> decltype(std::forward<callback_type>(callback)()) {
     try {
-
-#define UNWIND_PROTECT_END() \
-    } catch(RerrorUnwind & cont) { R_ContinueUnwind(cont.cont); }
-
-#define DO_JMPBUF_QS_READ() \
-    std::jmp_buf jmpbuf; \
-    if (setjmp(jmpbuf)) { \
-        block_io.cleanup(); \
-        Rf_warning("%s", "File read interrupted"); \
-        throw RerrorUnwind{cont_token}; \
-    } \
-
-#define DO_JMPBUF_QS_SAVE() \
-    std::jmp_buf jmpbuf; \
-    if (setjmp(jmpbuf)) { \
-        block_io.cleanup(); \
-        Rf_warning("%s", "File save interrupted, file/object will be incomplete"); \
-        throw RerrorUnwind{cont_token}; \
-    } \
-
-#define DO_UNWIND_PROTECT_QS_READ(_FUNCTION_, _IO_TYPE_, _ARGS_) \
-    output = R_UnwindProtect(_FUNCTION_ < _IO_TYPE_ >, (void*)(& _ARGS_), [](void* jmpbuf, Rboolean jump) { \
-        if (jump == TRUE) { \
-            longjmp(*static_cast<std::jmp_buf*>(jmpbuf), 1); \
-        } \
-    }, &jmpbuf, static_cast<SEXP>(cont_token))
-
-
-#define DO_UNWIND_PROTECT_QS_SAVE(_FUNCTION_, _IO_TYPE_, _ARGS_) \
-    R_UnwindProtect(_FUNCTION_ < _IO_TYPE_ >, (void*)(& _ARGS_), [](void* jmpbuf, Rboolean jump) { \
-        if (jump == TRUE) { \
-            longjmp(*static_cast<std::jmp_buf*>(jmpbuf), 1); \
-        } \
-    }, &jmpbuf, static_cast<SEXP>(cont_token))
-
+        return std::forward<callback_type>(callback)();
+    } catch (Rcpp::LongjumpException&) {
+        block_io.cleanup();
+        if (warning_msg != nullptr) {
+            Rf_warning("%s", warning_msg);
+        }
+        throw;
+    }
+}
 
 #endif
 
-// Notes to future self on current understanding of how this works / is supposed to work
+// Notes to future self on what this is doing now
 
 // unwind signature
 // SEXP R_UnwindProtect(SEXP (*fun)(void *data), void *data,
 //                      void (*cleanfun)(void *data, Rboolean jump),
 //                      void *cleandata, SEXP cont);
 
-// for R_serialize / R_unserialize, any error or keyboard interrupt is handled by R's internal error handling
-// which jumps directly outside of the function, leaving RAII destructors un-called and memory leaking
-// R_UnwindProtect gives us a chance to go back to the C++ code, throw an error there (which calls RAII destructors)
-// Then R_ContinueUnwind will jump back to R's internal error handling
+// R still handles many errors / interrupts by jumping, so plain RAII around
+// R_Serialize / R_Unserialize is not enough. If R jumps out directly, C++
+// destructors on the skipped path do not run.
 
-// For multithreading, we also need to call block_io.cleanup() which stops the async TBB graph that is currently running
-// If we try to do RAII destruction before the graph is stopped it will crash (segfault)
-// Possibly, we can write our own destructor to handle this
+// What Rcpp::unwindProtect is doing under the hood:
+// - it creates a tiny helper frame that owns the continuation token and jmp_buf
+// - it calls R_UnwindProtect around the callback we give it
+// - if R errors or interrupts, R_UnwindProtect runs its clean function
+// - that clean function longjmps back into the tiny helper frame, not into the
+//   qs_read / qs_save frame that owns block_io or TBB state
+// - the tiny helper frame preserves the token and throws Rcpp::LongjumpException
+// - qs2 catches that exception in ordinary C++ code, calls block_io.cleanup(),
+//   optionally warns if the operation leaves partial user-visible state, and
+//   rethrows
+// - the Rcpp-generated BEGIN_RCPP / END_RCPP wrapper finally resumes the
+//   original R unwind
 
-// According to cpp11, we cannot throw directly from "C frame" (cleanfun) and instead need to do a std::jmp_buf in cleanfun
-// back to the "C++ frame"
-// In some ways this is easier as we don't need to pass objects that need to be cleaned up to cleanfun / cleandata
+// The important bit is that the jumped-into frame stays tiny and boring,
+// because longjmp is not normal C++ control flow. You do not want to land back
+// in a frame full of non-trivial mutable C++ objects and then keep using those
+// objects as if nothing happened. The tiny helper frame only holds unwind
+// plumbing, so after the jump it can immediately throw a C++ exception and get
+// out of the way. The real qs_* frame still owns block_io / tbb::global_control,
+// but it only sees a normal C++ exception path, which is where qs2-specific
+// cleanup belongs.
 
-// We don't need this for our own methods (qdata format) using C++/Rcpp only
+// So this header should stay boring. qs2-specific work here is just "if the R
+// jump got converted into a C++ LongjumpException, run block_io.cleanup() before
+// the exception keeps propagating."
+
+// We don't need any of this for qdata paths that use ordinary C++ / Rcpp error
+// handling and do not go through R_Serialize / R_Unserialize.
 
 // References
 // https://yutani.rbind.io/post/r-rust-protect-and-unwinding/
