@@ -148,6 +148,10 @@ qd_save(data, "myfile.qs2")
 data <- qd_read("myfile.qs2")
 ```
 
+For the upcoming CRAN release, qdata string reads always return ordinary
+character vectors. The `use_alt_rep` argument is kept for compatibility
+and warns when set to `TRUE`.
+
 ## Benchmarks
 
 A summary across 4 datasets is presented below.
@@ -261,7 +265,7 @@ The following global options control the behavior of the `qs2` functions. These 
   **Default:** `TRUE`
 
 - **use_alt_rep**  
-  For `qd_read`, a logical flag indicating whether to use ALTREP when reading in string data.  
+  For `qd_read` and `qd_deserialize`, a logical flag requesting ALTREP string reads. This option is temporarily disabled; if `TRUE`, qs2 warns and falls back to ordinary character vectors.  
   **Default:** `FALSE`
 
 ---

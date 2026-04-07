@@ -139,6 +139,10 @@ qd_save(data, "myfile.qs2")
 data <- qd_read("myfile.qs2")
 ```
 
+For the upcoming CRAN release, qdata string reads always return ordinary
+character vectors. The `use_alt_rep` argument is kept for compatibility
+and warns when set to `TRUE`.
+
 ## Benchmarks
 
 A summary across 4 datasets is presented below.
@@ -231,32 +235,33 @@ The following global options control the behavior of the `qs2`
 functions. These global options can be queried or modified using `qopt`
 function.
 
-- **compress_level**\
-  The default compression level used when compressing data.\
+- **compress_level**  
+  The default compression level used when compressing data.  
   **Default:** `3L`
 
-- **shuffle**\
+- **shuffle**  
   A logical flag indicating whether to allow byte shuffling during
-  compression.\
+  compression.  
   **Default:** `TRUE`
 
-- **nthreads**\
-  The number of threads used for compression and decompression.\
+- **nthreads**  
+  The number of threads used for compression and decompression.  
   **Default:** `1L`
 
-- **validate_checksum**\
+- **validate_checksum**  
   A logical flag indicating whether to validate the stored checksum when
-  reading data.\
+  reading data.  
   **Default:** `FALSE`
 
-- **warn_unsupported_types**\
+- **warn_unsupported_types**  
   For `qd_save`, a logical flag indicating whether to warn when saving
-  an object with unsupported types.\
+  an object with unsupported types.  
   **Default:** `TRUE`
 
-- **use_alt_rep**\
-  For `qd_read`, a logical flag indicating whether to use ALTREP when
-  reading in string data.\
+- **use_alt_rep**  
+  For `qd_read` and `qd_deserialize`, a logical flag requesting ALTREP
+  string reads. This option is temporarily disabled; if `TRUE`, qs2
+  warns and falls back to ordinary character vectors.  
   **Default:** `FALSE`
 
 ------------------------------------------------------------------------

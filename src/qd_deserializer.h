@@ -10,8 +10,6 @@
 #include "qx_file_headers.h"
 #include "io/io_common.h"
 
-#include "sf_external.h"
-
 using namespace Rcpp;
 
 
@@ -54,7 +52,6 @@ struct DelayedAttribAssign {
 template<typename block_compress_reader>
 struct QdataDeserializer {
     block_compress_reader & reader;
-    const bool use_alt_rep;
     std::vector<std::pair<SEXP, uint64_t>> character_sexp;
     std::vector<std::pair<SEXP, uint64_t>> complex_sexp;
     std::vector<std::pair<SEXP, uint64_t>> real_sexp;
@@ -65,8 +62,7 @@ struct QdataDeserializer {
     DelayedAttribAssign delayed_attributes;
 #endif
 
-    QdataDeserializer(block_compress_reader & reader, const bool use_alt_rep) : 
-    reader(reader), use_alt_rep(use_alt_rep) {}
+    QdataDeserializer(block_compress_reader & reader) : reader(reader) {}
 
     private:
     // will also call get_pod_contiguous for object lengths
@@ -328,11 +324,7 @@ struct QdataDeserializer {
                 break;
             case qstype::CHARACTER:
             {
-                if(use_alt_rep) {
-                    object = PROTECT(sf_vector(object_length)); // stringfish ALTREP vector
-                } else {
-                    object = PROTECT(Rf_allocVector(STRSXP, object_length));
-                }
+                object = PROTECT(Rf_allocVector(STRSXP, object_length));
                 read_and_assign_attributes(object, attr_length);
                 if(object_length > 0) character_sexp.push_back(std::make_pair(object, object_length));
                 break;
@@ -363,41 +355,21 @@ struct QdataDeserializer {
         for(auto & x : character_sexp) {
             SEXP object = x.first;
             uint64_t object_length = x.second;
-            if(use_alt_rep) {
-                auto & ref = sf_vec_data_ref(object);
-                for(uint64_t i=0; i < object_length; ++i) {
-                    uint32_t string_length;
-                    read_string_header(string_length);
-                    if(string_length == NA_STRING_LENGTH) {
-                        ref[i] = sfstring(NA_STRING);
+            for(uint64_t i=0; i<object_length; ++i) {
+                uint32_t string_length;
+                read_string_header(string_length);
+                if(string_length == NA_STRING_LENGTH) {
+                    SET_STRING_ELT(object, i, NA_STRING);
+                } else if(string_length == 0) {
+                    SET_STRING_ELT(object, i, R_BlankString);
+                } else {
+                    const char * string_ptr = reader.get_ptr(string_length);
+                    if(string_ptr == nullptr) {
+                        std::unique_ptr<char[]> string_buf(MAKE_UNIQUE_BLOCK(string_length));
+                        reader.get_data(string_buf.get(), string_length);
+                        SET_STRING_ELT(object, i, Rf_mkCharLenCE(string_buf.get(), string_length, CE_UTF8));
                     } else {
-                        if(string_length == 0) {
-                            ref[i] = sfstring();
-                        } else {
-                            std::string xi;
-                            xi.resize(string_length);
-                            reader.get_data(&xi[0], string_length);
-                            ref[i] = sfstring(xi, CE_UTF8);
-                        }
-                    }
-                }
-            } else {
-                for(uint64_t i=0; i<object_length; ++i) {
-                    uint32_t string_length;
-                    read_string_header(string_length);
-                    if(string_length == NA_STRING_LENGTH) {
-                        SET_STRING_ELT(object, i, NA_STRING);
-                    } else if(string_length == 0) {
-                        SET_STRING_ELT(object, i, R_BlankString);
-                    } else {
-                        const char * string_ptr = reader.get_ptr(string_length);
-                        if(string_ptr == nullptr) {
-                            std::unique_ptr<char[]> string_buf(MAKE_UNIQUE_BLOCK(string_length));
-                            reader.get_data(string_buf.get(), string_length);
-                            SET_STRING_ELT(object, i, Rf_mkCharLenCE(string_buf.get(), string_length, CE_UTF8));
-                        } else {
-                            SET_STRING_ELT(object, i, Rf_mkCharLenCE(string_ptr, string_length, CE_UTF8));
-                        }
+                        SET_STRING_ELT(object, i, Rf_mkCharLenCE(string_ptr, string_length, CE_UTF8));
                     }
                 }
             }

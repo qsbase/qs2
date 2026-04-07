@@ -48,9 +48,8 @@ overflow: visible;
 }
 </style>
 <style type="text/css" data-origin="pandoc">
-html { -webkit-text-size-adjust: 100%; }
 pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span { line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
@@ -61,7 +60,7 @@ div.sourceCode { overflow: auto; }
 }
 @media print {
 pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
 }
 pre.numberSource code
 { counter-reset: source-line 0; }
@@ -446,6 +445,9 @@ interoperability with other languages, particularly
 <code>Python</code>.</p>
 <div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">qd_save</span>(data, <span class="st">&quot;myfile.qs2&quot;</span>)</span>
 <span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>data <span class="ot">&lt;-</span> <span class="fu">qd_read</span>(<span class="st">&quot;myfile.qs2&quot;</span>)</span></code></pre></div>
+<p>For the upcoming CRAN release, qdata string reads always return
+ordinary character vectors. The <code>use_alt_rep</code> argument is
+kept for compatibility and warns when set to <code>TRUE</code>.</p>
 <div id="benchmarks" class="section level2">
 <h2>Benchmarks</h2>
 <p>A summary across 4 datasets is presented below.</p>
@@ -641,8 +643,10 @@ For <code>qd_save</code>, a logical flag indicating whether to warn when
 saving an object with unsupported types.<br />
 <strong>Default:</strong> <code>TRUE</code></p></li>
 <li><p><strong>use_alt_rep</strong><br />
-For <code>qd_read</code>, a logical flag indicating whether to use
-ALTREP when reading in string data.<br />
+For <code>qd_read</code> and <code>qd_deserialize</code>, a logical flag
+requesting ALTREP string reads. This option is temporarily disabled; if
+<code>TRUE</code>, qs2 warns and falls back to ordinary character
+vectors.<br />
 <strong>Default:</strong> <code>FALSE</code></p></li>
 </ul>
 <hr />

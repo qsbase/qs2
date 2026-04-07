@@ -4,7 +4,7 @@
 #'
 #' This function provides an interface to retrieve or update internal qs2 options
 #' such as compression level, shuffle flag, number of threads, checksum validation,
-#' warning for unsupported types, and ALTREP usage. It directly calls the underlying
+#' warning for unsupported types, and requested ALTREP usage. It directly calls the underlying
 #' C-level functions.
 #'
 #' @details The default settings are:
@@ -14,8 +14,11 @@
 #'     \item \code{nthreads}: 1L
 #'     \item \code{validate_checksum}: FALSE
 #'     \item \code{warn_unsupported_types}: TRUE (used only in \code{qd_save})
-#'     \item \code{use_alt_rep}: FALSE (used only in \code{qd_read})
+#'     \item \code{use_alt_rep}: FALSE (accepted by \code{qd_read} and \code{qd_deserialize}, but temporarily disabled)
 #'   }
+#'
+#' When \code{parameter = "use_alt_rep"} is set to \code{TRUE}, qdata reads currently
+#' warn and fall back to ordinary character vectors.
 #'
 #' When \code{value} is \code{NULL}, the current value of the specified option is returned.
 #' Otherwise, the option is set to \code{value} and the new value is returned invisibly.
@@ -42,7 +45,7 @@
 #' # Get the current setting for warn_unsupported_types (used in qd_save):
 #' qopt("warn_unsupported_types")
 #'
-#' # Get the current setting for use_alt_rep (used in qd_read):
+#' # Get the current setting for use_alt_rep:
 #' qopt("use_alt_rep")
 #'
 #' @export

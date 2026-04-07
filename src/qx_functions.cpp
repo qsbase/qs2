@@ -52,7 +52,7 @@ MemoryBuffer qd_serialize_impl(SEXP object, const int compress_level, const bool
 SEXP qd_serialize(SEXP object, const int compress_level, const bool shuffle, const bool warn_unsupported_types, int nthreads);
 // [[Rcpp::export(rng = false, signature = {file, use_alt_rep = qopt("use_alt_rep"), validate_checksum = qopt("validate_checksum"), nthreads = qopt("nthreads")})]]
 SEXP qd_read(const std::string& file, const bool use_alt_rep, const bool validate_checksum, int nthreads);
-SEXP qd_deserialize_impl(MemoryReader& myFile, const bool use_alt_rep, const bool validate_checksum, int nthreads);
+SEXP qd_deserialize_impl(MemoryReader& myFile, const bool validate_checksum, int nthreads);
 // [[Rcpp::export(rng = false, signature = {input, use_alt_rep = qopt("use_alt_rep"), validate_checksum = qopt("validate_checksum"), nthreads = qopt("nthreads")})]]
 SEXP qd_deserialize(SEXP input, const bool use_alt_rep, const bool validate_checksum, int nthreads);
 
@@ -108,6 +108,7 @@ void qx_export_functions(DllInfo* dll);
 #define IN_MEMORY_NO_HASH_WARN_MSG "Hash not stored; object returned without checksum validation."
 #define IN_MEMORY_HASH_MISMATCH_WARN_MSG "Hash mismatch after read; object returned but data may be corrupted."
 #define IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG "Input must be a raw vector."
+#define ALTREP_DISABLED_WARN_MSG "use_alt_rep is temporarily disabled for qdata; reading strings as ordinary character vectors."
 
 ///////////////////////////////////////////////////////////////////////////////
 /* qs2 format functions */
@@ -337,6 +338,12 @@ SEXP qs_deserialize(SEXP input, const bool validate_checksum, int nthreads) {
     return qs_deserialize_impl(myFile, validate_checksum, nthreads);
 }
 
+inline void warn_if_qdata_altrep_requested(const bool use_alt_rep) {
+    if (use_alt_rep) {
+        Rf_warning("%s", ALTREP_DISABLED_WARN_MSG);
+    }
+}
+
 #define DO_QD_SAVE(_STREAM_WRITER_, _BASE_CLASS_, _COMPRESSOR_, _HASHER_)                                                                          \
     _BASE_CLASS_<_STREAM_WRITER_, _COMPRESSOR_, _HASHER_, StdErrorPolicy, true> writer(myFile, compress_level);                                   \
     QdataSerializer<_BASE_CLASS_<_STREAM_WRITER_, _COMPRESSOR_, _HASHER_, StdErrorPolicy, true>> serializer(writer, warn_unsupported_types);      \
@@ -430,7 +437,7 @@ SEXP qd_serialize(SEXP object, const int compress_level, const bool shuffle, con
 // DO_QD_READ macro assigns SEXP output
 #define DO_QD_READ(_STREAM_READER_, _BASE_CLASS_, _DECOMPRESSOR_, _RUNTIME_HASH_)                                             \
     _BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, StdErrorPolicy> reader(myFile);                                             \
-    QdataDeserializer<_BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, StdErrorPolicy>> deserializer(reader, use_alt_rep);       \
+    QdataDeserializer<_BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, StdErrorPolicy>> deserializer(reader);                    \
     output = PROTECT(deserializer.read_object());                                                                             \
     deserializer.read_object_data();                                                                                          \
     reader.finish();                                                                                                          \
@@ -444,6 +451,8 @@ SEXP qd_read(const std::string& file, const bool use_alt_rep, const bool validat
         nthreads = 1;
     }
 #endif
+
+    warn_if_qdata_altrep_requested(use_alt_rep);
 
     IfStreamReader myFile(R_ExpandFileName(file.c_str()));
     if (!myFile.isValid()) {
@@ -490,7 +499,7 @@ SEXP qd_read(const std::string& file, const bool use_alt_rep, const bool validat
     return output;
 }
 
-SEXP qd_deserialize_impl(MemoryReader& myFile, const bool use_alt_rep, const bool validate_checksum, int nthreads) {
+SEXP qd_deserialize_impl(MemoryReader& myFile, const bool validate_checksum, int nthreads) {
 #if RCPP_PARALLEL_USE_TBB == 0
     if (nthreads > 1) {
         Rf_warning("%s", NTHREADS_WARNING_MSG);
@@ -540,11 +549,12 @@ SEXP qd_deserialize_impl(MemoryReader& myFile, const bool use_alt_rep, const boo
 }
 
 SEXP qd_deserialize(SEXP input, const bool use_alt_rep, const bool validate_checksum, int nthreads) {
+    warn_if_qdata_altrep_requested(use_alt_rep);
     if (TYPEOF(input) != RAWSXP) {
         throw_error<StdErrorPolicy>(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
     }
     MemoryReader myFile(RAW(input), static_cast<const uint64_t>(Rf_xlength(input)));
-    return qd_deserialize_impl(myFile, use_alt_rep, validate_checksum, nthreads);
+    return qd_deserialize_impl(myFile, validate_checksum, nthreads);
 }
 
 

@@ -17,3 +17,5 @@ README.html
 ^inst/analysis
 ^inst/standalone
 ^context
+^inst/include/qdata-cpp/(\.github|benchmarks|docs|examples|tests)(/|$)
+^inst/include/qdata-cpp/(\.gitignore|CMakeLists\.txt|Makefile|README\.md|environment\.yml)$
