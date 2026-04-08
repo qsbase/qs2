@@ -8,8 +8,9 @@ qs2
 
 *qs2: a framework for efficient serialization*
 
-`qs2` is the successor to the `qs` package. The goal is to have reliable
-and fast performance for saving and loading objects in R.
+`qs2` is the successor to the `qs` package that introduces two new
+formats: `qs2` and `qdata`. The goal is to have reliable and fast
+performance for saving and loading objects in R.
 
 The `qs2` format directly uses R serialization (via the
 `R_Serialize`/`R_Unserialize` C API) while improving underlying
@@ -129,61 +130,20 @@ data frames, matrices).
 
 It will replace internal types (functions, promises, external pointers,
 environments, objects) with NULL. The `qdata` format differs from the
-`qs2` format in that it is NOT a general.
+`qs2` format in that it is *not* a general, but is more performant.
 
-The eventual goal of `qdata` is to also have interoperability with other
-languages, particularly `Python`.
+Please use `qdata` or `qd` as the file extension.
 
 ``` r
-qd_save(data, "myfile.qs2")
-data <- qd_read("myfile.qs2")
+qd_save(data, "myfile.qdata")
+data <- qd_read("myfile.qdata")
 ```
 
-For the upcoming CRAN release, qdata string reads always return ordinary
-character vectors. The `use_alt_rep` argument is kept for compatibility
-and warns when set to `TRUE`.
+There is a `use_alt_rep` parameter that is intended to improve
+performance.
 
-## Benchmarks
-
-A summary across 4 datasets is presented below.
-
-#### Single-threaded
-
-| Algorithm       | Compression | Save Time (s) | Read Time (s) |
-|-----------------|-------------|---------------|---------------|
-| qs2             | 7.96        | 13.4          | 50.4          |
-| qdata           | 8.45        | 10.5          | 34.8          |
-| base::serialize | 1.1         | 8.87          | 51.4          |
-| saveRDS         | 8.68        | 107           | 63.7          |
-| fst             | 2.59        | 5.09          | 46.3          |
-| parquet         | 8.29        | 20.3          | 38.4          |
-| qs (legacy)     | 7.97        | 9.13          | 48.1          |
-
-#### Multi-threaded (8 threads)
-
-| Algorithm   | Compression | Save Time (s) | Read Time (s) |
-|-------------|-------------|---------------|---------------|
-| qs2         | 7.96        | 3.79          | 48.1          |
-| qdata       | 8.45        | 1.98          | 33.1          |
-| fst         | 2.59        | 5.05          | 46.6          |
-| parquet     | 8.29        | 20.2          | 37.0          |
-| qs (legacy) | 7.97        | 3.21          | 52.0          |
-
-- `qs2`, `qdata` and `qs` with `compress_level = 3`
-- `parquet` via the `arrow` package using zstd `compression_level = 3`
-- `base::serialize` with `ascii = FALSE` and `xdr = FALSE`
-
-**Datasets used**
-
-- `1000 genomes non-coding VCF` 1000 genomes non-coding variants (2743
-  MB)
-- `B-cell data` B-cell mouse data, Greiff 2017 (1057 MB)
-- `IP location` IPV4 range data with location information (198 MB)
-- `Netflix movie ratings` Netflix ML prediction dataset (571 MB)
-
-These datasets are openly licensed and represent a combination of
-numeric and text data across multiple domains. See
-`inst/analysis/datasets.R` on Github.
+For the upcoming CRAN release, qdata does not use ALTREP but should be
+restored in the release after.
 
 # Usage in C/C++
 

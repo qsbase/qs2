@@ -41,10 +41,6 @@ AC_ARG_WITH([TBB],
             AS_HELP_STRING([--without-TBB],[Disable TBB usage and force RCPP_PARALLEL_USE_TBB=0]),
             [if test "x$withval" = "xno"; then using_tbb="false"; fi])
 
-AC_ARG_WITH([dynamic-blocksize],
-            AS_HELP_STRING([--with-dynamic-blocksize],[Dynamic blocksize, for debugging and testing ONLY]),
-            [using_dynamic_blocksize="true"])
-
 AC_ARG_WITH([simd],
             AS_HELP_STRING([--with-simd],[Manually select SIMD support (options: AVX2, SSE2)]),
             [with_simd=$withval])
@@ -106,17 +102,6 @@ if test xx$COMPILE_ZSTD = "xxtrue"; then
   ZSTD_CLEAN="\$(LIBZSTD) libQSZSTD.a"
 fi
 
-########################################################
-#### Dynamic blocksize
-
-if test xx$using_dynamic_blocksize = "xxtrue"; then
-  echo "Using dynamic blocksize (for debugging and testing ONLY)"
-  DYNAMIC_BLOCKSIZE_FLAG="-DQS2_DYNAMIC_BLOCKSIZE=1"
-else
-  echo "Fixed blocksize"
-fi
-
-########################################################
 #### Check if -latomic flag is needed (relevant when TBB may be used)
 
 m4_define([QS2_ATOMIC_TEST_PROGRAM], [[
@@ -196,7 +181,6 @@ AC_SUBST([ZSTD_INCLUDE_PATH], $ZSTD_INCLUDE_PATH)
 AC_SUBST([ZSTD_LIBS], $ZSTD_LIBS)
 AC_SUBST([ZSTD_SHLIB], $ZSTD_SHLIB)
 AC_SUBST([ZSTD_CLEAN], $ZSTD_CLEAN)
-AC_SUBST([DYNAMIC_BLOCKSIZE_FLAG], $DYNAMIC_BLOCKSIZE_FLAG)
 AC_SUBST([TBB_FLAG], $TBB_FLAG)
 AC_SUBST([SIMD_FLAG], $SIMD_FLAG)
 AC_SUBST([CXX_STD_LINE], $CXX_STD_LINE)

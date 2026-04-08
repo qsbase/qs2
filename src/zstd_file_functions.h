@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cerrno>
 #include <cstddef>
 #include <cstdio>
@@ -10,6 +11,7 @@
 #include <fstream>
 #include <memory>
 #include <Rcpp.h>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -21,6 +23,7 @@
 using namespace Rcpp;
 
 static constexpr std::array<uint8_t, 4> ZSTD_MAGIC{{0x28, 0xb5, 0x2f, 0xfd}};
+static constexpr double MAX_SAFE_R_DOUBLE_INTEGER = 9007199254740991.0; // 2^53 - 1
 
 template <size_t N>
 inline void ensure_magic_prefix(const std::string& path,
@@ -57,6 +60,41 @@ struct IReader {
     virtual size_t read(char* dst, size_t cnt) = 0;
     virtual bool readLine(std::string& out) = 0;
 };
+
+struct PartialOutputGuard {
+    std::string path;
+    bool keep{false};
+
+    explicit PartialOutputGuard(std::string output_path) : path(std::move(output_path)) {}
+
+    void release() {
+        keep = true;
+    }
+
+    ~PartialOutputGuard() {
+        if(!keep) {
+            std::remove(path.c_str());
+        }
+    }
+};
+
+inline bool parse_max_output_bytes(SEXP max_output_bytes, uint64_t& parsed_max_output_bytes) {
+    if(Rf_isNull(max_output_bytes)) {
+        return false;
+    }
+    if(Rf_xlength(max_output_bytes) != 1) {
+        throw std::runtime_error("max_output_bytes must be NULL or a single non-negative whole number");
+    }
+    const double value = Rf_asReal(max_output_bytes);
+    if(!R_finite(value) || value < 0 || std::floor(value) != value) {
+        throw std::runtime_error("max_output_bytes must be NULL or a single non-negative whole number");
+    }
+    if(value > MAX_SAFE_R_DOUBLE_INTEGER) {
+        throw std::runtime_error("max_output_bytes exceeds the largest exactly representable R numeric integer (2^53 - 1)");
+    }
+    parsed_max_output_bytes = static_cast<uint64_t>(value);
+    return true;
+}
 
 struct ZstdWriter : IWriter {
     FILE* _f;
@@ -304,25 +342,43 @@ SEXP zstd_compress_file(const std::string& input_file, const std::string& output
     return R_NilValue;
 }
 
-// [[Rcpp::export(rng = false, invisible = true, signature = {input_file, output_file})]]
-SEXP zstd_decompress_file(const std::string& input_file, const std::string& output_file) {
+// [[Rcpp::export(rng = false, invisible = true, signature = {input_file, output_file, max_output_bytes = NULL})]]
+SEXP zstd_decompress_file(const std::string& input_file, const std::string& output_file, SEXP max_output_bytes) {
     const std::string input_path = R_ExpandFileName(input_file.c_str());
     const std::string output_path = R_ExpandFileName(output_file.c_str());
+    uint64_t parsed_max_output_bytes = 0;
+    const bool has_max_output_bytes = parse_max_output_bytes(max_output_bytes, parsed_max_output_bytes);
 
     ZstdReader reader(input_path, 1 << 20);
     std::ofstream out(output_path, std::ios::binary);
     if (!out) {
         throw_error<StdErrorPolicy>(std::string("Failed to open output file for writing: ") + output_file);
     }
+    PartialOutputGuard output_guard(output_path);
 
-    std::vector<char> buffer(1 << 20);
-    size_t got = reader.read(buffer.data(), buffer.size());
-    while (got > 0) {
-        out.write(buffer.data(), static_cast<std::streamsize>(got));
-        if (!out) {
-            throw_error<StdErrorPolicy>(std::string("Error while writing output file: ") + output_file);
+    try {
+        std::vector<char> buffer(1 << 20);
+        uint64_t decoded_bytes = 0;
+        size_t got = reader.read(buffer.data(), buffer.size());
+        while (got > 0) {
+            if (has_max_output_bytes && static_cast<uint64_t>(got) > (parsed_max_output_bytes - decoded_bytes)) {
+                throw_error<StdErrorPolicy>("zstd_decompress_file failed: decompressed output exceeds max_output_bytes");
+            }
+            decoded_bytes += static_cast<uint64_t>(got);
+            out.write(buffer.data(), static_cast<std::streamsize>(got));
+            if (!out) {
+                throw_error<StdErrorPolicy>(std::string("Error while writing output file: ") + output_file);
+            }
+            got = reader.read(buffer.data(), buffer.size());
         }
-        got = reader.read(buffer.data(), buffer.size());
+        out.close();
+        if (!out) {
+            throw_error<StdErrorPolicy>(std::string("Error while closing output file: ") + output_file);
+        }
+        output_guard.release();
+    } catch(...) {
+        out.close();
+        throw;
     }
     return R_NilValue;
 }

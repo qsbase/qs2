@@ -32,11 +32,14 @@ NULL
 #'
 #' A utility function to decompresses a zstd file to disk.
 #'
-#' @usage zstd_decompress_file(input_file, output_file)
+#' @usage zstd_decompress_file(input_file, output_file, max_output_bytes = NULL)
 #' 
 #' @name zstd_decompress_file
 #' @param input_file Path to the input file.
 #' @param output_file Path to the output file.
+#' @param max_output_bytes Optional maximum number of decompressed output bytes.
+#'   When supplied, decompression stops with an error before writing a chunk that
+#'   would exceed this limit.
 #' 
 #' @return No value is returned. The file is written to disk.
 #' @export
@@ -68,6 +71,8 @@ NULL
 #' @param envir Environment for `FUN` evaluation.
 #' @param tmpfile Temporary file path. If not supplied, a temp file is created
 #'   and removed on exit.
+#' @param max_output_bytes Optional maximum number of decompressed output bytes
+#'   passed through to [zstd_decompress_file()].
 #'
 #' @return The value returned by `FUN`.
 #' @export
@@ -80,7 +85,7 @@ NULL
 #'   dt <- zstd_in(data.table::fread, file = zfile)
 #'   print(nrow(dt))
 #' }
-zstd_in <- function(FUN, ..., envir = parent.frame(), tmpfile = tempfile()) {
+zstd_in <- function(FUN, ..., envir = parent.frame(), tmpfile = tempfile(), max_output_bytes = NULL) {
   params <- list(...)
   w <- which(names(params) != "")
   if (length(w) == 0) stop("expecting at least one named parameter for file path")
@@ -93,7 +98,7 @@ zstd_in <- function(FUN, ..., envir = parent.frame(), tmpfile = tempfile()) {
     stop("file path does not exist: ", input_path)
   }
   on.exit(unlink(tmpfile), add = TRUE)
-  zstd_decompress_file(input_path, tmpfile)
+  zstd_decompress_file(input_path, tmpfile, max_output_bytes = max_output_bytes)
   params[[w]] <- tmpfile
   do.call(FUN, params, envir = envir)
 }

@@ -5,7 +5,13 @@
 \alias{zstd_out}
 \title{Zstd file substitution for input}
 \usage{
-zstd_in(FUN, ..., envir = parent.frame(), tmpfile = tempfile())
+zstd_in(
+  FUN,
+  ...,
+  envir = parent.frame(),
+  tmpfile = tempfile(),
+  max_output_bytes = NULL
+)
 
 zstd_out(FUN, ..., envir = parent.frame(), tmpfile = tempfile())
 }
@@ -19,6 +25,9 @@ the file path.}
 
 \item{tmpfile}{Temporary file path. If not supplied, a temp file is created
 and removed on exit.}
+
+\item{max_output_bytes}{Optional maximum number of decompressed output bytes
+passed through to \code{\link[=zstd_decompress_file]{zstd_decompress_file()}}.}
 }
 \value{
 The value returned by \code{FUN}.

@@ -8,7 +8,7 @@
 \usage{
 zstd_compress_file(input_file, output_file, compress_level = qopt("compress_level"))
 
-zstd_decompress_file(input_file, output_file)
+zstd_decompress_file(input_file, output_file, max_output_bytes = NULL)
 }
 \arguments{
 \item{compress_level}{The compression level used.}
@@ -16,6 +16,10 @@ zstd_decompress_file(input_file, output_file)
 \item{input_file}{Path to the input file.}
 
 \item{output_file}{Path to the output file.}
+
+\item{max_output_bytes}{Optional maximum number of decompressed output bytes.
+When supplied, decompression stops with an error before writing a chunk that
+would exceed this limit.}
 }
 \value{
 No value is returned. The file is written to disk.

@@ -613,7 +613,6 @@ LIBOBJS
 CXX_STD_LINE
 SIMD_FLAG
 TBB_FLAG
-DYNAMIC_BLOCKSIZE_FLAG
 ZSTD_CLEAN
 ZSTD_SHLIB
 ZSTD_LIBS
@@ -673,7 +672,6 @@ with_zstd_force_compile
 with_zstd_include
 with_zstd_lib
 with_TBB
-with_dynamic_blocksize
 with_simd
 '
       ac_precious_vars='build_alias
@@ -1309,8 +1307,6 @@ Optional Packages:
   --with-zstd-lib=LIB_PATH
                           the location of zstd library files
   --without-TBB           Disable TBB usage and force RCPP_PARALLEL_USE_TBB=0
-  --with-dynamic-blocksize
-                          Dynamic blocksize, for debugging and testing ONLY
   --with-simd             Manually select SIMD support (options: AVX2, SSE2)
 
 Some influential environment variables:
@@ -2830,14 +2826,6 @@ fi
 
 
 
-# Check whether --with-dynamic-blocksize was given.
-if test ${with_dynamic_blocksize+y}
-then :
-  withval=$with_dynamic_blocksize; using_dynamic_blocksize="true"
-fi
-
-
-
 # Check whether --with-simd was given.
 if test ${with_simd+y}
 then :
@@ -2902,17 +2890,6 @@ if test xx$COMPILE_ZSTD = "xxtrue"; then
   ZSTD_CLEAN="\$(LIBZSTD) libQSZSTD.a"
 fi
 
-########################################################
-#### Dynamic blocksize
-
-if test xx$using_dynamic_blocksize = "xxtrue"; then
-  echo "Using dynamic blocksize (for debugging and testing ONLY)"
-  DYNAMIC_BLOCKSIZE_FLAG="-DQS2_DYNAMIC_BLOCKSIZE=1"
-else
-  echo "Fixed blocksize"
-fi
-
-########################################################
 #### Check if -latomic flag is needed (relevant when TBB may be used)
 
 
@@ -3032,8 +3009,6 @@ ZSTD_LIBS=$ZSTD_LIBS
 ZSTD_SHLIB=$ZSTD_SHLIB
 
 ZSTD_CLEAN=$ZSTD_CLEAN
-
-DYNAMIC_BLOCKSIZE_FLAG=$DYNAMIC_BLOCKSIZE_FLAG
 
 TBB_FLAG=$TBB_FLAG
 

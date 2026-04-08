@@ -24,7 +24,7 @@
 #include "r_error_policy.h"
 #include "qs_deserializer.h"
 #include "qs_serializer.h"
-#include "qs_unwind_protect.h"
+#include "qx_unwind_protect.h"
 #include "qx_dump.h"
 #include "zstd_file_functions.h"
 
@@ -63,10 +63,6 @@ List qx_dump(const std::string& file);
 std::string check_SIMD();
 // [[Rcpp::export(rng = false)]]
 bool check_TBB();
-// [[Rcpp::export(rng = false)]]
-int check_internal_blocksize();
-// [[Rcpp::export(rng = false)]]
-int internal_set_blocksize(int size);
 // [[Rcpp::export(rng = false)]]
 int internal_is_utf8_locale(int size);
 
@@ -115,13 +111,13 @@ void qx_export_functions(DllInfo* dll);
 
 #define DO_QS_SAVE(_STREAM_WRITER_, _BASE_CLASS_, _COMPRESSOR_, _HASHER_)                                                  \
     _BASE_CLASS_<_STREAM_WRITER_, _COMPRESSOR_, _HASHER_, RErrorPolicy, false> block_io(myFile, compress_level);           \
-    qs_with_unwind_cleanup(                                                                                                \
+    qx_with_unwind_cleanup(                                                                                                \
         block_io,                                                                                                          \
-        [&]() {                                                                                                            \
+        [&]() -> SEXP {                                                                                                    \
             struct R_outpstream_st out;                                                                                    \
             R_SerializeInit(&out, block_io);                                                                               \
             qsSaveImplArgs args = {object, hash, &out};                                                                    \
-            Rcpp::unwindProtect(qs_save_impl<decltype(block_io)>, static_cast<void*>(&args));                              \
+            return qs_save_impl<decltype(block_io)>(static_cast<void*>(&args));                                             \
         },                                                                                                                 \
         "Object save interrupted, file may be incomplete");
 
@@ -209,10 +205,10 @@ SEXP qs_serialize(SEXP object, const int compress_level, const bool shuffle, int
 
 #define DO_QS_READ(_STREAM_READER_, _BASE_CLASS_, _DECOMPRESSOR_, _RUNTIME_HASH_)                                             \
     _BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, RErrorPolicy> block_io(myFile);                                             \
-    output = qs_with_unwind_cleanup(block_io, [&]() -> SEXP {                                                                 \
+    output = qx_with_unwind_cleanup(block_io, [&]() -> SEXP {                                                                 \
         struct R_inpstream_st in;                                                                                             \
         R_UnserializeInit<_BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, RErrorPolicy>>(&in, (R_pstream_data_t)(&block_io)); \
-        SEXP protected_output = Rcpp::unwindProtect(qs_read_impl<decltype(block_io)>, static_cast<void*>(&in));              \
+        SEXP protected_output = qs_read_impl<decltype(block_io)>(static_cast<void*>(&in));                                   \
         _RUNTIME_HASH_ = block_io.get_hash_digest();                                                                          \
         return protected_output;                                                                                              \
     });
@@ -261,6 +257,7 @@ SEXP qs_read(const std::string& file, const bool validate_checksum, int nthreads
             DO_QS_READ(IfStreamReader, BlockCompressReader, ZstdDecompressor, runtime_hash);
         }
     }
+    PROTECT(output);
     if (!validate_checksum) {
         if (stored_hash == 0) {
             Rf_warning("%s", (NO_HASH_WARN_MSG).c_str());
@@ -268,6 +265,7 @@ SEXP qs_read(const std::string& file, const bool validate_checksum, int nthreads
             Rf_warning("%s", (HASH_MISMATCH_WARN_MSG).c_str());
         }
     }
+    UNPROTECT(1);
     return output;
 }
 
@@ -310,6 +308,7 @@ SEXP qs_deserialize_impl(MemoryReader& myFile, const bool validate_checksum, int
             DO_QS_READ(MemoryReader, BlockCompressReader, ZstdDecompressor, runtime_hash);
         }
     }
+    PROTECT(output);
     if (!validate_checksum) {
         if (stored_hash == 0) {
             Rf_warning("%s", IN_MEMORY_NO_HASH_WARN_MSG);
@@ -317,6 +316,7 @@ SEXP qs_deserialize_impl(MemoryReader& myFile, const bool validate_checksum, int
             Rf_warning("%s", IN_MEMORY_HASH_MISMATCH_WARN_MSG);
         }
     }
+    UNPROTECT(1);
     return output;
 }
 
@@ -337,9 +337,15 @@ inline void warn_if_qdata_altrep_requested(const bool use_alt_rep) {
 #define DO_QD_SAVE(_STREAM_WRITER_, _BASE_CLASS_, _COMPRESSOR_, _HASHER_)                                                                          \
     _BASE_CLASS_<_STREAM_WRITER_, _COMPRESSOR_, _HASHER_, StdErrorPolicy, true> writer(myFile, compress_level);                                   \
     QdataSerializer<_BASE_CLASS_<_STREAM_WRITER_, _COMPRESSOR_, _HASHER_, StdErrorPolicy, true>> serializer(writer, warn_unsupported_types);      \
-    serializer.write_object(object);                                                                                                               \
-    serializer.write_object_data();                                                                                                                \
-    hash = writer.finish();
+    qx_with_unwind_cleanup(                                                                                                                        \
+        writer,                                                                                                                                     \
+        [&]() -> SEXP {                                                                                                                             \
+            serializer.write_object(object);                                                                                                        \
+            serializer.write_object_data();                                                                                                         \
+            hash = writer.finish();                                                                                                                 \
+            return R_NilValue;                                                                                                                      \
+        },                                                                                                                                          \
+        "Object save interrupted, file may be incomplete");
 
 ///////////////////////////////////////////////////////////////////////////////
 /* qdata format functions */
@@ -428,11 +434,13 @@ SEXP qd_serialize(SEXP object, const int compress_level, const bool shuffle, con
 #define DO_QD_READ(_STREAM_READER_, _BASE_CLASS_, _DECOMPRESSOR_, _RUNTIME_HASH_)                                             \
     _BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, StdErrorPolicy> reader(myFile);                                             \
     QdataDeserializer<_BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, StdErrorPolicy>> deserializer(reader);                    \
-    output = PROTECT(deserializer.read_object());                                                                             \
-    deserializer.read_object_data();                                                                                          \
-    reader.finish();                                                                                                          \
-    _RUNTIME_HASH_ = reader.get_hash_digest();                                                                                \
-    UNPROTECT(1);
+    output = qx_with_unwind_cleanup(reader, [&]() -> SEXP {                                                                   \
+        Rcpp::Shield<SEXP> protected_output(deserializer.read_object());                                                      \
+        deserializer.read_object_data();                                                                                      \
+        reader.finish();                                                                                                      \
+        _RUNTIME_HASH_ = reader.get_hash_digest();                                                                            \
+        return protected_output;                                                                                              \
+    });
 
 SEXP qd_read(const std::string& file, const bool use_alt_rep, const bool validate_checksum, int nthreads) {
 #if RCPP_PARALLEL_USE_TBB == 0
@@ -479,6 +487,7 @@ SEXP qd_read(const std::string& file, const bool use_alt_rep, const bool validat
             DO_QD_READ(IfStreamReader, BlockCompressReader, ZstdDecompressor, runtime_hash);
         }
     }
+    PROTECT(output);
     if (!validate_checksum) {
         if (stored_hash == 0) {
             Rf_warning("%s", (NO_HASH_WARN_MSG).c_str());
@@ -486,6 +495,7 @@ SEXP qd_read(const std::string& file, const bool use_alt_rep, const bool validat
             Rf_warning("%s", (HASH_MISMATCH_WARN_MSG).c_str());
         }
     }
+    UNPROTECT(1);
     return output;
 }
 
@@ -528,6 +538,7 @@ SEXP qd_deserialize_impl(MemoryReader& myFile, const bool validate_checksum, int
             DO_QD_READ(MemoryReader, BlockCompressReader, ZstdDecompressor, runtime_hash);
         }
     }
+    PROTECT(output);
     if (!validate_checksum) {
         if (stored_hash == 0) {
             Rf_warning("%s", IN_MEMORY_NO_HASH_WARN_MSG);
@@ -535,6 +546,7 @@ SEXP qd_deserialize_impl(MemoryReader& myFile, const bool validate_checksum, int
             Rf_warning("%s", IN_MEMORY_HASH_MISMATCH_WARN_MSG);
         }
     }
+    UNPROTECT(1);
     return output;
 }
 
@@ -593,22 +605,6 @@ bool check_TBB() {
     return RCPP_PARALLEL_USE_TBB;
 }
 
-int check_internal_blocksize() {
-    return MAX_BLOCKSIZE;
-}
-
-int internal_set_blocksize(const int size) {
-#ifdef QS2_DYNAMIC_BLOCKSIZE
-    int old = MAX_BLOCKSIZE;
-    MAX_BLOCKSIZE = size;
-    MIN_BLOCKSIZE = MAX_BLOCKSIZE - BLOCK_RESERVE;
-    MAX_ZBLOCKSIZE = ZSTD_compressBound(MAX_BLOCKSIZE);
-    return old;
-#else
-    throw std::runtime_error("dynamic blocksize compile option not enabled");
-#endif
-}
-
 int internal_is_utf8_locale(const int size) {
     return IS_UTF8_LOCALE;
 }
@@ -656,12 +652,10 @@ SEXP internal_write_qx_hash(const std::string& file, const std::string& hash_str
 /* standalone utility functions */
 
 std::vector<unsigned char> zstd_compress_raw(SEXP const data, const int compress_level) {
-    if (TYPEOF(data) != RAWSXP) {
-        throw_error<StdErrorPolicy>(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
-    }
     if (compress_level > ZSTD_maxCLevel() || compress_level < ZSTD_minCLevel()) {
         throw_error<StdErrorPolicy>(COMPRESS_LEVEL_ERR_MSG);
     }
+    if (TYPEOF(data) != RAWSXP) throw std::runtime_error(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
     size_t xsize = static_cast<size_t>(Rf_xlength(data));
     size_t zbound = ZSTD_compressBound(xsize);
     if (ZSTD_isError(zbound)) {
@@ -678,9 +672,7 @@ std::vector<unsigned char> zstd_compress_raw(SEXP const data, const int compress
     return ret;
 }
 RawVector zstd_decompress_raw(SEXP const data) {
-    if (TYPEOF(data) != RAWSXP) {
-        throw_error<StdErrorPolicy>(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
-    }
+    if (TYPEOF(data) != RAWSXP) throw std::runtime_error(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
     size_t zsize = static_cast<size_t>(Rf_xlength(data));
     const char* xdata = reinterpret_cast<const char*>(RAW(data));
     unsigned long long retsize = ZSTD_getFrameContentSize(xdata, zsize);
@@ -708,6 +700,7 @@ RawVector zstd_decompress_raw(SEXP const data) {
 int zstd_compress_bound(const int size) { return ZSTD_compressBound(size); }
 
 std::vector<unsigned char> blosc_shuffle_raw(SEXP const data, int bytesofsize) {
+    if (TYPEOF(data) != RAWSXP) throw std::runtime_error(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
     if (bytesofsize != 4 && bytesofsize != 8) throw std::runtime_error("bytesofsize must be 4 or 8");
     uint64_t blocksize = Rf_xlength(data);
     uint8_t* xdata = reinterpret_cast<uint8_t*>(RAW(data));
@@ -720,9 +713,7 @@ std::vector<unsigned char> blosc_shuffle_raw(SEXP const data, int bytesofsize) {
 }
 
 std::vector<unsigned char> blosc_unshuffle_raw(SEXP const data, int bytesofsize) {
-    if (TYPEOF(data) != RAWSXP) {
-        throw_error<StdErrorPolicy>(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
-    }
+    if (TYPEOF(data) != RAWSXP) throw std::runtime_error(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
     if (bytesofsize != 4 && bytesofsize != 8) throw std::runtime_error("bytesofsize must be 4 or 8");
     uint64_t blocksize = Rf_xlength(data);
     uint8_t* xdata = reinterpret_cast<uint8_t*>(RAW(data));
@@ -735,9 +726,7 @@ std::vector<unsigned char> blosc_unshuffle_raw(SEXP const data, int bytesofsize)
 }
 
 std::string xxhash_raw(SEXP const data) {
-    if (TYPEOF(data) != RAWSXP) {
-        throw_error<StdErrorPolicy>(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
-    }
+    if (TYPEOF(data) != RAWSXP) throw std::runtime_error(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
     uint64_t xsize = Rf_xlength(data);
     uint8_t* xdata = reinterpret_cast<uint8_t*>(RAW(data));
     xxHashEnv xenv = xxHashEnv();

@@ -7,6 +7,7 @@
 #include <cstring>
 
 #include <Rcpp.h>
+#include <R_ext/Utils.h>
 #include <Rversion.h>
 
 #include "qx_file_headers.h"
@@ -259,6 +260,7 @@ struct QdataSerializer {
     }
 
     void write_object(SEXP const object) {
+        R_CheckStack();
         SEXPTYPE object_type = TYPEOF(object);
         switch(object_type) {
             case LGLSXP:

@@ -25,11 +25,25 @@ qs_to_rds <- function(input_file, output_file, compress_level = 6) {
   if(dump$format != "qs2") {
     stop("qs2 format not detected")
   }
+  if(identical(dump$stored_hash, "0")) {
+    stop("qs2 file does not contain a stored hash")
+  }
+  if(!identical(dump$stored_hash, dump$computed_hash)) {
+    stop("qs2 file hash mismatch")
+  }
   con <- gzfile(output_file, "wb", compression = compress_level)
-  for(i in 1:length(dump$blocks)) {
+  ok <- FALSE
+  on.exit({
+    try(close(con), silent = TRUE)
+    if(!ok && file.exists(output_file)) {
+      unlink(output_file)
+    }
+  }, add = TRUE)
+  for(i in seq_along(dump$blocks)) {
     writeBin(dump$blocks[[i]], con)
   }
   close(con)
+  ok <- TRUE
 }
 
 #' RDS to qs2 format
@@ -56,7 +70,7 @@ qs_to_rds <- function(input_file, output_file, compress_level = 6) {
 #' stopifnot(identical(x, x2))
 #' @export
 rds_to_qs <- function(input_file, output_file, compress_level = 3) {
-  MAX_BLOCKSIZE <- check_internal_blocksize() # defined in io/io_common.h
+  MAX_BLOCKSIZE <- 1048576L # defined in io/io_common.h
   HEADER_SIZE <- 24 # defined in qx_file_headers.h
   tmp_output <- tempfile()
   qs_save(NULL, tmp_output, compress_level = compress_level, shuffle = FALSE)

@@ -341,7 +341,8 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 
 <p><em>qs2: a framework for efficient serialization</em></p>
-<p><code>qs2</code> is the successor to the <code>qs</code> package. The
+<p><code>qs2</code> is the successor to the <code>qs</code> package that
+introduces two new formats: <code>qs2</code> and <code>qdata</code>. The
 goal is to have reliable and fast performance for saving and loading
 objects in R.</p>
 <p>The <code>qs2</code> format directly uses R serialization (via the
@@ -438,144 +439,16 @@ its own serialization layout and works with only data types (vectors,
 lists, data frames, matrices).</p>
 <p>It will replace internal types (functions, promises, external
 pointers, environments, objects) with NULL. The <code>qdata</code>
-format differs from the <code>qs2</code> format in that it is NOT a
-general.</p>
-<p>The eventual goal of <code>qdata</code> is to also have
-interoperability with other languages, particularly
-<code>Python</code>.</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">qd_save</span>(data, <span class="st">&quot;myfile.qs2&quot;</span>)</span>
-<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>data <span class="ot">&lt;-</span> <span class="fu">qd_read</span>(<span class="st">&quot;myfile.qs2&quot;</span>)</span></code></pre></div>
-<p>For the upcoming CRAN release, qdata string reads always return
-ordinary character vectors. The <code>use_alt_rep</code> argument is
-kept for compatibility and warns when set to <code>TRUE</code>.</p>
-<div id="benchmarks" class="section level2">
-<h2>Benchmarks</h2>
-<p>A summary across 4 datasets is presented below.</p>
-<div id="single-threaded" class="section level4">
-<h4>Single-threaded</h4>
-<table>
-<thead>
-<tr class="header">
-<th>Algorithm</th>
-<th>Compression</th>
-<th>Save Time (s)</th>
-<th>Read Time (s)</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>qs2</td>
-<td>7.96</td>
-<td>13.4</td>
-<td>50.4</td>
-</tr>
-<tr class="even">
-<td>qdata</td>
-<td>8.45</td>
-<td>10.5</td>
-<td>34.8</td>
-</tr>
-<tr class="odd">
-<td>base::serialize</td>
-<td>1.1</td>
-<td>8.87</td>
-<td>51.4</td>
-</tr>
-<tr class="even">
-<td>saveRDS</td>
-<td>8.68</td>
-<td>107</td>
-<td>63.7</td>
-</tr>
-<tr class="odd">
-<td>fst</td>
-<td>2.59</td>
-<td>5.09</td>
-<td>46.3</td>
-</tr>
-<tr class="even">
-<td>parquet</td>
-<td>8.29</td>
-<td>20.3</td>
-<td>38.4</td>
-</tr>
-<tr class="odd">
-<td>qs (legacy)</td>
-<td>7.97</td>
-<td>9.13</td>
-<td>48.1</td>
-</tr>
-</tbody>
-</table>
-</div>
-<div id="multi-threaded-8-threads" class="section level4">
-<h4>Multi-threaded (8 threads)</h4>
-<table>
-<thead>
-<tr class="header">
-<th>Algorithm</th>
-<th>Compression</th>
-<th>Save Time (s)</th>
-<th>Read Time (s)</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>qs2</td>
-<td>7.96</td>
-<td>3.79</td>
-<td>48.1</td>
-</tr>
-<tr class="even">
-<td>qdata</td>
-<td>8.45</td>
-<td>1.98</td>
-<td>33.1</td>
-</tr>
-<tr class="odd">
-<td>fst</td>
-<td>2.59</td>
-<td>5.05</td>
-<td>46.6</td>
-</tr>
-<tr class="even">
-<td>parquet</td>
-<td>8.29</td>
-<td>20.2</td>
-<td>37.0</td>
-</tr>
-<tr class="odd">
-<td>qs (legacy)</td>
-<td>7.97</td>
-<td>3.21</td>
-<td>52.0</td>
-</tr>
-</tbody>
-</table>
-<ul>
-<li><code>qs2</code>, <code>qdata</code> and <code>qs</code> with
-<code>compress_level = 3</code></li>
-<li><code>parquet</code> via the <code>arrow</code> package using zstd
-<code>compression_level = 3</code></li>
-<li><code>base::serialize</code> with <code>ascii = FALSE</code> and
-<code>xdr = FALSE</code></li>
-</ul>
-<p><strong>Datasets used</strong></p>
-<ul>
-<li><code>1000 genomes non-coding VCF</code> 1000 genomes non-coding
-variants (2743 MB)</li>
-<li><code>B-cell data</code> B-cell mouse data, Greiff 2017 (1057
-MB)</li>
-<li><code>IP location</code> IPV4 range data with location information
-(198 MB)</li>
-<li><code>Netflix movie ratings</code> Netflix ML prediction dataset
-(571 MB)</li>
-</ul>
-<p>These datasets are openly licensed and represent a combination of
-numeric and text data across multiple domains. See
-<code>inst/analysis/datasets.R</code> on Github.</p>
-</div>
-</div>
+format differs from the <code>qs2</code> format in that it is
+<em>not</em> a general, but is more performant.</p>
+<p>Please use <code>qdata</code> or <code>qd</code> as the file
+extension.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">qd_save</span>(data, <span class="st">&quot;myfile.qdata&quot;</span>)</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>data <span class="ot">&lt;-</span> <span class="fu">qd_read</span>(<span class="st">&quot;myfile.qdata&quot;</span>)</span></code></pre></div>
+<p>There is a <code>use_alt_rep</code> parameter that is intended to
+improve performance.</p>
+<p>For the upcoming CRAN release, qdata does not use ALTREP but should
+be restored in the release after.</p>
 </div>
 <div id="usage-in-cc" class="section level1">
 <h1>Usage in C/C++</h1>
