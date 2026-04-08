@@ -440,7 +440,7 @@ lists, data frames, matrices).</p>
 <p>It will replace internal types (functions, promises, external
 pointers, environments, objects) with NULL. The <code>qdata</code>
 format differs from the <code>qs2</code> format in that it is
-<em>not</em> a general, but is more performant.</p>
+<em>not</em> general, but is more performant.</p>
 <p>Please use <code>qdata</code> or <code>qd</code> as the file
 extension.</p>
 <div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">qd_save</span>(data, <span class="st">&quot;myfile.qdata&quot;</span>)</span>
@@ -490,6 +490,41 @@ example using Rcpp.</p>
 <span id="cb10-34"><a href="#cb10-34" tabindex="-1"></a><span class="co">stopifnot(identical(test_qs_save(x, tempfile(fileext = &quot;.qs2&quot;)), x))</span></span>
 <span id="cb10-35"><a href="#cb10-35" tabindex="-1"></a><span class="co">stopifnot(identical(test_qd_save(x, tempfile(fileext = &quot;.qd&quot;)), x))</span></span>
 <span id="cb10-36"><a href="#cb10-36" tabindex="-1"></a><span class="co">*/</span></span></code></pre></div>
+<div id="qdata-cpp-external-wrappers" class="section level2">
+<h2>qdata-cpp external wrappers</h2>
+<p>You can serialize and de-serialize qdata format outside the R API.
+Functions for doing so are exported in
+<code>qdata_cpp_external.h</code>.</p>
+<p>You can also compile these independently in
+<code>inst/include/qdata-cpp</code> and include in a standalone C++
+project.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="co">// [[Rcpp::depends(qs2)]]</span></span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;Rcpp.h&gt;</span></span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a><span class="pp">#include </span><span class="im">&quot;qdata_cpp_external.h&quot;</span></span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a></span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a><span class="co">// [[Rcpp::export]]</span></span>
+<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a>Rcpp<span class="op">::</span>IntegerVector qdata_ext_roundtrip<span class="op">()</span> <span class="op">{</span></span>
+<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a>  <span class="bu">std::</span>vector<span class="op">&lt;</span><span class="bu">std::</span>int32_t<span class="op">&gt;</span> x<span class="op">{</span><span class="dv">1</span><span class="op">,</span> <span class="dv">2</span><span class="op">,</span> <span class="dv">3</span><span class="op">,</span> <span class="dv">4</span><span class="op">};</span></span>
+<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a>  <span class="kw">auto</span> bytes <span class="op">=</span> qdata_ext<span class="op">::</span>serialize<span class="op">(</span>x<span class="op">);</span></span>
+<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a>  qdata_ext<span class="op">::</span>object out <span class="op">=</span> qdata_ext<span class="op">::</span>deserialize<span class="op">(</span>bytes<span class="op">);</span></span>
+<span id="cb11-10"><a href="#cb11-10" tabindex="-1"></a>  <span class="at">const</span> <span class="kw">auto</span><span class="op">&amp;</span> ints <span class="op">=</span> qdata_ext<span class="op">::</span>get<span class="op">&lt;</span>qdata_ext<span class="op">::</span>integer_vector<span class="op">&gt;(</span>out<span class="op">).</span>values<span class="op">;</span></span>
+<span id="cb11-11"><a href="#cb11-11" tabindex="-1"></a>  <span class="cf">return</span> Rcpp<span class="op">::</span>IntegerVector<span class="op">(</span>ints<span class="op">.</span>begin<span class="op">(),</span> ints<span class="op">.</span>end<span class="op">());</span></span>
+<span id="cb11-12"><a href="#cb11-12" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb11-13"><a href="#cb11-13" tabindex="-1"></a></span>
+<span id="cb11-14"><a href="#cb11-14" tabindex="-1"></a><span class="co">// [[Rcpp::export]]</span></span>
+<span id="cb11-15"><a href="#cb11-15" tabindex="-1"></a>Rcpp<span class="op">::</span>IntegerVector qdata_ext_file_roundtrip<span class="op">(</span><span class="at">const</span> <span class="bu">std::</span>string<span class="op">&amp;</span> path<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb11-16"><a href="#cb11-16" tabindex="-1"></a>  <span class="bu">std::</span>vector<span class="op">&lt;</span><span class="bu">std::</span>int32_t<span class="op">&gt;</span> x<span class="op">{</span><span class="dv">1</span><span class="op">,</span> <span class="dv">2</span><span class="op">,</span> <span class="dv">3</span><span class="op">,</span> <span class="dv">4</span><span class="op">};</span></span>
+<span id="cb11-17"><a href="#cb11-17" tabindex="-1"></a>  qdata_ext<span class="op">::</span>save<span class="op">(</span>path<span class="op">,</span> x<span class="op">);</span></span>
+<span id="cb11-18"><a href="#cb11-18" tabindex="-1"></a>  qdata_ext<span class="op">::</span>object out <span class="op">=</span> qdata_ext<span class="op">::</span>read<span class="op">(</span>path<span class="op">);</span></span>
+<span id="cb11-19"><a href="#cb11-19" tabindex="-1"></a>  <span class="at">const</span> <span class="kw">auto</span><span class="op">&amp;</span> ints <span class="op">=</span> qdata_ext<span class="op">::</span>get<span class="op">&lt;</span>qdata_ext<span class="op">::</span>integer_vector<span class="op">&gt;(</span>out<span class="op">).</span>values<span class="op">;</span></span>
+<span id="cb11-20"><a href="#cb11-20" tabindex="-1"></a>  <span class="cf">return</span> Rcpp<span class="op">::</span>IntegerVector<span class="op">(</span>ints<span class="op">.</span>begin<span class="op">(),</span> ints<span class="op">.</span>end<span class="op">());</span></span>
+<span id="cb11-21"><a href="#cb11-21" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb11-22"><a href="#cb11-22" tabindex="-1"></a></span>
+<span id="cb11-23"><a href="#cb11-23" tabindex="-1"></a><span class="co">/*** R</span></span>
+<span id="cb11-24"><a href="#cb11-24" tabindex="-1"></a><span class="co">stopifnot(identical(qdata_ext_roundtrip(), 1:4))</span></span>
+<span id="cb11-25"><a href="#cb11-25" tabindex="-1"></a><span class="co">stopifnot(identical(qdata_ext_file_roundtrip(tempfile(fileext = &quot;.qdata&quot;)), 1:4))</span></span>
+<span id="cb11-26"><a href="#cb11-26" tabindex="-1"></a><span class="co">*/</span></span></code></pre></div>
+</div>
 </div>
 <div id="global-options-for-qs2" class="section level1">
 <h1>Global Options for qs2</h1>

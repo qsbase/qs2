@@ -102,8 +102,10 @@ test-short:
 	Rscript tests/qs_savem_testing.R
 	Rscript tests/correctness_testing.R
 	Rscript tests/utility_testing.R
+	Rscript tests/qdata_cpp_external_testing.R
 
 test:
 	Rscript tests/qs_savem_testing.R
 	QS_EXTENDED_TESTS=1 Rscript tests/correctness_testing.R; unset QS_EXTENDED_TESTS
 	Rscript tests/utility_testing.R
+	Rscript tests/qdata_cpp_external_testing.R

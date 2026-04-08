@@ -38,6 +38,7 @@
 #define BASE91_H
 
 #include <stddef.h>
+#include <stdexcept>
 
 struct basE91 {
   unsigned long queue = 0;
@@ -73,6 +74,14 @@ static const unsigned char basE91_decoder_ring[256] = {
 	91, 91, 91, 91, 91, 91, 91, 91, 91, 91, 91, 91, 91, 91, 91, 91
 };
 
+inline unsigned int basE91_decode_value(const unsigned char byte) {
+  const unsigned int value = basE91_decoder_ring[byte];
+  if (value == 91) {
+    throw std::runtime_error("base91_decode: corrupted input data, invalid encoded character");
+  }
+  return value;
+}
+
 // No need for initialization function, we will use default C++ constructor
 // void basE91_init(struct basE91 *b) {
 // 	b->queue = 0;
@@ -100,7 +109,7 @@ size_t basE91_encode_internal(struct basE91 *b, const void *i, size_t len, void 
 				b->queue >>= 14;
 				b->nbits -= 14;
 			}
-			if(n+2 >= olen) throw std::runtime_error("base91_encode: error attempted write outside memory bound");
+			if(n + 2 > olen) throw std::runtime_error("base91_encode: error attempted write outside memory bound");
 			ob[n++] = basE91_encoder_ring[val % 91];
 			ob[n++] = basE91_encoder_ring[val / 91];
 		}
@@ -113,11 +122,12 @@ size_t basE91_encode_internal(struct basE91 *b, const void *i, size_t len, void 
 
 size_t basE91_encode_end(struct basE91 *b, void *o, size_t olen)
 {
-  if(olen < 2) throw std::runtime_error("base91_encode: error attempted write outside memory bound");
 	unsigned char *ob = reinterpret_cast<unsigned char*>(o);
 	size_t n = 0;
 
 	if (b->nbits) {
+    const size_t needed = (b->nbits > 7 || b->queue > 90) ? 2 : 1;
+    if (needed > olen) throw std::runtime_error("base91_encode: error attempted write outside memory bound");
 		ob[n++] = basE91_encoder_ring[b->queue % 91];
 		if (b->nbits > 7 || b->queue > 90)
 			ob[n++] = basE91_encoder_ring[b->queue / 91];
@@ -137,9 +147,7 @@ size_t basE91_decode_internal(struct basE91 *b, const void *i, size_t len, void 
 	unsigned int d;
 
 	while (len--) {
-		d = basE91_decoder_ring[*ib++];
-		if (d == 91)
-			continue;	/* ignore non-alphabet chars */
+		d = basE91_decode_value(*ib++);
 		if (b->val == -1)
 			b->val = d;	/* start next value */
 		else {
@@ -147,7 +155,7 @@ size_t basE91_decode_internal(struct basE91 *b, const void *i, size_t len, void 
 			b->queue |= b->val << b->nbits;
 			b->nbits += (b->val & 8191) > 88 ? 13 : 14;
 			do {
-			  if(n+1 >= olen) throw std::runtime_error("base91_decode: error attempted write outside memory bound");
+			  if(n + 1 > olen) throw std::runtime_error("base91_decode: error attempted write outside memory bound");
 				ob[n++] = b->queue;
 				b->queue >>= 8;
 				b->nbits -= 8;
@@ -163,11 +171,12 @@ size_t basE91_decode_internal(struct basE91 *b, const void *i, size_t len, void 
 
 size_t basE91_decode_end(struct basE91 *b, void *o, size_t olen)
 {
-  if(olen == 0) throw std::runtime_error("base91_decode: error attempted write outside memory bound");
   unsigned char *ob = reinterpret_cast<unsigned char*>(o);
 	size_t n = 0;
-	if (b->val != -1)
+	if (b->val != -1) {
+    if (olen < 1) throw std::runtime_error("base91_decode: error attempted write outside memory bound");
 		ob[n++] = b->queue | b->val << b->nbits;
+  }
 	b->queue = 0;
 	b->nbits = 0;
 	b->val = -1;

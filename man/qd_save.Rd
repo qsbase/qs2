@@ -18,7 +18,7 @@ qd_save(object, file,
 \item{compress_level}{The compression level used (the initial value is 3L).
 
 The maximum and minimum possible values depend on the version of the ZSTD library used.
-As of ZSTD 1.5.6 the maximum compression level is 22, and the minimum is -131072.
+As of ZSTD 1.5.7 the maximum compression level is 22, and the minimum is -131072.
 Usually, values in the low positive range offer very good performance in terms
 of speed and compression.}
 

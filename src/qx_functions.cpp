@@ -19,6 +19,7 @@
 #include "ascii_encoding/base91.h"
 #include "qoptions.h" // global default parameters
 #include "qdata_format/detail/memory_stream.h"
+#include "qdata_cpp_external_api.h"
 #include "qd_deserializer.h"
 #include "qd_serializer.h"
 #include "r_error_policy.h"
@@ -741,7 +742,7 @@ std::string base85_encode(const RawVector& rawdata) {
     size_t encoded_size_partial = (size / 4) * 5;
     size_t encoded_size = encoded_size_partial + (size % 4 != 0 ? size % 4 + 1 : 0);
     std::string encoded_string(encoded_size, '\0');
-    uint8_t* encoded = reinterpret_cast<uint8_t*>(const_cast<char*>(encoded_string.c_str()));
+    uint8_t* encoded = reinterpret_cast<uint8_t*>(encoded_string.data());
 
     size_t dbyte = 0;
     size_t ebyte = 0;
@@ -781,7 +782,7 @@ RawVector base85_decode(const std::string& encoded_string) {
     size_t size_partial = (size / 5) * 5;
     size_t leftover_bytes = size - size_partial;
     if (leftover_bytes == 1) throw std::runtime_error("base85_decode: corrupted input data, incorrect input size");
-    uint8_t* data = reinterpret_cast<uint8_t*>(const_cast<char*>(encoded_string.data()));
+    const uint8_t* data = reinterpret_cast<const uint8_t*>(encoded_string.data());
     size_t decoded_size_partial = (size / 5) * 4;
     size_t decoded_size = decoded_size_partial + (size % 5 != 0 ? size % 5 - 1 : 0);
     RawVector decoded_vector(decoded_size);
@@ -800,7 +801,7 @@ RawVector base85_decode(const std::string& encoded_string) {
         value_of += base85_decoder_ring[data[ebyte + 4] - 32];
 
         // is there a better way to detect overflow?
-        if (value_of > 4294967296ULL) throw std::runtime_error("base85_decode: corrupted input data, decoded block overflow");
+        if (value_of >= 4294967296ULL) throw std::runtime_error("base85_decode: corrupted input data, decoded block overflow");
         uint32_t value = static_cast<uint32_t>(value_of);
         decoded[dbyte] = value / 16777216UL;
         decoded[dbyte + 1] = value / 65536UL % 256;
@@ -814,7 +815,7 @@ RawVector base85_decode(const std::string& encoded_string) {
         base85_check_byte(data[ebyte]);
         base85_check_byte(data[ebyte + 1]);
         uint32_t value = 85UL * base85_decoder_ring[data[ebyte] - 32] + base85_decoder_ring[data[ebyte + 1] - 32];
-        if (value > 256) throw std::runtime_error("base85_decode: corrupted input data, decoded block overflow");
+        if (value >= 256) throw std::runtime_error("base85_decode: corrupted input data, decoded block overflow");
         decoded[dbyte] = value;
     } else if (leftover_bytes == 3) {
         base85_check_byte(data[ebyte]);
@@ -822,7 +823,7 @@ RawVector base85_decode(const std::string& encoded_string) {
         base85_check_byte(data[ebyte + 2]);
         uint32_t value = 7225UL * base85_decoder_ring[data[ebyte] - 32] + 85UL * base85_decoder_ring[data[ebyte + 1] - 32];
         value += base85_decoder_ring[data[ebyte + 2] - 32];
-        if (value > 65536) throw std::runtime_error("base85_decode: corrupted input data, decoded block overflow");
+        if (value >= 65536) throw std::runtime_error("base85_decode: corrupted input data, decoded block overflow");
         decoded[dbyte] = value / 256UL;
         decoded[dbyte + 1] = value % 256;
     } else if (leftover_bytes == 4) {
@@ -832,7 +833,7 @@ RawVector base85_decode(const std::string& encoded_string) {
         base85_check_byte(data[ebyte + 3]);
         uint32_t value = 614125UL * base85_decoder_ring[data[ebyte] - 32] + 7225UL * base85_decoder_ring[data[ebyte + 1] - 32];
         value += 85UL * base85_decoder_ring[data[ebyte + 2] - 32] + base85_decoder_ring[data[ebyte + 3] - 32];
-        if (value > 16777216) throw std::runtime_error("base85_decode: corrupted input data, decoded block overflow");
+        if (value >= 16777216) throw std::runtime_error("base85_decode: corrupted input data, decoded block overflow");
         decoded[dbyte] = value / 65536UL;
         decoded[dbyte + 1] = value / 256UL % 256;
         decoded[dbyte + 2] = value % 256;
@@ -854,6 +855,9 @@ std::string c_base91_encode(const RawVector& rawdata) {
 RawVector c_base91_decode(const std::string& encoded_string) {
     basE91 b = basE91();
     size_t size = encoded_string.size();
+    for (const char byte : encoded_string) {
+        basE91_decode_value(static_cast<unsigned char>(byte));
+    }
     size_t outsize = basE91_decode_bound(size);
     std::vector<uint8_t> output(outsize);
     size_t nb_decoded = basE91_decode_internal(&b, encoded_string.data(), size, output.data(), outsize);
@@ -872,6 +876,7 @@ void qx_export_functions(DllInfo* dll) {
     R_RegisterCCallable("qs2", "qd_serialize", (DL_FUNC)&qd_serialize);
     R_RegisterCCallable("qs2", "qd_read", (DL_FUNC)&qd_read);
     R_RegisterCCallable("qs2", "qd_deserialize", (DL_FUNC)&qd_deserialize);
+    register_qdata_cpp_external_callables();
 
     // from qoptions.h
     R_RegisterCCallable("qs2", "qs2_get_compress_level", (DL_FUNC)&qs2_get_compress_level);

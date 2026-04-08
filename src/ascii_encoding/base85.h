@@ -1,6 +1,9 @@
 #ifndef BASE85_H
 #define BASE85_H
 
+#include <cstdint>
+#include <stdexcept>
+
 static const char base85_encoder_ring [85 + 1] = {
   "0123456789" 
   "abcdefghij" 

@@ -130,7 +130,7 @@ data frames, matrices).
 
 It will replace internal types (functions, promises, external pointers,
 environments, objects) with NULL. The `qdata` format differs from the
-`qs2` format in that it is *not* a general, but is more performant.
+`qs2` format in that it is *not* general, but is more performant.
 
 Please use `qdata` or `qd` as the file extension.
 
@@ -186,6 +186,43 @@ stopifnot(identical(test_qs_serialize(x), x))
 stopifnot(identical(test_qd_serialize(x), x))
 stopifnot(identical(test_qs_save(x, tempfile(fileext = ".qs2")), x))
 stopifnot(identical(test_qd_save(x, tempfile(fileext = ".qd")), x))
+*/
+```
+
+## qdata-cpp external wrappers
+
+You can serialize and de-serialize qdata format outside the R API.
+Functions for doing so are exported in `qdata_cpp_external.h`.
+
+You can also compile these independently in `inst/include/qdata-cpp` and
+include in a standalone C++ project.
+
+``` cpp
+// [[Rcpp::depends(qs2)]]
+#include <Rcpp.h>
+#include "qdata_cpp_external.h"
+
+// [[Rcpp::export]]
+Rcpp::IntegerVector qdata_ext_roundtrip() {
+  std::vector<std::int32_t> x{1, 2, 3, 4};
+  auto bytes = qdata_ext::serialize(x);
+  qdata_ext::object out = qdata_ext::deserialize(bytes);
+  const auto& ints = qdata_ext::get<qdata_ext::integer_vector>(out).values;
+  return Rcpp::IntegerVector(ints.begin(), ints.end());
+}
+
+// [[Rcpp::export]]
+Rcpp::IntegerVector qdata_ext_file_roundtrip(const std::string& path) {
+  std::vector<std::int32_t> x{1, 2, 3, 4};
+  qdata_ext::save(path, x);
+  qdata_ext::object out = qdata_ext::read(path);
+  const auto& ints = qdata_ext::get<qdata_ext::integer_vector>(out).values;
+  return Rcpp::IntegerVector(ints.begin(), ints.end());
+}
+
+/*** R
+stopifnot(identical(qdata_ext_roundtrip(), 1:4))
+stopifnot(identical(qdata_ext_file_roundtrip(tempfile(fileext = ".qdata")), 1:4))
 */
 ```
 
