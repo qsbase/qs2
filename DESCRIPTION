@@ -18,9 +18,9 @@ LazyData: true
 Biarch: true
 Depends: R (>= 3.5.0)
 Imports: 
-    Rcpp, RcppParallel, stringfish (>= 0.18.0)
+    Rcpp, RcppParallel
 LinkingTo: Rcpp, RcppParallel
-Suggests: knitr, rmarkdown, dplyr, data.table, stringi
+Suggests: knitr, rmarkdown, dplyr, data.table, stringi, stringfish (>= 0.18.0)
 SystemRequirements: GNU make, C++17
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

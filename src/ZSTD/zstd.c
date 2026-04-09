@@ -6172,14 +6172,7 @@ static
 __attribute__((__unused__))
 #endif
 
-#if defined(__clang__) && __clang_major__ >= 5
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
-#endif
 ZSTD_customMem const ZSTD_defaultCMem = { NULL, NULL, NULL };  /**< this constant defers to stdlib's functions */
-#if defined(__clang__) && __clang_major__ >= 5
-#pragma clang diagnostic pop
-#endif
 
 ZSTDLIB_STATIC_API ZSTD_CCtx*    ZSTD_createCCtx_advanced(ZSTD_customMem customMem);
 ZSTDLIB_STATIC_API ZSTD_CStream* ZSTD_createCStream_advanced(ZSTD_customMem customMem);
@@ -12186,7 +12179,7 @@ enum XXH_VECTOR_TYPE /* fake enum */ {
 /* __ARM_FEATURE_SVE is only supported by GCC & Clang. */
 #if (XXH_VECTOR == XXH_SVE) && !defined(__ARM_FEATURE_SVE)
 #  ifdef _MSC_VER
-#    pragma warning(once : 4606)
+     /* no compiler-specific warning pragma */
 #  else
 #    warning "__ARM_FEATURE_SVE isn't supported. Use SCALAR instead."
 #  endif
@@ -49883,15 +49876,8 @@ sort_typeBstar(const unsigned char *T, int *SA,
                int *bucket_A, int *bucket_B,
                int n, int openMP) {
   int *PAb, *ISAb, *buf;
-#ifdef LIBBSC_OPENMP
-  int *curbuf;
-  int l;
-#endif
   int i, j, k, t, m, bufsize;
   int c0, c1;
-#ifdef LIBBSC_OPENMP
-  int d0, d1;
-#endif
   (void)openMP;
 
   /* Initialize bucket arrays. */
@@ -49944,51 +49930,7 @@ note:
     SA[--BUCKET_BSTAR(c0, c1)] = m - 1;
 
     /* Sort the type B* substrings using sssort. */
-#ifdef LIBBSC_OPENMP
-    if (openMP)
-    {
-        buf = SA + m;
-        c0 = ALPHABET_SIZE - 2, c1 = ALPHABET_SIZE - 1, j = m;
-#pragma omp parallel default(shared) private(bufsize, curbuf, k, l, d0, d1)
-        {
-          bufsize = (n - (2 * m)) / omp_get_num_threads();
-          curbuf = buf + omp_get_thread_num() * bufsize;
-          k = 0;
-          for(;;) {
-            #pragma omp critical(sssort_lock)
-            {
-              if(0 < (l = j)) {
-                d0 = c0, d1 = c1;
-                do {
-                  k = BUCKET_BSTAR(d0, d1);
-                  if(--d1 <= d0) {
-                    d1 = ALPHABET_SIZE - 1;
-                    if(--d0 < 0) { break; }
-                  }
-                } while(((l - k) <= 1) && (0 < (l = k)));
-                c0 = d0, c1 = d1, j = k;
-              }
-            }
-            if(l == 0) { break; }
-            sssort(T, PAb, SA + k, SA + l,
-                   curbuf, bufsize, 2, n, *(SA + k) == (m - 1));
-          }
-        }
-    }
-    else
-    {
-        buf = SA + m, bufsize = n - (2 * m);
-        for(c0 = ALPHABET_SIZE - 2, j = m; 0 < j; --c0) {
-          for(c1 = ALPHABET_SIZE - 1; c0 < c1; j = i, --c1) {
-            i = BUCKET_BSTAR(c0, c1);
-            if(1 < (j - i)) {
-              sssort(T, PAb, SA + i, SA + j,
-                     buf, bufsize, 2, n, *(SA + i) == (m - 1));
-            }
-          }
-        }
-    }
-#else
+    /* qs2: OpenMP is disabled in the vendored build; use the serial sorter. */
     buf = SA + m, bufsize = n - (2 * m);
     for(c0 = ALPHABET_SIZE - 2, j = m; 0 < j; --c0) {
       for(c1 = ALPHABET_SIZE - 1; c0 < c1; j = i, --c1) {
@@ -49999,7 +49941,6 @@ note:
         }
       }
     }
-#endif
 
     /* Compute ranks of type B* substrings. */
     for(i = m - 1; 0 <= i; --i) {

@@ -18,7 +18,7 @@ This updater is pinned to:
 
 It reproduces qs2's bundled zstd files by:
   1. running upstream build/single_file_libs/create_single_file_library.sh
-  2. copying lib/zstd.h
+  2. copying lib/zstd.h and lib/zstd_errors.h
   3. applying ${PATCH_FILE##*/} on top of the generated zstd.c
 EOF
 }
@@ -64,6 +64,7 @@ ln -s "$UPSTREAM_ROOT/lib" "$tmpdir/lib"
 
 cp "$tmpdir/build/single_file_libs/zstd.c" "$tmpdir/zstd.c"
 cp "$UPSTREAM_ROOT/lib/zstd.h" "$tmpdir/zstd.h"
+cp "$UPSTREAM_ROOT/lib/zstd_errors.h" "$tmpdir/zstd_errors.h"
 
 if [[ -s "$PATCH_FILE" ]]; then
     patch -d "$tmpdir" -p1 < "$PATCH_FILE"
@@ -71,5 +72,6 @@ fi
 
 cp "$tmpdir/zstd.c" "$SCRIPT_DIR/zstd.c"
 cp "$tmpdir/zstd.h" "$SCRIPT_DIR/zstd.h"
+cp "$tmpdir/zstd_errors.h" "$SCRIPT_DIR/zstd_errors.h"
 
 echo "Updated bundled zstd from ${UPSTREAM_TAG} (${UPSTREAM_COMMIT})"
