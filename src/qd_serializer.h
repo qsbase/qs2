@@ -2,15 +2,33 @@
 #define _QS2_QD_SERIALIZER_H_
 
 
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
+
 #include <Rcpp.h>
+#include <R_ext/Utils.h>
 #include <Rversion.h>
 
 #include "qx_file_headers.h"
-#include "qd_constants.h"
-
-#include "sf_external.h"
 
 using namespace Rcpp;
+
+inline bool qd_is_ascii(SEXP x) {
+#if (R_VERSION >= R_Version(4, 5, 0))
+  return Rf_charIsASCII(x);
+#else
+  const auto* ptr = reinterpret_cast<const unsigned char*>(CHAR(x));
+  const auto len = static_cast<std::size_t>(Rf_xlength(x));
+  for (std::size_t i = 0; i < len; ++i) {
+    if ((ptr[i] & 0x80U) != 0) {
+      return false;
+    }
+  }
+  return true;
+#endif
+}
+
 
 template<typename block_compress_writer>
 struct QdataSerializer {
@@ -74,22 +92,6 @@ struct QdataSerializer {
         }
 #endif
         return attrs;
-    }
-
-    bool is_unmaterialized_sf_vector(SEXP const object) {
-#if R_VERSION >= R_Version(4, 6, 0)
-        SEXP class_name = R_altrep_class_name(object); // R_NilValue if not ALTREP
-        if(class_name == R_NilValue) return false;
-        const char * classname = CHAR(PRINTNAME(class_name));
-        if(std::strcmp(classname, "__sf_vec__") != 0) return false; // check if classname is __sf_vec__
-#else
-        if (! ALTREP(object)) return false; // check if ALTREP
-        if(DATAPTR_OR_NULL(object) != nullptr) return false; // check if unmaterialized (returning nullptr)
-        SEXP info = ATTRIB(ALTREP_CLASS(object));
-        const char * classname = CHAR(PRINTNAME(CAR(info)));
-        if(std::strcmp(classname, "__sf_vec__") != 0) return false; // check if classname is __sf_vec__
-#endif
-        return true;
     }
 
     void write_attributes(std::vector< std::pair<SEXP, SEXP> > const & attrs) {
@@ -258,6 +260,7 @@ struct QdataSerializer {
     }
 
     void write_object(SEXP const object) {
+        R_CheckStack();
         SEXPTYPE object_type = TYPEOF(object);
         switch(object_type) {
             case LGLSXP:
@@ -344,46 +347,23 @@ struct QdataSerializer {
         for(auto & x : character_sexp) {
             SEXP object = x.first;
             uint64_t object_length = x.second;
-            // check for special case, stringfish ALTREP vector
-            if (is_unmaterialized_sf_vector(object)) {
-                auto & ref = sf_vec_data_ref(object); // sf_vec_data_ref from stringfish
-                for(uint64_t i=0; i<object_length; ++i) {
-                    cetype_t_ext enc = ref[i].encoding;
-                    if(enc == cetype_t_ext::CE_NA) { // cetype_t_ext is from stringfish
-                        writer.push_pod(string_header_NA);
-                    } else if ( (enc == cetype_t_ext::CE_LATIN1) || ((enc == cetype_t_ext::CE_NATIVE) && (IS_UTF8_LOCALE == 0)) ) {
-                        // check if latin1 or (native AND IS_UTF8_LOCALE == 0), needs translation
-                        // Note: ASCII has its own cetype_t_ext and will not follow this path
-                        SEXP xi = STRING_ELT(object, i); // materialize
-                        const char * ci = Rf_translateCharUTF8(xi);
-                        uint32_t li = strlen(ci);
-                        write_string_header(li);
-                        writer.push_data(ci, li);
-                    } else {
-                        write_string_header(ref[i].sdata.size());
-                        writer.push_data(ref[i].sdata.c_str(), ref[i].sdata.size());
+            for(uint64_t i=0; i<object_length; ++i) {
+                SEXP xi = STRING_ELT(object, i);
+                if(xi == NA_STRING) {
+                    writer.push_pod(string_header_NA);
+                } else {
+                    cetype_t enc = Rf_getCharCE(xi);
+                    uint32_t li = LENGTH(xi);
+                    const char * ci = CHAR(xi);
+                    // STRING_ELT materializes ALTREP-backed strings as needed.
+                    bool needs_translation = (enc == cetype_t::CE_LATIN1) ||
+                                                ((enc == cetype_t::CE_NATIVE) && (IS_UTF8_LOCALE == 0) && !qd_is_ascii(xi));
+                    if(needs_translation) {
+                        ci = Rf_translateCharUTF8(xi);
+                        li = strlen(ci);
                     }
-                }
-            } else {
-                const SEXP * xptr = STRING_PTR_RO(object);
-                for(uint64_t i=0; i<object_length; ++i) {
-                    SEXP xi = xptr[i]; // STRING_ELT(x, i);
-                    if(xi == NA_STRING) {
-                        writer.push_pod(string_header_NA);
-                    } else {
-                        cetype_t enc = Rf_getCharCE(xi);
-                        uint32_t li = LENGTH(xi);
-                        const char * ci = CHAR(xi);
-                        // check if needs translation
-                        bool needs_translation = (enc == cetype_t::CE_LATIN1) ||
-                                                    ((enc == cetype_t::CE_NATIVE) && (IS_UTF8_LOCALE == 0) && !checkAscii(ci, li));
-                        if(needs_translation) {
-                            ci = Rf_translateCharUTF8(xi);
-                            li = strlen(ci);
-                        }
-                        write_string_header(li);
-                        writer.push_data(ci, li);
-                    }
+                    write_string_header(li);
+                    writer.push_data(ci, li);
                 }
             }
         }

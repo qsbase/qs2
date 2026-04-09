@@ -93,14 +93,6 @@ check_TBB <- function() {
     .Call(`_qs2_check_TBB`)
 }
 
-check_internal_blocksize <- function() {
-    .Call(`_qs2_check_internal_blocksize`)
-}
-
-internal_set_blocksize <- function(size) {
-    .Call(`_qs2_internal_set_blocksize`, size)
-}
-
 internal_is_utf8_locale <- function(size) {
     .Call(`_qs2_internal_is_utf8_locale`, size)
 }
@@ -157,7 +149,7 @@ zstd_compress_file <- function(input_file, output_file, compress_level = qopt("c
     invisible(.Call(`_qs2_zstd_compress_file`, input_file, output_file, compress_level))
 }
 
-zstd_decompress_file <- function(input_file, output_file) {
-    invisible(.Call(`_qs2_zstd_decompress_file`, input_file, output_file))
+zstd_decompress_file <- function(input_file, output_file, max_output_bytes = NULL) {
+    invisible(.Call(`_qs2_zstd_decompress_file`, input_file, output_file, max_output_bytes))
 }
 

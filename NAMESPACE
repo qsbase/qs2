@@ -38,6 +38,6 @@ export(encode_source)
 
 export(qs_cache)
 
-import(stringfish)
 importFrom(Rcpp,evalCpp)
+importFrom(RcppParallel, RcppParallelLibs)
 useDynLib(qs2, .registration = TRUE)

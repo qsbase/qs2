@@ -6,32 +6,37 @@
 # usethis::use_github_action("check-standard") will install it.
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, dev]
   pull_request:
-    branches: [main, master]
+    branches: [main, master, dev]
 
 name: R-CMD-check
+
+permissions:
+  contents: read
 
 jobs:
   R-CMD-check:
     runs-on: ${{ matrix.config.os }}
 
-    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
+    name: ${{ matrix.config.name }}
 
     strategy:
       fail-fast: false
       matrix:
         config:
-          - {os: macOS-latest,   r: 'devel',   http-user-agent: 'release'}
-          - {os: macOS-latest,   r: 'release'}
-          - {os: windows-latest, r: 'devel',   http-user-agent: 'release'}
-          - {os: windows-latest, r: 'release'}
-          - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release'}
-          - {os: ubuntu-latest,   r: 'release'}
-          - {os: ubuntu-latest,   r: 'oldrel-1'}
-          - {os: ubuntu-latest,   r: 'oldrel-2'}
-          - {os: ubuntu-latest,   r: 'oldrel-3'}
-          - {os: ubuntu-latest,   r: 'oldrel-4'}
+          - {name: 'macOS-latest (devel, system zstd)',   os: macOS-latest,   r: 'devel',   http-user-agent: 'release', install-args: ''}
+          - {name: 'macOS-latest (release, system zstd)', os: macOS-latest,   r: 'release', install-args: ''}
+          - {name: 'macOS-latest (release, bundled zstd)', os: macOS-latest,  r: 'release', install-args: '--configure-args=--with-zstd-force-compile'}
+          - {name: 'windows-latest (devel)',              os: windows-latest, r: 'devel',   http-user-agent: 'release', install-args: ''}
+          - {name: 'windows-latest (release)',            os: windows-latest, r: 'release', install-args: ''}
+          - {name: 'ubuntu-latest (devel, system zstd)',  os: ubuntu-latest,  r: 'devel',   http-user-agent: 'release', install-args: ''}
+          - {name: 'ubuntu-latest (release, system zstd)', os: ubuntu-latest, r: 'release', install-args: ''}
+          - {name: 'ubuntu-latest (release, bundled zstd)', os: ubuntu-latest, r: 'release', install-args: '--configure-args=--with-zstd-force-compile'}
+          - {name: 'ubuntu-latest (oldrel-1)',            os: ubuntu-latest,  r: 'oldrel-1', install-args: ''}
+          - {name: 'ubuntu-latest (oldrel-2)',            os: ubuntu-latest,  r: 'oldrel-2', install-args: ''}
+          - {name: 'ubuntu-latest (oldrel-3)',            os: ubuntu-latest,  r: 'oldrel-3', install-args: ''}
+          - {name: 'ubuntu-latest (oldrel-4)',            os: ubuntu-latest,  r: 'oldrel-4', install-args: ''}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -42,7 +47,9 @@ jobs:
       - name: Windows CRLF fix
         run: git config --global core.autocrlf false
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - uses: r-lib/actions/setup-pandoc@v2
 
@@ -61,7 +68,14 @@ jobs:
           extra-packages: any::rcmdcheck
           needs: check
 
-      - uses: r-lib/actions/check-r-package@v2
+      - if: matrix.config.install-args == ''
+        uses: r-lib/actions/check-r-package@v2
         with:
           args: 'c("--no-manual", "--as-cran")'
+          upload-snapshots: true
+
+      - if: matrix.config.install-args != ''
+        uses: r-lib/actions/check-r-package@v2
+        with:
+          args: 'c("--no-manual", "--as-cran", "--install-args=${{ matrix.config.install-args }}")'
           upload-snapshots: true

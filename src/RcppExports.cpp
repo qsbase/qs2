@@ -252,25 +252,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// check_internal_blocksize
-int check_internal_blocksize();
-RcppExport SEXP _qs2_check_internal_blocksize() {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    rcpp_result_gen = Rcpp::wrap(check_internal_blocksize());
-    return rcpp_result_gen;
-END_RCPP
-}
-// internal_set_blocksize
-int internal_set_blocksize(int size);
-RcppExport SEXP _qs2_internal_set_blocksize(SEXP sizeSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< int >::type size(sizeSEXP);
-    rcpp_result_gen = Rcpp::wrap(internal_set_blocksize(size));
-    return rcpp_result_gen;
-END_RCPP
-}
 // internal_is_utf8_locale
 int internal_is_utf8_locale(int size);
 RcppExport SEXP _qs2_internal_is_utf8_locale(SEXP sizeSEXP) {
@@ -418,13 +399,14 @@ BEGIN_RCPP
 END_RCPP
 }
 // zstd_decompress_file
-SEXP zstd_decompress_file(const std::string& input_file, const std::string& output_file);
-RcppExport SEXP _qs2_zstd_decompress_file(SEXP input_fileSEXP, SEXP output_fileSEXP) {
+SEXP zstd_decompress_file(const std::string& input_file, const std::string& output_file, SEXP max_output_bytes);
+RcppExport SEXP _qs2_zstd_decompress_file(SEXP input_fileSEXP, SEXP output_fileSEXP, SEXP max_output_bytesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< const std::string& >::type input_file(input_fileSEXP);
     Rcpp::traits::input_parameter< const std::string& >::type output_file(output_fileSEXP);
-    rcpp_result_gen = Rcpp::wrap(zstd_decompress_file(input_file, output_file));
+    Rcpp::traits::input_parameter< SEXP >::type max_output_bytes(max_output_bytesSEXP);
+    rcpp_result_gen = Rcpp::wrap(zstd_decompress_file(input_file, output_file, max_output_bytes));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -453,8 +435,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_qs2_qx_dump", (DL_FUNC) &_qs2_qx_dump, 1},
     {"_qs2_check_SIMD", (DL_FUNC) &_qs2_check_SIMD, 0},
     {"_qs2_check_TBB", (DL_FUNC) &_qs2_check_TBB, 0},
-    {"_qs2_check_internal_blocksize", (DL_FUNC) &_qs2_check_internal_blocksize, 0},
-    {"_qs2_internal_set_blocksize", (DL_FUNC) &_qs2_internal_set_blocksize, 1},
     {"_qs2_internal_is_utf8_locale", (DL_FUNC) &_qs2_internal_is_utf8_locale, 1},
     {"_qs2_zstd_compress_raw", (DL_FUNC) &_qs2_zstd_compress_raw, 2},
     {"_qs2_zstd_decompress_raw", (DL_FUNC) &_qs2_zstd_decompress_raw, 1},
@@ -469,7 +449,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_qs2_internal_compute_qx_hash", (DL_FUNC) &_qs2_internal_compute_qx_hash, 1},
     {"_qs2_internal_write_qx_hash", (DL_FUNC) &_qs2_internal_write_qx_hash, 2},
     {"_qs2_zstd_compress_file", (DL_FUNC) &_qs2_zstd_compress_file, 3},
-    {"_qs2_zstd_decompress_file", (DL_FUNC) &_qs2_zstd_decompress_file, 2},
+    {"_qs2_zstd_decompress_file", (DL_FUNC) &_qs2_zstd_decompress_file, 3},
     {NULL, NULL, 0}
 };
 

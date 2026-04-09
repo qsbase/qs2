@@ -25,6 +25,9 @@ on:
 env:
   QS_EXTENDED_TESTS: true
 
+permissions:
+  contents: read
+
 jobs:
 
   setup:
@@ -54,6 +57,8 @@ jobs:
 
     steps:
       - uses: r-hub/actions/checkout@v1
+        with:
+          submodules: recursive
       - uses: r-hub/actions/platform-info@v1
         with:
           token: ${{ secrets.RHUB_TOKEN }}
@@ -79,6 +84,8 @@ jobs:
 
     steps:
       - uses: r-hub/actions/checkout@v1
+        with:
+          submodules: recursive
       - uses: r-hub/actions/setup-r@v1
         with:
           job-config: ${{ matrix.config.job-config }}

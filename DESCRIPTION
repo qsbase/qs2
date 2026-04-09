@@ -2,7 +2,7 @@ Package: qs2
 Type: Package
 Title: Efficient Serialization of R Objects
 Version: 0.1.8
-Date: 2026-03-03
+Date: 2026-04-08
 Authors@R: c(
     person("Travers", "Ching", email = "traversc@gmail.com", role = c("aut", "cre", "cph")),
     person("Yann", "Collet", role = c("ctb", "cph"), comment = "Yann Collet is the author of the bundled zstd"),
@@ -18,10 +18,10 @@ LazyData: true
 Biarch: true
 Depends: R (>= 3.5.0)
 Imports: 
-    Rcpp, stringfish (>= 0.18.0)
-LinkingTo: Rcpp, stringfish, RcppParallel
-Suggests: knitr, rmarkdown, dplyr, data.table, stringi
-SystemRequirements: GNU make
+    Rcpp, RcppParallel
+LinkingTo: Rcpp, RcppParallel
+Suggests: knitr, rmarkdown, dplyr, data.table, stringi, stringfish (>= 0.18.0)
+SystemRequirements: GNU make, C++17
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3

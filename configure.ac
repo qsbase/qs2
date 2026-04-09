@@ -1,4 +1,4 @@
-AC_INIT([qs2],[0.1.0],[traversc@gmail.com])
+AC_INIT([qs2],[0.1.8],[traversc@gmail.com])
 AC_PATH_PROG([PKGCONF],[pkg-config],[],[$PATH:/usr/local/bin:ext/bin:ext:/sw/bin:/opt/bin:/opt/local/bin])
 
 ########################################################
@@ -7,6 +7,16 @@ AC_LANG(C++)
 PATH_TO_CPP_COMPILER=`"${R_HOME}/bin/R" CMD config CXX`
 AC_PROG_CXX([$PATH_TO_CPP_COMPILER])
 echo "C++ compiler: $PATH_TO_CPP_COMPILER"
+
+R_VERSION_STRING=`"${R_HOME}/bin/Rscript" -e "cat(as.character(getRversion()))"`
+R_NEEDS_EXPLICIT_CXX17=`"${R_HOME}/bin/Rscript" -e "cat(as.integer(getRversion() < '4.3.0'))"`
+if test "x$R_NEEDS_EXPLICIT_CXX17" = "x1"; then
+  echo "R ${R_VERSION_STRING} detected -- explicitly requesting C++17"
+  CXX_STD_LINE="CXX_STD = CXX17"
+else
+  echo "R ${R_VERSION_STRING} detected -- using R default C++ standard"
+  CXX_STD_LINE="# CXX17 is the default for R >= 4.3.0"
+fi
 
 ########################################################
 ### Configure args
@@ -30,10 +40,6 @@ using_tbb="auto"
 AC_ARG_WITH([TBB],
             AS_HELP_STRING([--without-TBB],[Disable TBB usage and force RCPP_PARALLEL_USE_TBB=0]),
             [if test "x$withval" = "xno"; then using_tbb="false"; fi])
-
-AC_ARG_WITH([dynamic-blocksize],
-            AS_HELP_STRING([--with-dynamic-blocksize],[Dynamic blocksize, for debugging and testing ONLY]),
-            [using_dynamic_blocksize="true"])
 
 AC_ARG_WITH([simd],
             AS_HELP_STRING([--with-simd],[Manually select SIMD support (options: AVX2, SSE2)]),
@@ -71,13 +77,13 @@ elif test "xx$PKGCONF" != "xx"; then
   if "${PKGCONF}" --exists libzstd; then
     VERSION_STRING=`${PKGCONF} --modversion libzstd`
     VER=`getVersion ${VERSION_STRING}`
-    if test "${VER}" -ge 100506; then
+    if test "${VER}" -ge 100507; then
       echo "zstd ${VERSION_STRING} library detected -- skipping zstd compilation"
       ZSTD_LIBS=`"${PKGCONF}" --libs libzstd`
       ZSTD_INCLUDE_PATH=`"${PKGCONF}" --cflags-only-I libzstd`
       COMPILE_ZSTD="false"
     else
-      echo "zstd ${VERSION_STRING} library detected but is lower than bundled version (1.5.2) -- compiling from source"
+      echo "zstd ${VERSION_STRING} library detected but is lower than bundled version (1.5.7) -- compiling from source"
       COMPILE_ZSTD="true"
     fi
   else
@@ -96,17 +102,6 @@ if test xx$COMPILE_ZSTD = "xxtrue"; then
   ZSTD_CLEAN="\$(LIBZSTD) libQSZSTD.a"
 fi
 
-########################################################
-#### Dynamic blocksize
-
-if test xx$using_dynamic_blocksize = "xxtrue"; then
-  echo "Using dynamic blocksize (for debugging and testing ONLY)"
-  DYNAMIC_BLOCKSIZE_FLAG="-DQS2_DYNAMIC_BLOCKSIZE=1"
-else
-  echo "Fixed blocksize"
-fi
-
-########################################################
 #### Check if -latomic flag is needed (relevant when TBB may be used)
 
 m4_define([QS2_ATOMIC_TEST_PROGRAM], [[
@@ -186,9 +181,9 @@ AC_SUBST([ZSTD_INCLUDE_PATH], $ZSTD_INCLUDE_PATH)
 AC_SUBST([ZSTD_LIBS], $ZSTD_LIBS)
 AC_SUBST([ZSTD_SHLIB], $ZSTD_SHLIB)
 AC_SUBST([ZSTD_CLEAN], $ZSTD_CLEAN)
-AC_SUBST([DYNAMIC_BLOCKSIZE_FLAG], $DYNAMIC_BLOCKSIZE_FLAG)
 AC_SUBST([TBB_FLAG], $TBB_FLAG)
 AC_SUBST([SIMD_FLAG], $SIMD_FLAG)
+AC_SUBST([CXX_STD_LINE], $CXX_STD_LINE)
 
 AC_CONFIG_FILES([src/Makevars])
 AC_OUTPUT

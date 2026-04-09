@@ -17,14 +17,22 @@ qx_dump_impl(stream_reader & myFile) {
         std::vector<unsigned char> block(MAX_BLOCKSIZE);
 
         uint32_t zsize;
-        bool ok = myFile.readInteger(zsize);
-        if(!ok) {
+        uint32_t size_bytes_read = myFile.read(reinterpret_cast<char*>(&zsize), sizeof(zsize));
+        if(size_bytes_read == 0) {
             break;
         }
+        if(size_bytes_read != sizeof(zsize)) {
+            throw std::runtime_error("Unexpected end of file while reading next block size");
+        }
 
-        uint32_t bytes_read = myFile.read(reinterpret_cast<char*>(zblock.data()), zsize & (~BLOCK_METADATA));
-        if(bytes_read != (zsize & (~BLOCK_METADATA))) {
-            break;
+        const uint32_t zbytes = compressed_block_size(zsize);
+        if(!compressed_block_size_fits_buffer(zsize)) {
+            throw std::runtime_error("Compressed block size exceeds internal maximum");
+        }
+
+        uint32_t bytes_read = myFile.read(reinterpret_cast<char*>(zblock.data()), zbytes);
+        if(bytes_read != zbytes) {
+            throw std::runtime_error("Unexpected end of file while reading next block");
         }
 
         env.update(zsize);
@@ -34,6 +42,9 @@ qx_dump_impl(stream_reader & myFile) {
 
         uint32_t blocksize = dp.decompress(reinterpret_cast<char*>(block.data()), MAX_BLOCKSIZE,
                                            reinterpret_cast<char*>(zblock.data()), zsize);
+        if(decompressor::is_error(blocksize)) {
+            throw std::runtime_error("Decompression error");
+        }
         
         zblock.resize(bytes_read);
         block.resize(blocksize);

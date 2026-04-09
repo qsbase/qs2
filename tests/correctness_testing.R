@@ -135,7 +135,7 @@ qs_save_rand <- function(x) {
 }
 
 qs_read_rand <- function() {
-  ar <- sample(c(TRUE, FALSE),1)
+  ar <- FALSE
   nt <- sample(random_threads, 1)
   check <- sample(c(TRUE, FALSE),1)
   if(format == "qs2") {
@@ -176,6 +176,33 @@ restored <- withCallingHandlers(
   }
 )
 stopifnot(grepl("hash mismatch", warning_msg, fixed = TRUE))
+stopifnot(identical(restored, x))
+
+# qdata ALTREP option should warn and fall back to ordinary character vectors
+tmp <- tempfile(fileext = ".qd")
+x <- c("hello", NA_character_, "world")
+qs2::qd_save(x, tmp)
+warning_msg <- NULL
+restored <- withCallingHandlers(
+  qs2::qd_read(tmp, use_alt_rep = TRUE, validate_checksum = TRUE, nthreads = 1),
+  warning = function(w) {
+    warning_msg <<- conditionMessage(w)
+    invokeRestart("muffleWarning")
+  }
+)
+stopifnot(grepl("temporarily disabled", warning_msg, fixed = TRUE))
+stopifnot(identical(restored, x))
+
+serialized <- qs2::qd_serialize(x, nthreads = 1)
+warning_msg <- NULL
+restored <- withCallingHandlers(
+  qs2::qd_deserialize(serialized, use_alt_rep = TRUE, validate_checksum = TRUE, nthreads = 1),
+  warning = function(w) {
+    warning_msg <<- conditionMessage(w)
+    invokeRestart("muffleWarning")
+  }
+)
+stopifnot(grepl("temporarily disabled", warning_msg, fixed = TRUE))
 stopifnot(identical(restored, x))
 
 ################################################################################################
@@ -241,7 +268,11 @@ for (q in 1:reps) {
       z <- qs_read_rand()
       time[i] <- Sys.time() - time[i]
       do_gc()
-      stopifnot(identical(z, x1))
+      if(grepl("^qdata", format)) {
+        stopifnot(identical(as.character(z), as.character(x1)))
+      } else {
+        stopifnot(identical(z, x1))
+      }
     }
     printCarriage(sprintf("Stringfish: %s, %s s",tp, signif(mean(time), 4)))
   }

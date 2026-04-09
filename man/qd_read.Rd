@@ -12,7 +12,7 @@ qd_read(file,
 \arguments{
 \item{file}{The file name/path.}
 
-\item{use_alt_rep}{Use ALTREP when reading in string data (the initial value is FALSE).}
+\item{use_alt_rep}{Request ALTREP when reading qdata string data. This option is temporarily disabled; if TRUE, qs2 warns and falls back to ordinary character vectors (the initial value is FALSE).}
 
 \item{validate_checksum}{If TRUE, validate checksum before deserialization and error on mismatch (or missing checksum). If FALSE, checksum is computed during read and mismatches (or missing checksum) produce a warning after reading (the initial value is FALSE).}
 

@@ -3,15 +3,13 @@
 
 
 #include <Rcpp.h>
+#include <R_ext/Utils.h>
 #include <tbb/global_control.h>
 
 #include <Rversion.h>
 
 #include "qx_file_headers.h"
-#include "qd_constants.h"
 #include "io/io_common.h"
-
-#include "sf_external.h"
 
 using namespace Rcpp;
 
@@ -30,11 +28,10 @@ struct DelayedAttribAssign {
     void resolve() {
         if(objects.size() > 0) {
             PROTECT_INDEX prot_idx;
-            for(size_t i=objects.size(); i > 0; ) {
-                --i; // Reverse iterate, starts at objects.size() - 1
+            for(size_t i=0; i < objects.size(); ++i) {
                 SEXP object = objects[i];
                 SEXP aobj = get_first_attrib(object);
-                if( (i+1) == objects.size() ) {
+                if(i == 0) {
                     PROTECT_WITH_INDEX(aobj, &prot_idx);
                 } else {
                     REPROTECT(aobj, prot_idx);
@@ -55,7 +52,6 @@ struct DelayedAttribAssign {
 template<typename block_compress_reader>
 struct QdataDeserializer {
     block_compress_reader & reader;
-    const bool use_alt_rep;
     std::vector<std::pair<SEXP, uint64_t>> character_sexp;
     std::vector<std::pair<SEXP, uint64_t>> complex_sexp;
     std::vector<std::pair<SEXP, uint64_t>> real_sexp;
@@ -66,10 +62,39 @@ struct QdataDeserializer {
     DelayedAttribAssign delayed_attributes;
 #endif
 
-    QdataDeserializer(block_compress_reader & reader, const bool use_alt_rep) : 
-    reader(reader), use_alt_rep(use_alt_rep) {}
+    QdataDeserializer(block_compress_reader & reader) : reader(reader) {}
 
     private:
+    static constexpr uint64_t max_r_vector_length = static_cast<uint64_t>(R_XLEN_T_MAX);
+    static constexpr uint32_t max_r_pairlist_length = static_cast<uint32_t>(R_LEN_T_MAX);
+    static constexpr uint32_t max_r_string_length = static_cast<uint32_t>(R_LEN_T_MAX);
+
+#ifndef LONG_VECTOR_SUPPORT
+    void validate_object_length_32(const uint32_t length, const char * const what) {
+        if(static_cast<uint64_t>(length) > max_r_vector_length) {
+            reader.cleanup_and_throw(std::string(what) + " exceeds R_xlen_t range");
+        }
+    }
+#endif
+
+    void validate_object_length_64(const uint64_t length, const char * const what) {
+        if(length > max_r_vector_length) {
+            reader.cleanup_and_throw(std::string(what) + " exceeds R_xlen_t range");
+        }
+    }
+
+    void validate_attr_length_32(const uint32_t length) {
+        if(length > max_r_pairlist_length) {
+            reader.cleanup_and_throw("Attribute count exceeds R pairlist length range");
+        }
+    }
+
+    void validate_string_length_32(const uint32_t length, const char * const what) {
+        if(length > max_r_string_length) {
+            reader.cleanup_and_throw(std::string(what) + " exceeds R string size limit");
+        }
+    }
+
     // will also call get_pod_contiguous for object lengths
     void read_header_impl(const uint8_t header_byte, qstype & type, uint64_t & len) {
         uint8_t header_byte_5 = header_byte & bitmask_type_5;
@@ -87,13 +112,20 @@ struct QdataDeserializer {
                     len = reader.template get_pod_contiguous<uint16_t>();
                     return;
                 case logical_header_32:
+                {
                     type = qstype::LOGICAL;
-                    len = reader.template get_pod_contiguous<uint32_t>();
+                    const uint32_t length = reader.template get_pod_contiguous<uint32_t>();
+#ifndef LONG_VECTOR_SUPPORT
+                    validate_object_length_32(length, "Logical vector length");
+#endif
+                    len = length;
                     return;
+                }
                 case logical_header_64:
                     type = qstype::LOGICAL;
                     len = reader.template get_pod_contiguous<uint64_t>();
-                    return;
+                    validate_object_length_64(len, "Logical vector length");
+                return;
                 case integer_header_8:
                     type = qstype::INTEGER;
                     len = reader.template get_pod_contiguous<uint8_t>();
@@ -103,12 +135,19 @@ struct QdataDeserializer {
                     len = reader.template get_pod_contiguous<uint16_t>();
                     return;
                 case integer_header_32:
+                {
                     type = qstype::INTEGER;
-                    len = reader.template get_pod_contiguous<uint32_t>();
+                    const uint32_t length = reader.template get_pod_contiguous<uint32_t>();
+#ifndef LONG_VECTOR_SUPPORT
+                    validate_object_length_32(length, "Integer vector length");
+#endif
+                    len = length;
                     return;
+                }
                 case integer_header_64:
                     type = qstype::INTEGER;
                     len = reader.template get_pod_contiguous<uint64_t>();
+                    validate_object_length_64(len, "Integer vector length");
                     return;
                 case numeric_header_8:
                     type = qstype::REAL;
@@ -119,20 +158,34 @@ struct QdataDeserializer {
                     len = reader.template get_pod_contiguous<uint16_t>();
                     return;
                 case numeric_header_32:
+                {
                     type = qstype::REAL;
-                    len = reader.template get_pod_contiguous<uint32_t>();
+                    const uint32_t length = reader.template get_pod_contiguous<uint32_t>();
+#ifndef LONG_VECTOR_SUPPORT
+                    validate_object_length_32(length, "Real vector length");
+#endif
+                    len = length;
                     return;
+                }
                 case numeric_header_64:
                     type = qstype::REAL;
                     len = reader.template get_pod_contiguous<uint64_t>();
+                    validate_object_length_64(len, "Real vector length");
                     return;
                 case complex_header_32:
+                {
                     type = qstype::COMPLEX;
-                    len = reader.template get_pod_contiguous<uint32_t>();
+                    const uint32_t length = reader.template get_pod_contiguous<uint32_t>();
+#ifndef LONG_VECTOR_SUPPORT
+                    validate_object_length_32(length, "Complex vector length");
+#endif
+                    len = length;
                     return;
+                }
                 case complex_header_64:
                     type = qstype::COMPLEX;
                     len = reader.template get_pod_contiguous<uint64_t>();
+                    validate_object_length_64(len, "Complex vector length");
                     return;
                 case character_header_8:
                     type = qstype::CHARACTER;
@@ -143,12 +196,19 @@ struct QdataDeserializer {
                     len = reader.template get_pod_contiguous<uint16_t>();
                     return;
                 case character_header_32:
+                {
                     type = qstype::CHARACTER;
-                    len = reader.template get_pod_contiguous<uint32_t>();
+                    const uint32_t length = reader.template get_pod_contiguous<uint32_t>();
+#ifndef LONG_VECTOR_SUPPORT
+                    validate_object_length_32(length, "Character vector length");
+#endif
+                    len = length;
                     return;
+                }
                 case character_header_64:
                     type = qstype::CHARACTER;
                     len = reader.template get_pod_contiguous<uint64_t>();
+                    validate_object_length_64(len, "Character vector length");
                     return;
                 case list_header_8:
                     type = qstype::LIST;
@@ -159,29 +219,47 @@ struct QdataDeserializer {
                     len = reader.template get_pod_contiguous<uint16_t>();
                     return;
                 case list_header_32:
+                {
                     type = qstype::LIST;
-                    len = reader.template get_pod_contiguous<uint32_t>();
+                    const uint32_t length = reader.template get_pod_contiguous<uint32_t>();
+#ifndef LONG_VECTOR_SUPPORT
+                    validate_object_length_32(length, "List length");
+#endif
+                    len = length;
                     return;
+                }
                 case list_header_64:
                     type = qstype::LIST;
                     len = reader.template get_pod_contiguous<uint64_t>();
+                    validate_object_length_64(len, "List length");
                     return;
                 case raw_header_32:
+                {
                     type = qstype::RAW;
-                    len = reader.template get_pod_contiguous<uint32_t>();
+                    const uint32_t length = reader.template get_pod_contiguous<uint32_t>();
+#ifndef LONG_VECTOR_SUPPORT
+                    validate_object_length_32(length, "Raw vector length");
+#endif
+                    len = length;
                     return;
+                }
                 case raw_header_64:
                     type = qstype::RAW;
                     len = reader.template get_pod_contiguous<uint64_t>();
+                    validate_object_length_64(len, "Raw vector length");
                     return;
                 case attribute_header_8:
                     type = qstype::ATTRIBUTE;
                     len = reader.template get_pod_contiguous<uint8_t>();
                     return;
                 case attribute_header_32:
+                {
                     type = qstype::ATTRIBUTE;
-                    len = reader.template get_pod_contiguous<uint32_t>();
+                    const uint32_t length = reader.template get_pod_contiguous<uint32_t>();
+                    validate_attr_length_32(length);
+                    len = length;
                     return;
+                }
                 default:
                     reader.cleanup_and_throw("Unknown header type");
             }
@@ -235,8 +313,12 @@ struct QdataDeserializer {
                 string_len = reader.template get_pod_contiguous<uint16_t>();
                 break;
             case string_header_32: // 254
-                string_len = reader.template get_pod_contiguous<uint32_t>();
+            {
+                const uint32_t length = reader.template get_pod_contiguous<uint32_t>();
+                validate_string_length_32(length, "String length");
+                string_len = length;
                 break;
+            }
             case string_header_NA: // 255
                 string_len = NA_STRING_LENGTH;
                 break;
@@ -251,14 +333,19 @@ struct QdataDeserializer {
         // assign attribute placeholder immediately for protection
         // symbol used doesn't matter as long it is not a specially intrepreted attribute symbol; it is just a placeholder
         // R_SpecSymbol is completely unused at all in r-source code, so it should be safe
-        SEXP aptr = Rf_allocList(attr_length);
+        SEXP aptr = Rf_allocList(static_cast<int>(attr_length));
         Rf_setAttrib(object, R_SpecSymbol, aptr);
         std::string attr_name; // use std::string here, must be null terminated for Rf_install
-        for(uint64_t i=0; i<attr_length; ++i) {
+        for(uint32_t i=0; i<attr_length; ++i) {
             uint32_t string_len;
             read_string_header(string_len);
+            if(string_len == NA_STRING_LENGTH) {
+                reader.cleanup_and_throw("Attribute names cannot be NA");
+            }
             attr_name.resize(string_len);
-            reader.get_data(&attr_name[0], string_len);
+            if(string_len > 0) {
+                reader.get_data(attr_name.data(), string_len);
+            }
             SET_TAG(aptr, Rf_install(attr_name.c_str()));
             SEXP aobj = read_object();
             SETCAR(aptr, aobj);
@@ -266,16 +353,21 @@ struct QdataDeserializer {
         }
         delayed_attributes.add(object);
 #else
-        SEXP aptr = Rf_allocList(attr_length);
+        SEXP aptr = Rf_allocList(static_cast<int>(attr_length));
         SET_ATTRIB(object, aptr); // assign immediately for protection
         bool set_class = false;
         SEXP class_attr = R_NilValue;
         std::string attr_name; // use std::string here, must be null terminated for Rf_install
-        for(uint64_t i=0; i<attr_length; ++i) {
+        for(uint32_t i=0; i<attr_length; ++i) {
             uint32_t string_len;
             read_string_header(string_len);
+            if(string_len == NA_STRING_LENGTH) {
+                reader.cleanup_and_throw("Attribute names cannot be NA");
+            }
             attr_name.resize(string_len);
-            reader.get_data(&attr_name[0], string_len);
+            if(string_len > 0) {
+                reader.get_data(attr_name.data(), string_len);
+            }
             SET_TAG(aptr, Rf_install(attr_name.c_str()));
             SEXP aobj = read_object();
             SETCAR(aptr, aobj);
@@ -295,6 +387,7 @@ struct QdataDeserializer {
     }
 
     SEXP read_object() {
+        R_CheckStack();
         SEXP object = nullptr; // initialize to null value to hush compiler warnings
         qstype type;
         uint64_t object_length = 0;
@@ -304,43 +397,39 @@ struct QdataDeserializer {
             case qstype::NIL:
                 return R_NilValue; // R_NilValue cannot have attributes, so return immediately
             case qstype::LOGICAL:
-                object = PROTECT(Rf_allocVector(LGLSXP, object_length));
+                object = PROTECT(Rf_allocVector(LGLSXP, static_cast<R_xlen_t>(object_length)));
                 read_and_assign_attributes(object, attr_length);
                 if(object_length > 0) integer_sexp.push_back(std::make_pair(object, object_length));
                 // reader.get_data( reinterpret_cast<char*>(LOGICAL(object)), object_length*4);
                 break;
             case qstype::INTEGER:
-                object = PROTECT(Rf_allocVector(INTSXP, object_length));
+                object = PROTECT(Rf_allocVector(INTSXP, static_cast<R_xlen_t>(object_length)));
                 read_and_assign_attributes(object, attr_length);
                 if(object_length > 0) integer_sexp.push_back(std::make_pair(object, object_length));
                 // reader.get_data( reinterpret_cast<char*>(INTEGER(object)), object_length*4 );
                 break;
             case qstype::REAL:
-                object = PROTECT(Rf_allocVector(REALSXP, object_length));
+                object = PROTECT(Rf_allocVector(REALSXP, static_cast<R_xlen_t>(object_length)));
                 read_and_assign_attributes(object, attr_length);
                 if(object_length > 0) real_sexp.push_back(std::make_pair(object, object_length));
                 // reader.get_data( reinterpret_cast<char*>(REAL(object)), object_length*8 );
                 break;
             case qstype::COMPLEX:
-                object = PROTECT(Rf_allocVector(CPLXSXP, object_length));
+                object = PROTECT(Rf_allocVector(CPLXSXP, static_cast<R_xlen_t>(object_length)));
                 read_and_assign_attributes(object, attr_length);
                 if(object_length > 0) complex_sexp.push_back(std::make_pair(object, object_length));
                 // reader.get_data( reinterpret_cast<char*>(COMPLEX(object)), object_length*16 );
                 break;
             case qstype::CHARACTER:
             {
-                if(use_alt_rep) {
-                    object = PROTECT(sf_vector(object_length)); // stringfish ALTREP vector
-                } else {
-                    object = PROTECT(Rf_allocVector(STRSXP, object_length));
-                }
+                object = PROTECT(Rf_allocVector(STRSXP, static_cast<R_xlen_t>(object_length)));
                 read_and_assign_attributes(object, attr_length);
                 if(object_length > 0) character_sexp.push_back(std::make_pair(object, object_length));
                 break;
             }
             case qstype::LIST:
             {
-                object = PROTECT(Rf_allocVector(VECSXP, object_length));
+                object = PROTECT(Rf_allocVector(VECSXP, static_cast<R_xlen_t>(object_length)));
                 read_and_assign_attributes(object, attr_length);
                 for(uint64_t i=0; i<object_length; ++i) {
                     SET_VECTOR_ELT(object, i, read_object());
@@ -348,7 +437,7 @@ struct QdataDeserializer {
                 break;
             }
             case qstype::RAW:
-                object = PROTECT(Rf_allocVector(RAWSXP, object_length));
+                object = PROTECT(Rf_allocVector(RAWSXP, static_cast<R_xlen_t>(object_length)));
                 read_and_assign_attributes(object, attr_length);
                 if(object_length > 0) raw_sexp.push_back(std::make_pair(object, object_length));
                 // reader.get_data( reinterpret_cast<char*>(RAW(object)), object_length );
@@ -364,41 +453,21 @@ struct QdataDeserializer {
         for(auto & x : character_sexp) {
             SEXP object = x.first;
             uint64_t object_length = x.second;
-            if(use_alt_rep) {
-                auto & ref = sf_vec_data_ref(object);
-                for(uint64_t i=0; i < object_length; ++i) {
-                    uint32_t string_length;
-                    read_string_header(string_length);
-                    if(string_length == NA_STRING_LENGTH) {
-                        ref[i] = sfstring(NA_STRING);
+            for(uint64_t i=0; i<object_length; ++i) {
+                uint32_t string_length;
+                read_string_header(string_length);
+                if(string_length == NA_STRING_LENGTH) {
+                    SET_STRING_ELT(object, i, NA_STRING);
+                } else if(string_length == 0) {
+                    SET_STRING_ELT(object, i, R_BlankString);
+                } else {
+                    const char * string_ptr = reader.get_ptr(string_length);
+                    if(string_ptr == nullptr) {
+                        std::unique_ptr<char[]> string_buf(MAKE_UNIQUE_BLOCK(string_length));
+                        reader.get_data(string_buf.get(), string_length);
+                        SET_STRING_ELT(object, i, Rf_mkCharLenCE(string_buf.get(), static_cast<int>(string_length), CE_UTF8));
                     } else {
-                        if(string_length == 0) {
-                            ref[i] = sfstring();
-                        } else {
-                            std::string xi;
-                            xi.resize(string_length);
-                            reader.get_data(&xi[0], string_length);
-                            ref[i] = sfstring(xi, CE_UTF8);
-                        }
-                    }
-                }
-            } else {
-                for(uint64_t i=0; i<object_length; ++i) {
-                    uint32_t string_length;
-                    read_string_header(string_length);
-                    if(string_length == NA_STRING_LENGTH) {
-                        SET_STRING_ELT(object, i, NA_STRING);
-                    } else if(string_length == 0) {
-                        SET_STRING_ELT(object, i, R_BlankString);
-                    } else {
-                        const char * string_ptr = reader.get_ptr(string_length);
-                        if(string_ptr == nullptr) {
-                            std::unique_ptr<char[]> string_buf(MAKE_UNIQUE_BLOCK(string_length));
-                            reader.get_data(string_buf.get(), string_length);
-                            SET_STRING_ELT(object, i, Rf_mkCharLenCE(string_buf.get(), string_length, CE_UTF8));
-                        } else {
-                            SET_STRING_ELT(object, i, Rf_mkCharLenCE(string_ptr, string_length, CE_UTF8));
-                        }
+                        SET_STRING_ELT(object, i, Rf_mkCharLenCE(string_ptr, static_cast<int>(string_length), CE_UTF8));
                     }
                 }
             }
@@ -406,17 +475,17 @@ struct QdataDeserializer {
         for(auto & x : complex_sexp) {
             SEXP object = x.first;
             uint64_t object_length = x.second;
-            reader.get_data( reinterpret_cast<char*>(COMPLEX(object)), object_length*16 );
+            reader.get_data( reinterpret_cast<char*>(COMPLEX(object)), object_length * 16 );
         }
         for(auto & x : real_sexp) {
             SEXP object = x.first;
             uint64_t object_length = x.second;
-            reader.get_data( reinterpret_cast<char*>(REAL(object)), object_length*8 );
+            reader.get_data( reinterpret_cast<char*>(REAL(object)), object_length * 8 );
         }
         for(auto & x : integer_sexp) {
             SEXP object = x.first;
             uint64_t object_length = x.second;
-            reader.get_data( reinterpret_cast<char*>(INTEGER(object)), object_length*4 );
+            reader.get_data( reinterpret_cast<char*>(INTEGER(object)), object_length * 4 );
         }
         for(auto & x : raw_sexp) {
             SEXP object = x.first;

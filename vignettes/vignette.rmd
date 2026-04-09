@@ -29,7 +29,7 @@ cat('
 
 *qs2: a framework for efficient serialization*
 
-`qs2` is the successor to the `qs` package. The goal is to have reliable and fast performance for saving and loading objects in R.
+`qs2` is the successor to the `qs` package that introduces two new formats: `qs2` and `qdata`. The goal is to have reliable and fast performance for saving and loading objects in R.
 
 The `qs2` format directly uses R serialization (via the `R_Serialize`/`R_Unserialize` C API) while improving underlying compression and disk IO patterns. 
 If you are familiar with the `qs` package, the benefits and usage are the same.
@@ -139,56 +139,18 @@ dt <- zstd_in(data.table::fread, file = save_file)
 The package also introduces the `qdata` format which has its own serialization layout and works with only data types (vectors, lists, data frames, matrices). 
 
 It will replace internal types (functions, promises, external pointers, environments, objects) with NULL. The `qdata` format differs from 
-the `qs2` format in that it is NOT a general.
+the `qs2` format in that it is *not* general, but is more performant.
 
-The eventual goal of `qdata` is to also have interoperability with other languages, particularly `Python`. 
+Please use `qdata` or `qd` as the file extension.
 
 ```{r eval=FALSE}
-qd_save(data, "myfile.qs2")
-data <- qd_read("myfile.qs2")
+qd_save(data, "myfile.qdata")
+data <- qd_read("myfile.qdata")
 ```
 
-## Benchmarks
+There is a `use_alt_rep` parameter that is intended to improve performance.
 
-A summary across 4 datasets is presented below.
-
-
-#### Single-threaded
-
-|Algorithm            |Compression|Save Time (s)|Read Time (s)|
-|---------------------|-----------|-------------|-------------|
-|qs2                  |7.96       |13.4         |50.4         |
-|qdata                |8.45       |10.5         |34.8         |
-|base::serialize      |1.1        |8.87         |51.4         |
-|saveRDS              |8.68       |107          |63.7         |
-|fst                  |2.59       |5.09         |46.3         |
-|parquet              |8.29       |20.3         |38.4         |
-|qs (legacy)          |7.97       |9.13         |48.1         |
-
-
-#### Multi-threaded (8 threads)
-
-|Algorithm            |Compression|Save Time (s)|Read Time (s)|
-|---------------------|-----------|-------------|-------------|
-|qs2                  |7.96       |3.79         |48.1         |
-|qdata                |8.45       |1.98         |33.1         |
-|fst                  |2.59       |5.05         |46.6         |
-|parquet              |8.29       |20.2         |37.0         |
-|qs (legacy)          |7.97       |3.21         |52.0         |
-
-* `qs2`, `qdata` and `qs` with `compress_level = 3`
-* `parquet` via the `arrow` package using zstd `compression_level = 3`
-* `base::serialize` with `ascii = FALSE` and `xdr = FALSE`
-
-**Datasets used**
-
-* `1000 genomes non-coding VCF` 1000 genomes non-coding variants (2743 MB)
-* `B-cell data` B-cell mouse data, Greiff 2017 (1057 MB)
-* `IP location` IPV4 range data with location information (198 MB)
-* `Netflix movie ratings` Netflix ML prediction dataset (571 MB)
-
-These datasets are openly licensed and represent a combination of numeric and text data across multiple domains. See `inst/analysis/datasets.R` on Github.
-
+For the upcoming CRAN release, qdata does not use ALTREP but should be restored in the release after.
 
 # Usage in C/C++
 
@@ -202,30 +164,71 @@ using namespace Rcpp;
 
 // [[Rcpp::export]]
 SEXP test_qs_serialize(SEXP x) {
-  size_t len = 0;
-  unsigned char * buffer = c_qs_serialize(x, &len, 10, true, 4); // object, buffer length, compress_level, shuffle, nthreads
-  SEXP y = c_qs_deserialize(buffer, len, false, 4);              // buffer, buffer length, validate_checksum, nthreads
-  c_qs_free(buffer);                                             // must manually free buffer
-  return y;
+  SEXP buffer = qs_serialize(x, 10, true, 4);
+  return qs_deserialize(buffer, false, 4);
 }
 
 // [[Rcpp::export]]
 SEXP test_qd_serialize(SEXP x) {
-  size_t len = 0;
-  unsigned char * buffer = c_qd_serialize(x, &len, 10, true, 4); // object, buffer length, compress_level, shuffle, nthreads
-  SEXP y = c_qd_deserialize(buffer, len, false, false, 4);       // buffer, buffer length, use_alt_rep, validate_checksum, nthreads
-  c_qd_free(buffer);                                             // must manually free buffer
-  return y;
+  SEXP buffer = qd_serialize(x, 10, true, true, 4);
+  return qd_deserialize(buffer, false, false, 4);
 }
 
+// [[Rcpp::export]]
+SEXP test_qs_save(SEXP x, const std::string& path) {
+  qs_save(x, path, 10, true, 4);
+  return qs_read(path, false, 4);
+}
+
+// [[Rcpp::export]]
+SEXP test_qd_save(SEXP x, const std::string& path) {
+  qd_save(x, path, 10, true, true, 4);
+  return qd_read(path, false, false, 4);
+}
 
 /*** R
 x <- runif(1e7)
-stopifnot(test_qs_serialize(x) == x)
-stopifnot(test_qd_serialize(x) == x)
+stopifnot(identical(test_qs_serialize(x), x))
+stopifnot(identical(test_qd_serialize(x), x))
+stopifnot(identical(test_qs_save(x, tempfile(fileext = ".qs2")), x))
+stopifnot(identical(test_qd_save(x, tempfile(fileext = ".qd")), x))
 */
 ```
 
+## qdata-cpp external wrappers
+
+You can serialize and de-serialize qdata format outside the R API. Functions for doing so are exported in `qdata_cpp_external.h`. 
+
+You can also compile these independently in `inst/include/qdata-cpp` and include in a standalone C++ project.
+
+```{cpp eval=FALSE}
+// [[Rcpp::depends(qs2)]]
+#include <Rcpp.h>
+#include "qdata_cpp_external.h"
+
+// [[Rcpp::export]]
+Rcpp::IntegerVector qdata_ext_roundtrip() {
+  std::vector<std::int32_t> x{1, 2, 3, 4};
+  auto bytes = qdata_ext::serialize(x);
+  qdata_ext::object out = qdata_ext::deserialize(bytes);
+  const auto& ints = qdata_ext::get<qdata_ext::integer_vector>(out).values;
+  return Rcpp::IntegerVector(ints.begin(), ints.end());
+}
+
+// [[Rcpp::export]]
+Rcpp::IntegerVector qdata_ext_file_roundtrip(const std::string& path) {
+  std::vector<std::int32_t> x{1, 2, 3, 4};
+  qdata_ext::save(path, x);
+  qdata_ext::object out = qdata_ext::read(path);
+  const auto& ints = qdata_ext::get<qdata_ext::integer_vector>(out).values;
+  return Rcpp::IntegerVector(ints.begin(), ints.end());
+}
+
+/*** R
+stopifnot(identical(qdata_ext_roundtrip(), 1:4))
+stopifnot(identical(qdata_ext_file_roundtrip(tempfile(fileext = ".qdata")), 1:4))
+*/
+```
 
 # Global Options for qs2
 
@@ -252,7 +255,7 @@ The following global options control the behavior of the `qs2` functions. These 
   **Default:** `TRUE`
 
 - **use_alt_rep**  
-  For `qd_read`, a logical flag indicating whether to use ALTREP when reading in string data.  
+  For `qd_read` and `qd_deserialize`, a logical flag requesting ALTREP string reads. This option is temporarily disabled; if `TRUE`, qs2 warns and falls back to ordinary character vectors.  
   **Default:** `FALSE`
 
 ---

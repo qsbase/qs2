@@ -4,7 +4,7 @@ shared_params_save <- function(file_output=TRUE, warn_unsupported_types=FALSE) {
     '@param compress_level The compression level used (the initial value is 3L).',
     '',
     'The maximum and minimum possible values depend on the version of the ZSTD library used.',
-    'As of ZSTD 1.5.6 the maximum compression level is 22, and the minimum is -131072.',
+    'As of ZSTD 1.5.7 the maximum compression level is 22, and the minimum is -131072.',
     'Usually, values in the low positive range offer very good performance in terms',
     'of speed and compression.',
     '@param shuffle Whether to allow byte shuffling when compressing data (the initial value is TRUE).',
@@ -16,7 +16,7 @@ shared_params_save <- function(file_output=TRUE, warn_unsupported_types=FALSE) {
 shared_params_read <- function(file_input=TRUE, use_alt_rep=FALSE) {
   c('@param file The file name/path.'[file_input],
     '@param input The raw vector to deserialize.'[!file_input],
-    '@param use_alt_rep Use ALTREP when reading in string data (the initial value is FALSE).'[use_alt_rep],
+    '@param use_alt_rep Request ALTREP when reading qdata string data. This option is temporarily disabled; if TRUE, qs2 warns and falls back to ordinary character vectors (the initial value is FALSE).'[use_alt_rep],
     '@param validate_checksum If TRUE, validate checksum before deserialization and error on mismatch (or missing checksum). If FALSE, checksum is computed during read and mismatches (or missing checksum) produce a warning after reading (the initial value is FALSE).',
     '@param nthreads The number of threads to use when reading data (the initial value is 1L). When TBB is not available, values greater than 1 emit a warning and fall back to 1.'
   )
