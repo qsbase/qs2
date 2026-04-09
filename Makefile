@@ -99,13 +99,15 @@ vignette:
 	# sed -r -i 's/\((.+)\.png/\(vignettes\/\1\.png/' README.md
 
 test-short:
+	Rscript tests/00_smoke_testing.R
 	Rscript tests/qs_savem_testing.R
-	Rscript tests/correctness_testing.R
 	Rscript tests/utility_testing.R
 	Rscript tests/qdata_cpp_external_testing.R
+	Rscript tests/zz_correctness_testing.R
 
 test:
+	Rscript tests/00_smoke_testing.R
 	Rscript tests/qs_savem_testing.R
-	QS_EXTENDED_TESTS=1 Rscript tests/correctness_testing.R; unset QS_EXTENDED_TESTS
 	Rscript tests/utility_testing.R
 	Rscript tests/qdata_cpp_external_testing.R
+	QS_EXTENDED_TESTS=1 Rscript tests/zz_correctness_testing.R; unset QS_EXTENDED_TESTS

@@ -35,9 +35,11 @@ export(base91_encode)
 export(catquo)
 export(decode_source)
 export(encode_source)
+export(generate_test_data)
 
 export(qs_cache)
 
 importFrom(Rcpp,evalCpp)
 importFrom(RcppParallel, RcppParallelLibs)
+importFrom(stringfish,random_strings)
 useDynLib(qs2, .registration = TRUE)
