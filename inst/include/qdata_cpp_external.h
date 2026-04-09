@@ -3,7 +3,8 @@
 
 #include <R_ext/Rdynload.h>
 
-#include "qdata-cpp/include/qdata_format/qdata.h"
+#include "qdata-cpp/include/qdata_format/write_traits.h"
+#include "qdata-cpp/include/qdata_format/detail/byte_buffer.h"
 
 #include <cstddef>
 #include <memory>
