@@ -1,5 +1,18 @@
-Version 0.1.8 (2026-03-03)
-    * Add `xxhash` checks by and throw warning on mismatch by default
+Version 0.1.8 (2026-04-08)
+    * Add stored `xxhash` checks and warn on mismatch by default
+    * Replace the old custom unwind-jump handling with `Rcpp::unwindProtect()` and extend the same cleanup model to qdata read/write paths
+    * Add `R_CheckStack()` to qdata recursive read/write paths so deep nesting fails cleanly instead of crashing
+    * Harden malformed-input handling in `qs2`, `qdata`, `qx_dump()`, and `qs_to_rds()`: reject oversized compressed-block headers, oversized qdata lengths, short malformed blocks, and attribute counts, malformed attribute names and semantically invalid R attributes
+    * Add max output size parameter in `zstd_decompress_file()` and `zstd_in()`, and delete partial output on failure
+    * Make `qs_save()` and `qd_save()` fail cleanly if file writes start successfully but later fail (e.g. due to full disk)
+    * Require actual raw vectors in `zstd_(de)compress_raw()`, `blosc_(un)shuffle_raw()`, and `xxhash_raw()` instead of allowing implicit coercion
+    * Harden `base85` / `base91` utilities and expand utility regression coverage for malformed and empty inputs
+    * Fix qdata delayed attribute replay ordering for malformed or canonicalized attribute subtrees
+    * Remove the old dynamic-blocksize plumbing and keep the fixed block-size path only
+    * Update bundled zstd from `1.5.6` to `1.5.7` and vendored qdata-cpp xxHash from `0.8.2` to `0.8.3`
+    * Add reproducible local vendoring helpers for bundled zstd and vendored xxHash
+    * Add deterministic malformed-input regressions and expand fuzz coverage in local hardening scripts
+    * Refactor qdata internals into a vendored standalone `qdata-cpp` package
     * Fix usage of `Rf_error` error handling (https://github.com/qsbase/qs2/issues/26)
     * Fix performance bug, use correct shuffle flag at high compress levels
 
