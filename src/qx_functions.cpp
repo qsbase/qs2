@@ -12,6 +12,7 @@
 #define RCPP_PARALLEL_USE_TBB 0
 #endif
 #if RCPP_PARALLEL_USE_TBB
+#include <tbb/global_control.h>
 #include "io/multithreaded_block_module.h"
 #endif
 
@@ -206,13 +207,13 @@ SEXP qs_serialize(SEXP object, const int compress_level, const bool shuffle, int
 
 #define DO_QS_READ(_STREAM_READER_, _BASE_CLASS_, _DECOMPRESSOR_, _RUNTIME_HASH_)                                             \
     _BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, RErrorPolicy> block_io(myFile);                                             \
-    output = qx_with_unwind_cleanup(block_io, [&]() -> SEXP {                                                                 \
+    PROTECT(output = qx_with_unwind_cleanup(block_io, [&]() -> SEXP {                                                        \
         struct R_inpstream_st in;                                                                                             \
         R_UnserializeInit<_BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, RErrorPolicy>>(&in, (R_pstream_data_t)(&block_io)); \
         SEXP protected_output = qs_read_impl<decltype(block_io)>(static_cast<void*>(&in));                                   \
         _RUNTIME_HASH_ = block_io.get_hash_digest();                                                                          \
         return protected_output;                                                                                              \
-    });
+    }));
 
 SEXP qs_read(const std::string& file, const bool validate_checksum, int nthreads) {
 #if RCPP_PARALLEL_USE_TBB == 0
@@ -258,7 +259,6 @@ SEXP qs_read(const std::string& file, const bool validate_checksum, int nthreads
             DO_QS_READ(IfStreamReader, BlockCompressReader, ZstdDecompressor, runtime_hash);
         }
     }
-    PROTECT(output);
     if (!validate_checksum) {
         if (stored_hash == 0) {
             Rf_warning("%s", (NO_HASH_WARN_MSG).c_str());
@@ -309,7 +309,6 @@ SEXP qs_deserialize_impl(MemoryReader& myFile, const bool validate_checksum, int
             DO_QS_READ(MemoryReader, BlockCompressReader, ZstdDecompressor, runtime_hash);
         }
     }
-    PROTECT(output);
     if (!validate_checksum) {
         if (stored_hash == 0) {
             Rf_warning("%s", IN_MEMORY_NO_HASH_WARN_MSG);
@@ -435,13 +434,9 @@ SEXP qd_serialize(SEXP object, const int compress_level, const bool shuffle, con
 #define DO_QD_READ(_STREAM_READER_, _BASE_CLASS_, _DECOMPRESSOR_, _RUNTIME_HASH_)                                             \
     _BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, StdErrorPolicy> reader(myFile);                                             \
     QdataDeserializer<_BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, StdErrorPolicy>> deserializer(reader);                    \
-    output = qx_with_unwind_cleanup(reader, [&]() -> SEXP {                                                                   \
-        Rcpp::Shield<SEXP> protected_output(deserializer.read_object());                                                      \
-        deserializer.read_object_data();                                                                                      \
-        reader.finish();                                                                                                      \
-        _RUNTIME_HASH_ = reader.get_hash_digest();                                                                            \
-        return protected_output;                                                                                              \
-    });
+    PROTECT(output = qx_with_unwind_cleanup(reader, [&]() -> SEXP {                                                          \
+        return deserializer.read_root_object(_RUNTIME_HASH_);                                                                \
+    }));
 
 SEXP qd_read(const std::string& file, const bool use_alt_rep, const bool validate_checksum, int nthreads) {
 #if RCPP_PARALLEL_USE_TBB == 0
@@ -488,7 +483,6 @@ SEXP qd_read(const std::string& file, const bool use_alt_rep, const bool validat
             DO_QD_READ(IfStreamReader, BlockCompressReader, ZstdDecompressor, runtime_hash);
         }
     }
-    PROTECT(output);
     if (!validate_checksum) {
         if (stored_hash == 0) {
             Rf_warning("%s", (NO_HASH_WARN_MSG).c_str());
@@ -539,7 +533,6 @@ SEXP qd_deserialize_impl(MemoryReader& myFile, const bool validate_checksum, int
             DO_QD_READ(MemoryReader, BlockCompressReader, ZstdDecompressor, runtime_hash);
         }
     }
-    PROTECT(output);
     if (!validate_checksum) {
         if (stored_hash == 0) {
             Rf_warning("%s", IN_MEMORY_NO_HASH_WARN_MSG);

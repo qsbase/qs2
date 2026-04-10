@@ -63,7 +63,7 @@ struct QdataSerializer {
                     c->attrs->push_back(std::make_pair(PRINTNAME(tag), attr_value));
                     break;
                 default:
-                    if(c->warn) Rf_warning("Attributes of type %s are not supported in qdata format", Rf_type2char(TYPEOF(attr_value)));
+                    if(c->warn) REprintf("Attributes of type %s are not supported in qdata format\n", Rf_type2char(TYPEOF(attr_value)));
                     break;
             }
             return NULL;
@@ -85,7 +85,7 @@ struct QdataSerializer {
                     attrs.push_back(std::make_pair(PRINTNAME(TAG(alist)), attr_value));
                     break;
                 default:
-                    if(warn) Rf_warning("Attributes of type %s are not supported in qdata format", Rf_type2char(TYPEOF(attr_value)));
+                    if(warn) REprintf("Attributes of type %s are not supported in qdata format\n", Rf_type2char(TYPEOF(attr_value)));
                     break;
             }
             alist = CDR(alist);
@@ -338,7 +338,7 @@ struct QdataSerializer {
                 write_header_nilsxp();
                 return;
             default:
-                if(warn) Rf_warning("Objects of type %s are not supported in qdata format", Rf_type2char(TYPEOF(object)));
+                if(warn) REprintf("Objects of type %s are not supported in qdata format\n", Rf_type2char(TYPEOF(object)));
                 write_header_nilsxp();
                 return;
         }

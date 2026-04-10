@@ -2,7 +2,6 @@
 #define _QS2_QS_DESERIALIZER_H_
 
 #include <Rcpp.h>
-#include <tbb/global_control.h>
 #include "qx_file_headers.h"
 
 using namespace Rcpp;
@@ -73,4 +72,3 @@ SEXP qs_read_impl(void * _args) {
 //   R_size_t count; // initialized to 0, size of final raw vector
 //   unsigned char *buf; // initialized to NULL, realloc on a NULL is the same as malloc
 // } *membuf_t;
-

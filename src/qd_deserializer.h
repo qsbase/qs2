@@ -4,7 +4,6 @@
 
 #include <Rcpp.h>
 #include <R_ext/Utils.h>
-#include <tbb/global_control.h>
 
 #include <Rversion.h>
 
@@ -449,6 +448,21 @@ struct QdataDeserializer {
         UNPROTECT(1);
         return object;
     }
+
+    SEXP read_root_object(uint64_t & runtime_hash) {
+        SEXP object = PROTECT(read_object());
+        try {
+            read_object_data();
+            reader.finish();
+            runtime_hash = reader.get_hash_digest();
+            UNPROTECT(1);
+            return object;
+        } catch (...) {
+            UNPROTECT(1);
+            throw;
+        }
+    }
+
     void read_object_data() {
         for(auto & x : character_sexp) {
             SEXP object = x.first;

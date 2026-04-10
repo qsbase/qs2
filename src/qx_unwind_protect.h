@@ -26,7 +26,7 @@ inline SEXP qx_with_unwind_cleanup(io_owner_type& io_owner, operation_type&& pro
     } catch (Rcpp::LongjumpException&) {
         io_owner.cleanup();
         if (cleanup_warning != nullptr) {
-            Rf_warning("%s", cleanup_warning);
+            REprintf("%s\n", cleanup_warning);
         }
         throw;
     } catch (...) {
