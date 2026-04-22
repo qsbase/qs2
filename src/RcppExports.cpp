@@ -284,11 +284,11 @@ BEGIN_RCPP
 END_RCPP
 }
 // zstd_compress_bound
-int zstd_compress_bound(int size);
+double zstd_compress_bound(SEXP const size);
 RcppExport SEXP _qs2_zstd_compress_bound(SEXP sizeSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< int >::type size(sizeSEXP);
+    Rcpp::traits::input_parameter< SEXP const >::type size(sizeSEXP);
     rcpp_result_gen = Rcpp::wrap(zstd_compress_bound(size));
     return rcpp_result_gen;
 END_RCPP

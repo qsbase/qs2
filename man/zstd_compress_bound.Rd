@@ -7,15 +7,18 @@
 zstd_compress_bound(size)
 }
 \arguments{
-\item{size}{An integer size}
+\item{size}{A single non-negative whole number. Values larger than
+\code{2^31 - 1} are allowed as long as they can still be represented exactly by
+an R numeric value.}
 }
 \value{
-Maximum compressed size.
+A numeric scalar giving the maximum compressed size.
 }
 \description{
-Exports the compress bound function from the zstd library. Returns the maximum potential compressed size of an object of length \code{size}.
+Exports the compress bound function from the zstd library. Returns the
+maximum potential compressed size of an object of length \code{size}.
 }
 \examples{
 zstd_compress_bound(100000)
-zstd_compress_bound(1e9)
+zstd_compress_bound(2^31)
 }

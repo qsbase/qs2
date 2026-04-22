@@ -1,6 +1,6 @@
 @CXX_STD_LINE@
 
-PKG_CPPFLAGS=-DRCPP_USE_UNWIND_PROTECT -DRCPP_NO_RTTI -DRCPP_NO_SUGAR -I../inst/include -I../inst/include/qdata-cpp/include -I. @ZSTD_INCLUDE_PATH@ @SIMD_FLAG@ -DIS_UTF8_LOCALE=$(shell "${R_HOME}/bin/Rscript" -e "cat(as.integer(identical(utils::localeToCharset()[1], 'UTF-8')))")
+PKG_CPPFLAGS=-DRCPP_USE_UNWIND_PROTECT -DRCPP_MASK_RF_ERROR -DRCPP_NO_RTTI -DRCPP_NO_SUGAR -I../inst/include -I../inst/include/qdata-cpp/include -I. @ZSTD_INCLUDE_PATH@ @SIMD_FLAG@ -DIS_UTF8_LOCALE=$(shell "${R_HOME}/bin/Rscript" -e "cat(as.integer(identical(utils::localeToCharset()[1], 'UTF-8')))")
 # TBB selection:
 # - default: @TBB_FLAG@ is empty so RcppParallel decides (auto)
 # - configure --without-TBB forces -DRCPP_PARALLEL_USE_TBB=0 via @TBB_FLAG@

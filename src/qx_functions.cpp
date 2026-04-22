@@ -1,7 +1,9 @@
 #include <RcppParallel.h>
+#include <cmath>
 #include <cstring>
-#include <stdexcept>
 #include <cstdint>
+#include <limits>
+#include <stdexcept>
 #include <vector>
 
 #include "io/block_module.h"
@@ -74,7 +76,7 @@ std::vector<unsigned char> zstd_compress_raw(SEXP const data, int compress_level
 // [[Rcpp::export(rng = false)]]
 RawVector zstd_decompress_raw(SEXP const data);
 // [[Rcpp::export(rng = false)]]
-int zstd_compress_bound(int size);
+double zstd_compress_bound(SEXP const size);
 // [[Rcpp::export(rng = false)]]
 std::vector<unsigned char> blosc_shuffle_raw(SEXP const data, int bytesofsize);
 // [[Rcpp::export(rng = false)]]
@@ -107,6 +109,39 @@ void qx_export_functions(DllInfo* dll);
 #define IN_MEMORY_HASH_MISMATCH_WARN_MSG "Hash mismatch after read; object returned but data may be corrupted."
 #define IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG "Input must be a raw vector."
 #define ALTREP_DISABLED_WARN_MSG "use_alt_rep is temporarily disabled for qdata; reading strings as ordinary character vectors."
+
+namespace {
+
+constexpr double MAX_EXACT_R_NUMERIC = 9007199254740991.0;
+
+size_t parse_nonnegative_whole_size(SEXP const size, const char* arg_name) {
+    if (Rf_xlength(size) != 1) {
+        throw std::runtime_error(std::string(arg_name) + " must be a single non-negative whole number");
+    }
+
+    if (TYPEOF(size) == INTSXP) {
+        int value = INTEGER(size)[0];
+        if (value == NA_INTEGER || value < 0) {
+            throw std::runtime_error(std::string(arg_name) + " must be a single non-negative whole number");
+        }
+        return static_cast<size_t>(value);
+    }
+
+    if (TYPEOF(size) == REALSXP) {
+        double value = REAL(size)[0];
+        if (!R_finite(value) || value < 0 || value > MAX_EXACT_R_NUMERIC || value != std::floor(value)) {
+            throw std::runtime_error(std::string(arg_name) + " must be a single non-negative whole number");
+        }
+        if (value > static_cast<double>(std::numeric_limits<size_t>::max())) {
+            throw std::runtime_error(std::string(arg_name) + " is too large for this platform");
+        }
+        return static_cast<size_t>(value);
+    }
+
+    throw std::runtime_error(std::string(arg_name) + " must be a single non-negative whole number");
+}
+
+}  // namespace
 
 ///////////////////////////////////////////////////////////////////////////////
 /* qs2 format functions */
@@ -691,7 +726,14 @@ RawVector zstd_decompress_raw(SEXP const data) {
     return ret;
 }
 
-int zstd_compress_bound(const int size) { return ZSTD_compressBound(size); }
+double zstd_compress_bound(SEXP const size) {
+    size_t parsed_size = parse_nonnegative_whole_size(size, "size");
+    size_t bound = ZSTD_compressBound(parsed_size);
+    if (bound > MAX_EXACT_R_NUMERIC) {
+        throw_error<StdErrorPolicy>("zstd_compress_bound result is too large to represent exactly in R");
+    }
+    return static_cast<double>(bound);
+}
 
 std::vector<unsigned char> blosc_shuffle_raw(SEXP const data, int bytesofsize) {
     if (TYPEOF(data) != RAWSXP) throw std::runtime_error(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);

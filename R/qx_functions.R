@@ -282,19 +282,22 @@ NULL
 
 #' Zstd compress bound
 #'
-#' Exports the compress bound function from the zstd library. Returns the maximum potential compressed size of an object of length `size`.
+#' Exports the compress bound function from the zstd library. Returns the
+#' maximum potential compressed size of an object of length `size`.
 #'
 #' @usage zstd_compress_bound(size)
 #'
-#' @param size An integer size
+#' @param size A single non-negative whole number. Values larger than
+#'   `2^31 - 1` are allowed as long as they can still be represented exactly by
+#'   an R numeric value.
 #'
-#' @return Maximum compressed size.
+#' @return A numeric scalar giving the maximum compressed size.
 #' @export
 #' @name zstd_compress_bound
 #'
 #' @examples
 #' zstd_compress_bound(100000)
-#' zstd_compress_bound(1e9)
+#' zstd_compress_bound(2^31)
 NULL
 
 #' Shuffle a raw vector

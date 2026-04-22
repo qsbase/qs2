@@ -23,8 +23,8 @@ the file path.}
 
 \item{envir}{Environment for \code{FUN} evaluation.}
 
-\item{tmpfile}{Temporary file path. If not supplied, a temp file is created
-and removed on exit.}
+\item{tmpfile}{Intermediate file path used during conversion. It is removed
+on exit, whether supplied or auto-generated.}
 
 \item{max_output_bytes}{Optional maximum number of decompressed output bytes
 passed through to \code{\link[=zstd_decompress_file]{zstd_decompress_file()}}.}

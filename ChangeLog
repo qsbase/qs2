@@ -1,4 +1,4 @@
-Version 0.1.8 (2026-04-08)
+Version 0.2.0 (2026-04-21)
     * `use_alt_rep` parameter temporarily disabled with warning for this version
     * Add stored `xxhash` checks and warn on mismatch by default
     * Replace the old custom unwind-jump handling with `Rcpp::unwindProtect()` and extend the same cleanup model to qdata read/write paths

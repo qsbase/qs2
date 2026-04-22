@@ -69,8 +69,8 @@ NULL
 #' @param ... Arguments passed to `FUN`. The first named argument is treated as
 #'   the file path.
 #' @param envir Environment for `FUN` evaluation.
-#' @param tmpfile Temporary file path. If not supplied, a temp file is created
-#'   and removed on exit.
+#' @param tmpfile Intermediate file path used during conversion. It is removed
+#'   on exit, whether supplied or auto-generated.
 #' @param max_output_bytes Optional maximum number of decompressed output bytes
 #'   passed through to [zstd_decompress_file()].
 #'
@@ -115,8 +115,8 @@ zstd_in <- function(FUN, ..., envir = parent.frame(), tmpfile = tempfile(), max_
 #' @param ... Arguments passed to `FUN`. The first named argument is treated as
 #'   the file path.
 #' @param envir Environment for `FUN` evaluation.
-#' @param tmpfile Temporary file path. If not supplied, a temp file is created
-#'   and removed on exit.
+#' @param tmpfile Intermediate file path used during conversion. It is removed
+#'   on exit, whether supplied or auto-generated.
 #'
 #' @return The value returned by `FUN`, with its visibility preserved.
 #' @export

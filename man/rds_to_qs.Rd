@@ -20,6 +20,9 @@ No value is returned. The converted file is written to disk.
 Converts a file saved in the \code{RDS} format to the \code{qs2} format.
 }
 \details{
+\code{rds_to_qs()} currently supports only gzip-compressed \code{RDS} input files.
+Files that are uncompressed or use another compression format are rejected.
+
 The \code{shuffle} parameter is currently not supported when converting from \code{RDS} to \code{qs2}.
 }
 \examples{
@@ -27,7 +30,7 @@ qs_tmp <- tempfile(fileext = ".qs2")
 rds_tmp <- tempfile(fileext = ".RDS")
 
 x <- runif(1e6)
-saveRDS(x, rds_tmp)
+saveRDS(x, rds_tmp, compress = "gzip")
 rds_to_qs(input_file = rds_tmp, output_file = qs_tmp)
 x2 <- qs_read(qs_tmp, validate_checksum = TRUE)
 stopifnot(identical(x, x2))
