@@ -100,6 +100,7 @@ vignette:
 
 test-short:
 	Rscript tests/00_smoke_testing.R
+	Rscript tests/fork_tbb_testing.R
 	Rscript tests/qs_savem_testing.R
 	Rscript tests/utility_testing.R
 	Rscript tests/qdata_cpp_external_testing.R
@@ -107,6 +108,7 @@ test-short:
 
 test:
 	Rscript tests/00_smoke_testing.R
+	Rscript tests/fork_tbb_testing.R
 	Rscript tests/qs_savem_testing.R
 	Rscript tests/utility_testing.R
 	Rscript tests/qdata_cpp_external_testing.R

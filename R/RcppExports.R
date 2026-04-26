@@ -93,6 +93,10 @@ check_TBB <- function() {
     .Call(`_qs2_check_TBB`)
 }
 
+loaded_in_fork_child <- function(value) {
+    invisible(.Call(`_qs2_loaded_in_fork_child`, value))
+}
+
 internal_is_utf8_locale <- function(size) {
     .Call(`_qs2_internal_is_utf8_locale`, size)
 }

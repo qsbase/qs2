@@ -28,6 +28,7 @@
 #include "r_error_policy.h"
 #include "qs_deserializer.h"
 #include "qs_serializer.h"
+#include "qx_nthreads_guard.h"
 #include "qx_unwind_protect.h"
 #include "qx_dump.h"
 #include "zstd_file_functions.h"
@@ -68,6 +69,8 @@ std::string check_SIMD();
 // [[Rcpp::export(rng = false)]]
 bool check_TBB();
 // [[Rcpp::export(rng = false)]]
+void loaded_in_fork_child(bool value);
+// [[Rcpp::export(rng = false)]]
 int internal_is_utf8_locale(int size);
 
 // standalone utility functions
@@ -95,7 +98,6 @@ RawVector c_base91_decode(const std::string& encoded_string);
 // exported functions
 void qx_export_functions(DllInfo* dll);
 
-#define NTHREADS_WARNING_MSG "nthreads > 1 requested but TBB not available; using nthreads = 1"
 #define COMPRESS_LEVEL_ERR_MSG "compress_level must be an integer between " + std::to_string(ZSTD_minCLevel()) + " and " + std::to_string(ZSTD_maxCLevel()) + "."
 #define FILE_SAVE_ERR_MSG "For file " + file + ": " + "Failed to open for writing. Does the directory exist? Do you have file permissions? Is the file name long? (>255 chars)"
 #define FILE_READ_ERR_MSG "For file " + file + ": " + "Failed to open for reading. Does the file exist? Do you have file permissions? Is the file name long? (>255 chars)"
@@ -159,12 +161,7 @@ size_t parse_nonnegative_whole_size(SEXP const size, const char* arg_name) {
         "Object save interrupted, file may be incomplete");
 
 SEXP qs_save(SEXP object, const std::string& file, const int compress_level, const bool shuffle, int nthreads) {
-#if RCPP_PARALLEL_USE_TBB == 0
-    if (nthreads > 1) {
-        Rf_warning("%s", NTHREADS_WARNING_MSG);
-        nthreads = 1;
-    }
-#endif
+    nthreads = normalize_nthreads(nthreads);
 
     if (compress_level > ZSTD_maxCLevel() || compress_level < ZSTD_minCLevel()) {
         throw_error<StdErrorPolicy>(COMPRESS_LEVEL_ERR_MSG);
@@ -198,12 +195,7 @@ SEXP qs_save(SEXP object, const std::string& file, const int compress_level, con
 }
 
 MemoryBuffer qs_serialize_impl(SEXP object, const int compress_level, const bool shuffle, int nthreads) {
-#if RCPP_PARALLEL_USE_TBB == 0
-    if (nthreads > 1) {
-        Rf_warning("%s", NTHREADS_WARNING_MSG);
-        nthreads = 1;
-    }
-#endif
+    nthreads = normalize_nthreads(nthreads);
 
     if (compress_level > ZSTD_maxCLevel() || compress_level < ZSTD_minCLevel()) {
         throw_error<StdErrorPolicy>(COMPRESS_LEVEL_ERR_MSG);
@@ -245,18 +237,14 @@ SEXP qs_serialize(SEXP object, const int compress_level, const bool shuffle, int
     PROTECT(output = qx_with_unwind_cleanup(block_io, [&]() -> SEXP {                                                        \
         struct R_inpstream_st in;                                                                                             \
         R_UnserializeInit<_BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, RErrorPolicy>>(&in, (R_pstream_data_t)(&block_io)); \
-        SEXP protected_output = qs_read_impl<decltype(block_io)>(static_cast<void*>(&in));                                   \
+        SEXP protected_output = PROTECT(qs_read_impl<decltype(block_io)>(static_cast<void*>(&in)));                         \
         _RUNTIME_HASH_ = block_io.get_hash_digest();                                                                          \
+        UNPROTECT(1);                                                                                                        \
         return protected_output;                                                                                              \
     }));
 
 SEXP qs_read(const std::string& file, const bool validate_checksum, int nthreads) {
-#if RCPP_PARALLEL_USE_TBB == 0
-    if (nthreads > 1) {
-        Rf_warning("%s", NTHREADS_WARNING_MSG);
-        nthreads = 1;
-    }
-#endif
+    nthreads = normalize_nthreads(nthreads);
 
     IfStreamReader myFile(R_ExpandFileName(file.c_str()));
     if (!myFile.isValid()) {
@@ -306,12 +294,7 @@ SEXP qs_read(const std::string& file, const bool validate_checksum, int nthreads
 }
 
 SEXP qs_deserialize_impl(MemoryReader& myFile, const bool validate_checksum, int nthreads) {
-#if RCPP_PARALLEL_USE_TBB == 0
-    if (nthreads > 1) {
-        Rf_warning("%s", NTHREADS_WARNING_MSG);
-        nthreads = 1;
-    }
-#endif
+    nthreads = normalize_nthreads(nthreads);
 
     bool shuffle;
     uint64_t stored_hash;
@@ -386,12 +369,7 @@ inline void warn_if_qdata_altrep_requested(const bool use_alt_rep) {
 /* qdata format functions */
 
 SEXP qd_save(SEXP object, const std::string& file, const int compress_level, const bool shuffle, const bool warn_unsupported_types, int nthreads) {
-#if RCPP_PARALLEL_USE_TBB == 0
-    if (nthreads > 1) {
-        Rf_warning("%s", NTHREADS_WARNING_MSG);
-        nthreads = 1;
-    }
-#endif
+    nthreads = normalize_nthreads(nthreads);
 
     if (compress_level > ZSTD_maxCLevel() || compress_level < ZSTD_minCLevel()) {
         throw_error<StdErrorPolicy>(COMPRESS_LEVEL_ERR_MSG);
@@ -424,12 +402,7 @@ SEXP qd_save(SEXP object, const std::string& file, const int compress_level, con
 }
 
 MemoryBuffer qd_serialize_impl(SEXP object, const int compress_level, const bool shuffle, const bool warn_unsupported_types, int nthreads) {
-#if RCPP_PARALLEL_USE_TBB == 0
-    if (nthreads > 1) {
-        Rf_warning("%s", NTHREADS_WARNING_MSG);
-        nthreads = 1;
-    }
-#endif
+    nthreads = normalize_nthreads(nthreads);
 
     if (compress_level > ZSTD_maxCLevel() || compress_level < ZSTD_minCLevel()) {
         throw_error<StdErrorPolicy>(COMPRESS_LEVEL_ERR_MSG);
@@ -474,12 +447,7 @@ SEXP qd_serialize(SEXP object, const int compress_level, const bool shuffle, con
     }));
 
 SEXP qd_read(const std::string& file, const bool use_alt_rep, const bool validate_checksum, int nthreads) {
-#if RCPP_PARALLEL_USE_TBB == 0
-    if (nthreads > 1) {
-        Rf_warning("%s", NTHREADS_WARNING_MSG);
-        nthreads = 1;
-    }
-#endif
+    nthreads = normalize_nthreads(nthreads);
 
     warn_if_qdata_altrep_requested(use_alt_rep);
 
@@ -530,12 +498,7 @@ SEXP qd_read(const std::string& file, const bool use_alt_rep, const bool validat
 }
 
 SEXP qd_deserialize_impl(MemoryReader& myFile, const bool validate_checksum, int nthreads) {
-#if RCPP_PARALLEL_USE_TBB == 0
-    if (nthreads > 1) {
-        Rf_warning("%s", NTHREADS_WARNING_MSG);
-        nthreads = 1;
-    }
-#endif
+    nthreads = normalize_nthreads(nthreads);
 
     bool shuffle;
     uint64_t stored_hash;
@@ -632,6 +595,10 @@ std::string check_SIMD() {
 
 bool check_TBB() {
     return RCPP_PARALLEL_USE_TBB;
+}
+
+void loaded_in_fork_child(bool value) {
+    loaded_in_fork_child_internal(value);
 }
 
 int internal_is_utf8_locale(const int size) {

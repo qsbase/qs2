@@ -252,6 +252,15 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// loaded_in_fork_child
+void loaded_in_fork_child(bool value);
+RcppExport SEXP _qs2_loaded_in_fork_child(SEXP valueSEXP) {
+BEGIN_RCPP
+    Rcpp::traits::input_parameter< bool >::type value(valueSEXP);
+    loaded_in_fork_child(value);
+    return R_NilValue;
+END_RCPP
+}
 // internal_is_utf8_locale
 int internal_is_utf8_locale(int size);
 RcppExport SEXP _qs2_internal_is_utf8_locale(SEXP sizeSEXP) {
@@ -435,6 +444,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_qs2_qx_dump", (DL_FUNC) &_qs2_qx_dump, 1},
     {"_qs2_check_SIMD", (DL_FUNC) &_qs2_check_SIMD, 0},
     {"_qs2_check_TBB", (DL_FUNC) &_qs2_check_TBB, 0},
+    {"_qs2_loaded_in_fork_child", (DL_FUNC) &_qs2_loaded_in_fork_child, 1},
     {"_qs2_internal_is_utf8_locale", (DL_FUNC) &_qs2_internal_is_utf8_locale, 1},
     {"_qs2_zstd_compress_raw", (DL_FUNC) &_qs2_zstd_compress_raw, 2},
     {"_qs2_zstd_decompress_raw", (DL_FUNC) &_qs2_zstd_decompress_raw, 1},

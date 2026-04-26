@@ -2,6 +2,7 @@
 #define QDATA_CPP_EXTERNAL_API_H
 
 #include "qdata_format/qdata.h"
+#include "qx_nthreads_guard.h"
 
 #include <R_ext/Rdynload.h>
 
@@ -15,7 +16,7 @@ inline void qdata_cpp_save_erased(const std::string& file,
                                   const bool shuffle,
                                   const int nthreads,
                                   const std::size_t max_depth) {
-    qdata::detail::save_erased(file, object_ptr, write_fn, compress_level, shuffle, nthreads, max_depth);
+    qdata::detail::save_erased(file, object_ptr, write_fn, compress_level, shuffle, normalize_nthreads(nthreads), max_depth);
 }
 
 inline void qdata_cpp_serialize_erased(void* const buffer_ctx,
@@ -33,7 +34,7 @@ inline void qdata_cpp_serialize_erased(void* const buffer_ctx,
         write_fn,
         compress_level,
         shuffle,
-        nthreads,
+        normalize_nthreads(nthreads),
         max_depth
     );
 }
@@ -42,7 +43,7 @@ inline qdata::object qdata_cpp_read(const std::string& file,
                                     const bool validate_checksum,
                                     const int nthreads,
                                     const std::size_t max_depth) {
-    return qdata::read(file, validate_checksum, nthreads, max_depth);
+    return qdata::read(file, validate_checksum, normalize_nthreads(nthreads), max_depth);
 }
 
 inline qdata::object qdata_cpp_deserialize(const void* const data,
@@ -50,7 +51,7 @@ inline qdata::object qdata_cpp_deserialize(const void* const data,
                                            const bool validate_checksum,
                                            const int nthreads,
                                            const std::size_t max_depth) {
-    return qdata::deserialize(data, size, validate_checksum, nthreads, max_depth);
+    return qdata::deserialize(data, size, validate_checksum, normalize_nthreads(nthreads), max_depth);
 }
 
 inline void register_qdata_cpp_external_callables() {
