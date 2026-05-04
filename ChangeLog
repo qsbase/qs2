@@ -1,4 +1,4 @@
-Version 0.2.1 (2026-04-25)
+Version 0.2.1 (2026-05-03)
     * In forked processes (`mclapply`), force `nthreads = 1` to avoid using TBB state inherited across `fork()`. TBB + fork is not supported (https://www.intel.com/content/www/us/en/docs/onetbb/developer-guide-api-reference/2021-11/known-limitations.html)
     * Add an extra `PROTECT` around qs2 read results while computing runtime hashes to quiet rchk false positives
 
