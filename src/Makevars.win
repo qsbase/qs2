@@ -1,17 +1,17 @@
-# Request C++17 explicitly only on R versions where it is not already the default.
+# Request C++17 only on R < 4.3.0; newer R defaults to >= C++17 (mirrors Makevars.in)
 R_NEEDS_EXPLICIT_CXX17 := $(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript.exe" -e "cat(as.integer(getRversion() < '4.3.0'))")
 ifeq ($(R_NEEDS_EXPLICIT_CXX17),1)
 CXX_STD = CXX17
 endif
 
+# Compile/link flags; Windows bundles zstd and forces TBB on (nothing to probe)
 PKG_CPPFLAGS = -DRCPP_USE_UNWIND_PROTECT -DRCPP_MASK_RF_ERROR -DRCPP_NO_RTTI -DRCPP_NO_SUGAR -DQS2_WINDOWS_BUILD -I../inst/include -I../inst/include/qdata-cpp/include -I. -IZSTD -DIS_UTF8_LOCALE=$(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript.exe" -e "cat(as.integer(identical(utils::localeToCharset()[1], 'UTF-8')))")
 PKG_CXXFLAGS = -DRCPP_PARALLEL_USE_TBB=1 $(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript.exe" -e "RcppParallel::CxxFlags()")
 PKG_LIBS = -L. -lQSZSTD $(shell ${R_HOME}/bin${R_ARCH_BIN}/Rscript.exe -e "RcppParallel::RcppParallelLibs()")
 
+# Bundled zstd static library (always built on Windows)
 LIBZSTD = ZSTD/zstd.o
-
 $(SHLIB): libQSZSTD.a
-
 libQSZSTD.a: $(LIBZSTD)
 	$(AR) rcs libQSZSTD.a $(LIBZSTD)
 

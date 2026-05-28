@@ -1,16 +1,17 @@
-@CXX_STD_LINE@
+# Request C++17 only on R < 4.3.0; newer R defaults to >= C++17 (mirrors Makevars.win)
+R_NEEDS_EXPLICIT_CXX17 := $(shell "${R_HOME}/bin/Rscript" -e "cat(as.integer(getRversion() < '4.3.0'))")
+ifeq ($(R_NEEDS_EXPLICIT_CXX17),1)
+CXX_STD = CXX17
+endif
 
-PKG_CPPFLAGS=-DRCPP_USE_UNWIND_PROTECT -DRCPP_MASK_RF_ERROR -DRCPP_NO_RTTI -DRCPP_NO_SUGAR -I../inst/include -I../inst/include/qdata-cpp/include -I. @ZSTD_INCLUDE_PATH@ @SIMD_FLAG@ -DIS_UTF8_LOCALE=$(shell "${R_HOME}/bin/Rscript" -e "cat(as.integer(identical(utils::localeToCharset()[1], 'UTF-8')))")
-# TBB selection:
-# - default: @TBB_FLAG@ is empty so RcppParallel decides (auto)
-# - configure --without-TBB forces -DRCPP_PARALLEL_USE_TBB=0 via @TBB_FLAG@
+# Compile/link flags; configure fills in the placeholders (empty TBB => RcppParallel decides)
+PKG_CPPFLAGS = -DRCPP_USE_UNWIND_PROTECT -DRCPP_MASK_RF_ERROR -DRCPP_NO_RTTI -DRCPP_NO_SUGAR -I../inst/include -I../inst/include/qdata-cpp/include -I. @ZSTD_INCLUDE_PATH@ @SIMD_FLAG@ -DIS_UTF8_LOCALE=$(shell "${R_HOME}/bin/Rscript" -e "cat(as.integer(identical(utils::localeToCharset()[1], 'UTF-8')))")
 PKG_CXXFLAGS = $(shell ${R_HOME}/bin/Rscript -e "RcppParallel::CxxFlags()") @TBB_FLAG@
 PKG_LIBS = -L. @COMPILER_SPECIFIC_LIBS@ @ZSTD_LIBS@ $(shell ${R_HOME}/bin/Rscript -e "RcppParallel::RcppParallelLibs()")
 
+# Bundled zstd static library (built when configure found no usable system zstd)
 LIBZSTD = ZSTD/zstd.o
-
 $(SHLIB): @ZSTD_SHLIB@
-
 libQSZSTD.a: $(LIBZSTD)
 	$(AR) rcs libQSZSTD.a $(LIBZSTD)
 

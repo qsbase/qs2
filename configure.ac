@@ -1,26 +1,14 @@
-AC_INIT([qs2],[0.1.8],[traversc@gmail.com])
+AC_INIT([qs2],[0.2.2],[traversc@gmail.com])
 AC_PATH_PROG([PKGCONF],[pkg-config],[],[$PATH:/usr/local/bin:ext/bin:ext:/sw/bin:/opt/bin:/opt/local/bin])
 
-########################################################
+# C++ compiler (from R). CXX_STD is set in src/Makevars(.win), not here.
 AC_LANG(C++)
 : ${R_HOME=`R RHOME`}
 PATH_TO_CPP_COMPILER=`"${R_HOME}/bin/R" CMD config CXX`
 AC_PROG_CXX([$PATH_TO_CPP_COMPILER])
 echo "C++ compiler: $PATH_TO_CPP_COMPILER"
 
-R_VERSION_STRING=`"${R_HOME}/bin/Rscript" -e "cat(as.character(getRversion()))"`
-R_NEEDS_EXPLICIT_CXX17=`"${R_HOME}/bin/Rscript" -e "cat(as.integer(getRversion() < '4.3.0'))"`
-if test "x$R_NEEDS_EXPLICIT_CXX17" = "x1"; then
-  echo "R ${R_VERSION_STRING} detected -- explicitly requesting C++17"
-  CXX_STD_LINE="CXX_STD = CXX17"
-else
-  echo "R ${R_VERSION_STRING} detected -- using R default C++ standard"
-  CXX_STD_LINE="# CXX17 is the default for R >= 4.3.0"
-fi
-
-########################################################
-### Configure args
-
+# Configure args
 AC_ARG_WITH([zstd-force-compile],
             AS_HELP_STRING([--with-zstd-force-compile],[Force compilation of bundled zstd source files]),
             [zstd_force_compile="true"])
@@ -33,9 +21,7 @@ AC_ARG_WITH([zstd-lib],
             AS_HELP_STRING([--with-zstd-lib=LIB_PATH],[the location of zstd library files]),
             [zstd_lib_path=$withval])
 
-# TBB selection:
-# - default: auto (let RcppParallel decide)
-# - --without-TBB: force disable by setting RCPP_PARALLEL_USE_TBB=0
+# TBB: default auto (RcppParallel decides); --without-TBB forces RCPP_PARALLEL_USE_TBB=0
 using_tbb="auto"
 AC_ARG_WITH([TBB],
             AS_HELP_STRING([--without-TBB],[Disable TBB usage and force RCPP_PARALLEL_USE_TBB=0]),
@@ -45,9 +31,7 @@ AC_ARG_WITH([simd],
             AS_HELP_STRING([--with-simd],[Manually select SIMD support (options: AVX2, SSE2)]),
             [with_simd=$withval])
 
-########################################################
-#### Version value function
-
+# Version-string -> comparable integer
 getVersion()
 {
 VERSION_STRING=$1
@@ -57,9 +41,7 @@ RELEASE=`echo $VERSION_STRING | cut -d. -f3`
 echo $(($MAJOR*100000+$MINOR*100+$RELEASE))
 }
 
-########################################################
-#### Compile ZSTD checks
-
+# zstd: use system lib (pkg-config, >= 1.5.7) unless forced/unavailable -> compile bundled
 ZSTD_INCLUDE_PATH=""
 ZSTD_LIBS=""
 ZSTD_SHLIB=""
@@ -102,8 +84,7 @@ if test xx$COMPILE_ZSTD = "xxtrue"; then
   ZSTD_CLEAN="\$(LIBZSTD) libQSZSTD.a"
 fi
 
-#### Check if -latomic flag is needed (relevant when TBB may be used)
-
+# Probe whether linking std::atomic ops needs -latomic (relevant when TBB may be used)
 m4_define([QS2_ATOMIC_TEST_PROGRAM], [[
   #include <atomic>
   #include <cstdint>
@@ -150,9 +131,7 @@ else
   COMPILER_SPECIFIC_LIBS=""
 fi
 
-########################################################
-#### TBB selection (default: auto)
-
+# TBB flag (empty => RcppParallel decides)
 if test xx$using_tbb = "xxfalse"; then
   echo "TBB disabled by configure flag or missing libatomic"
   TBB_FLAG="-DRCPP_PARALLEL_USE_TBB=0"
@@ -161,9 +140,7 @@ else
   TBB_FLAG=""
 fi
 
-########################################################
-#### Compile SIMD checks
-
+# SIMD flag (optional manual override)
 SIMD_FLAG=""
 
 if test xx$with_simd = "xxAVX2"; then
@@ -174,8 +151,7 @@ elif test xx$with_simd = "xxSSE2"; then
   SIMD_FLAG="-msse2"
 fi
 
-########################################################
-
+# Substitute into src/Makevars
 AC_SUBST([COMPILER_SPECIFIC_LIBS], $COMPILER_SPECIFIC_LIBS)
 AC_SUBST([ZSTD_INCLUDE_PATH], $ZSTD_INCLUDE_PATH)
 AC_SUBST([ZSTD_LIBS], $ZSTD_LIBS)
@@ -183,7 +159,6 @@ AC_SUBST([ZSTD_SHLIB], $ZSTD_SHLIB)
 AC_SUBST([ZSTD_CLEAN], $ZSTD_CLEAN)
 AC_SUBST([TBB_FLAG], $TBB_FLAG)
 AC_SUBST([SIMD_FLAG], $SIMD_FLAG)
-AC_SUBST([CXX_STD_LINE], $CXX_STD_LINE)
 
 AC_CONFIG_FILES([src/Makevars])
 AC_OUTPUT
