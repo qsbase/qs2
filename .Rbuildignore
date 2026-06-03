@@ -28,3 +28,5 @@ README.html
 ^src/ZSTD/patches(/|$)
 ^inst/include/qdata-cpp/include/xxhash/update\.sh$
 ^inst/include/qdata-cpp/include/xxhash/patches(/|$)
+.claude
+.codex
