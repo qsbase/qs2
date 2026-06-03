@@ -14,6 +14,19 @@
 
 using namespace Rcpp;
 
+inline void qd_warn_unsupported_type_once(const char* const label, const SEXPTYPE type) {
+    static constexpr unsigned int QD_MAX_SEXPTYPE = 32;
+    static bool warned_types[QD_MAX_SEXPTYPE] = {};
+    const unsigned int type_index = static_cast<unsigned int>(type);
+    if(type_index >= QD_MAX_SEXPTYPE) {
+        REprintf("%s of type %s are not supported in qdata format\n", label, Rf_type2char(type));
+        return;
+    }
+    if(warned_types[type_index]) return;
+    warned_types[type_index] = true;
+    REprintf("%s of type %s are not supported in qdata format; Repeated warnings suppressed\n", label, Rf_type2char(type));
+}
+
 inline bool qd_is_ascii(SEXP x) {
 #if (R_VERSION >= R_Version(4, 5, 0))
   return Rf_charIsASCII(x);
@@ -63,7 +76,7 @@ struct QdataSerializer {
                     c->attrs->push_back(std::make_pair(PRINTNAME(tag), attr_value));
                     break;
                 default:
-                    if(c->warn) REprintf("Attributes of type %s are not supported in qdata format\n", Rf_type2char(TYPEOF(attr_value)));
+                    if(c->warn) qd_warn_unsupported_type_once("Attributes", TYPEOF(attr_value));
                     break;
             }
             return NULL;
@@ -85,7 +98,7 @@ struct QdataSerializer {
                     attrs.push_back(std::make_pair(PRINTNAME(TAG(alist)), attr_value));
                     break;
                 default:
-                    if(warn) REprintf("Attributes of type %s are not supported in qdata format\n", Rf_type2char(TYPEOF(attr_value)));
+                    if(warn) qd_warn_unsupported_type_once("Attributes", TYPEOF(attr_value));
                     break;
             }
             alist = CDR(alist);
@@ -338,7 +351,7 @@ struct QdataSerializer {
                 write_header_nilsxp();
                 return;
             default:
-                if(warn) REprintf("Objects of type %s are not supported in qdata format\n", Rf_type2char(TYPEOF(object)));
+                if(warn) qd_warn_unsupported_type_once("Objects", TYPEOF(object));
                 write_header_nilsxp();
                 return;
         }

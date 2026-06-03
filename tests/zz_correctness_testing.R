@@ -205,6 +205,45 @@ restored <- withCallingHandlers(
 stopifnot(grepl("temporarily disabled", warning_msg, fixed = TRUE))
 stopifnot(identical(restored, x))
 
+capture_qdata_messages <- function(expr) {
+  capture.output(invisible(force(expr)), type = "message")
+}
+
+# qdata unsupported-type messages should be printed once per type per session
+env_messages <- capture_qdata_messages(
+  qs2::qd_serialize(
+    list(new.env(parent = emptyenv()), new.env(parent = emptyenv())),
+    warn_unsupported_types = TRUE,
+    nthreads = 1
+  )
+)
+stopifnot(sum(grepl("Objects of type environment", env_messages, fixed = TRUE)) == 1L)
+stopifnot(any(grepl("Repeated warnings suppressed", env_messages, fixed = TRUE)))
+
+tmp <- tempfile(fileext = ".qd")
+env_messages <- capture_qdata_messages(
+  qs2::qd_save(
+    list(new.env(parent = emptyenv())),
+    tmp,
+    warn_unsupported_types = TRUE,
+    nthreads = 1
+  )
+)
+stopifnot(!any(grepl("Objects of type environment", env_messages, fixed = TRUE)))
+
+fn <- function() NULL
+tmp <- tempfile(fileext = ".qd")
+closure_messages <- capture_qdata_messages(
+  qs2::qd_save(
+    list(fn, fn),
+    tmp,
+    warn_unsupported_types = TRUE,
+    nthreads = 1
+  )
+)
+stopifnot(sum(grepl("Objects of type closure", closure_messages, fixed = TRUE)) == 1L)
+stopifnot(any(grepl("Repeated warnings suppressed", closure_messages, fixed = TRUE)))
+
 ################################################################################################
 for(format in c("qs2_memory", "qdata_memory", "qdata", "qs2")) {
 for (q in 1:reps) {

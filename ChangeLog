@@ -1,5 +1,6 @@
 Version 0.2.2 (2026-05-27)
     * Configure/Makevars cleanup, small block shared_ptr perf improvement
+    * In `qd_save` warn once per unsupported type instead of warning every time
 
 Version 0.2.1 (2026-05-03)
     * In forked processes (`mclapply`), force `nthreads = 1` to avoid using TBB state inherited across `fork()`. TBB + fork is not supported (https://www.intel.com/content/www/us/en/docs/onetbb/developer-guide-api-reference/2021-11/known-limitations.html)
