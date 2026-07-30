@@ -69,8 +69,6 @@ std::string check_SIMD();
 // [[Rcpp::export(rng = false)]]
 bool check_TBB();
 // [[Rcpp::export(rng = false)]]
-void loaded_in_fork_child(bool value);
-// [[Rcpp::export(rng = false)]]
 int internal_is_utf8_locale(int size);
 
 // standalone utility functions
@@ -595,10 +593,6 @@ std::string check_SIMD() {
 
 bool check_TBB() {
     return RCPP_PARALLEL_USE_TBB;
-}
-
-void loaded_in_fork_child(bool value) {
-    loaded_in_fork_child_internal(value);
 }
 
 int internal_is_utf8_locale(const int size) {

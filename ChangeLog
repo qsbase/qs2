@@ -1,3 +1,7 @@
+Version 0.2.3 (2026-07-29)
+    * Depend on RcppParallel (>= 6.1.1)
+    * Use the built-in `RcppParallel::isProcessForkedChild()` for the forked-process thread check instead of qs2's own `getpid()`/`parallel::isChild()` heuristic (https://github.com/RcppCore/RcppParallel/pull/266, https://github.com/RcppCore/RcppParallel/issues/243)
+
 Version 0.2.2 (2026-05-27)
     * Configure/Makevars cleanup, small block shared_ptr perf improvement
     * In `qd_save` warn once per unsupported type instead of warning every time
