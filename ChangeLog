@@ -1,4 +1,4 @@
-Version 0.2.3 (2026-07-29)
+Version 0.2.3 (2026-08-05)
     * Depend on RcppParallel (>= 6.1.1)
     * Use the built-in `RcppParallel::isProcessForkedChild()` for the forked-process thread check instead of qs2's own `getpid()`/`parallel::isChild()` heuristic (https://github.com/RcppCore/RcppParallel/pull/266, https://github.com/RcppCore/RcppParallel/issues/243)
 
