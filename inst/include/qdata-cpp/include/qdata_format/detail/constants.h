@@ -1,0 +1,92 @@
+#ifndef QDATA_FORMAT_DETAIL_CONSTANTS_H
+#define QDATA_FORMAT_DETAIL_CONSTANTS_H
+
+#include <cstdint>
+
+#ifndef QDATA_U8_LITERAL_DEFINED
+#define QDATA_U8_LITERAL_DEFINED
+inline constexpr unsigned char operator ""_u8(unsigned long long arg) noexcept {
+    return static_cast<uint8_t>(arg);
+}
+#endif
+
+static constexpr uint32_t NA_STRING_LENGTH = 4294967295UL; // 2^32-1 -- length used to signify NA value; note maximum string size is defined by `int` in mkCharLen, so this value is safe
+static constexpr uint64_t MAX_SAFE_INTEGER = 9007199254740991ULL; // 2^53-1 -- the largest integer that can be "safely" represented as a double ~ (about 9000 terabytes)
+
+static constexpr uint64_t MIN_SHUFFLE_ARRAYSIZE = 256ULL; // AVX2 vectorized size
+
+static constexpr uint64_t MAX_5_BIT_LENGTH = 32; // exclusive of max value
+static constexpr uint64_t MAX_8_BIT_LENGTH = 256; // exclusive of max value
+static constexpr uint64_t MAX_16_BIT_LENGTH = 65536; // exclusive of max value
+static constexpr uint64_t MAX_32_BIT_LENGTH = 4294967296; // exclusive of max value
+
+// masks for 5-bit length headers
+static constexpr uint8_t bitmask_type_5 = 0xE0_u8;
+static constexpr uint8_t bitmask_length_5 = 0x1F_u8;
+
+static constexpr uint8_t list_header_5 = 0x20_u8;
+static constexpr uint8_t list_header_8 = 0x01_u8;
+static constexpr uint8_t list_header_16 = 0x02_u8;
+static constexpr uint8_t list_header_32 = 0x03_u8;
+static constexpr uint8_t list_header_64 = 0x04_u8;
+
+static constexpr uint8_t numeric_header_5 = 0x40_u8;
+static constexpr uint8_t numeric_header_8 = 0x05_u8;
+static constexpr uint8_t numeric_header_16 = 0x06_u8;
+static constexpr uint8_t numeric_header_32 = 0x07_u8;
+static constexpr uint8_t numeric_header_64 = 0x08_u8;
+
+static constexpr uint8_t integer_header_5 = 0x60_u8;
+static constexpr uint8_t integer_header_8 = 0x09_u8;
+static constexpr uint8_t integer_header_16 = 0x0A_u8;
+static constexpr uint8_t integer_header_32 = 0x0B_u8;
+static constexpr uint8_t integer_header_64 = 0x0C_u8;
+
+static constexpr uint8_t logical_header_5 = 0x80_u8;
+static constexpr uint8_t logical_header_8 = 0x0D_u8;
+static constexpr uint8_t logical_header_16 = 0x0E_u8;
+static constexpr uint8_t logical_header_32 = 0x0F_u8;
+static constexpr uint8_t logical_header_64 = 0x10_u8;
+
+static constexpr uint8_t raw_header_32 = 0x17_u8;
+static constexpr uint8_t raw_header_64 = 0x18_u8;
+
+static constexpr uint8_t nil_header = 0x00_u8;
+
+static constexpr uint8_t character_header_5 = 0xA0_u8;
+static constexpr uint8_t character_header_8 = 0x11_u8;
+static constexpr uint8_t character_header_16 = 0x12_u8;
+static constexpr uint8_t character_header_32 = 0x13_u8;
+static constexpr uint8_t character_header_64 = 0x14_u8;
+
+
+static constexpr uint8_t complex_header_32 = 0x15_u8;
+static constexpr uint8_t complex_header_64 = 0x16_u8;
+
+static constexpr uint8_t attribute_header_5 = 0xE0_u8;
+static constexpr uint8_t attribute_header_8 = 0x1E_u8;
+static constexpr uint8_t attribute_header_32 = 0x1F_u8;
+
+// String header 0b LLLL LLLL
+
+// special values
+static constexpr uint8_t string_header_16 = 253;
+static constexpr uint8_t string_header_32 = 254;
+static constexpr uint8_t string_header_NA = 255;
+
+static constexpr uint64_t MAX_STRING_8_BIT_LENGTH = 253; // exclusive of max value
+static constexpr uint64_t MAX_STRING_16_BIT_LENGTH = 65536; // exclusive of max value
+
+enum class qstype : uint8_t {
+  NIL = 0,
+  LOGICAL = 1,
+  INTEGER = 2,
+  REAL = 3,
+  COMPLEX = 4,
+  CHARACTER = 5,
+  LIST = 6,
+  RAW = 7,
+  ATTRIBUTE = 255
+};
+
+#endif

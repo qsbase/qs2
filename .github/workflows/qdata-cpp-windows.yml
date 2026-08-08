@@ -1,0 +1,100 @@
+name: qdata-cpp Windows CI
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'man/**'
+      - 'vignettes/**'
+      - 'README.md'
+      - 'ChangeLog'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  windows:
+    name: Windows (${{ matrix.label }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: TBB ON
+            qdata_use_tbb: "ON"
+          - label: TBB OFF
+            qdata_use_tbb: "OFF"
+
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up MSVC developer command prompt
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - name: Set up vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg "$env:RUNNER_TEMP\vcpkg"
+          & "$env:RUNNER_TEMP\vcpkg\bootstrap-vcpkg.bat"
+          & "$env:RUNNER_TEMP\vcpkg\vcpkg.exe" install zstd tbb --triplet x64-windows
+          "VCPKG_ROOT=$env:RUNNER_TEMP\vcpkg" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "PATH=$env:RUNNER_TEMP\vcpkg\installed\x64-windows\bin;$env:RUNNER_TEMP\vcpkg\installed\x64-windows\debug\bin;$env:PATH" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Install R test packages
+        run: |
+          Rscript -e "install.packages(c('Rcpp', 'RcppParallel', 'stringfish', 'stringi', 'data.table', 'tibble'), repos = 'https://cloud.r-project.org', Ncpus = max(1L, parallel::detectCores()))"
+
+      # Build qs2 from this checkout, not from CRAN or a clone of main: the C++
+      # tests round trip against the R package, so both halves have to come from
+      # the same tree or they can disagree about the format.
+      #
+      # R.exe, not R: PowerShell resolves a bare `R` to its built-in `r` alias
+      # for Invoke-History, which swallows the command.
+      - name: Install qs2 from this checkout
+        run: R.exe CMD INSTALL .
+
+      # library(), not requireNamespace(quietly = TRUE): a package can install and
+      # still fail to load, and the quiet form hides why.
+      - name: Verify R test packages
+        run: |
+          Rscript -e "for (p in c('qs2', 'stringi', 'stringfish')) { cat('loading', p, '... '); library(p, character.only = TRUE); cat(format(packageVersion(p)), 'ok\n') }"
+
+      - name: Show toolchain
+        run: |
+          cmake --version
+          ninja --version
+          ctest --version
+          cl
+          Rscript --version
+
+      - name: Configure
+        run: |
+          cmake -S inst/include/qdata-cpp -B build -G Ninja `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_C_COMPILER=cl `
+            -DCMAKE_CXX_COMPILER=cl `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows `
+            -DQDATA_USE_TBB=${{ matrix.qdata_use_tbb }} `
+            -DQDATA_BUILD_BENCHMARKS=ON `
+            -DQDATA_BUILD_EXAMPLES=ON `
+            -DQDATA_BUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        env:
+          QS_EXTENDED_TESTS: "1"
+        run: ctest --test-dir build --output-on-failure -V

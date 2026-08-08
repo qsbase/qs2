@@ -3,11 +3,7 @@ PACKAGE := $(shell perl -aF: -ne 'print, exit if s/^Package:\s+//' DESCRIPTION)
 VERSION := $(shell perl -aF: -ne 'print, exit if s/^Version:\s+//' DESCRIPTION)
 BUILD   := $(PACKAGE)_$(VERSION).tar.gz
 
-.PHONY: doc build install test test-short vignette submodules $(BUILD)
-
-submodules:
-	git submodule sync --recursive
-	git submodule update --remote --init --recursive --force
+.PHONY: doc build install test test-short vignette $(BUILD)
 
 check: $(BUILD)
 	R CMD check --as-cran $<

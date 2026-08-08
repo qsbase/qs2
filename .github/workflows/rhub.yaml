@@ -13,9 +13,14 @@ on:
   workflow_dispatch:
     inputs:
       config:
+        # Every platform in r-hub/actions/v1/setup/platforms.json. There is no
+        # "all" keyword -- the setup action matches each entry against a
+        # platform name, cran-name, or alias and errors on anything it does not
+        # recognise -- so the full set has to be spelled out. Trim the box at
+        # dispatch time when you only want a subset.
         description: 'A comma separated list of R-hub platforms to use.'
         type: string
-        default: 'linux,windows,macos'
+        default: 'ubuntu-clang,ubuntu-gcc12,ubuntu-next,ubuntu-release,atlas,c23,clang-asan,clang-ubsan,clang16,clang17,clang18,clang19,clang20,clang21,clang22,gcc13,gcc14,gcc15,gcc16,gcc-asan,lto,nold,noremap,valgrind,mkl,intel,donttest,nosuggests,rchk,vnu,windows,macos,macos-arm64,linux,m1-san'
       name:
         description: 'Run name. You can leave this empty now.'
         type: string
@@ -57,8 +62,6 @@ jobs:
 
     steps:
       - uses: r-hub/actions/checkout@v1
-        with:
-          submodules: recursive
       - uses: r-hub/actions/platform-info@v1
         with:
           token: ${{ secrets.RHUB_TOKEN }}
@@ -84,8 +87,6 @@ jobs:
 
     steps:
       - uses: r-hub/actions/checkout@v1
-        with:
-          submodules: recursive
       - uses: r-hub/actions/setup-r@v1
         with:
           job-config: ${{ matrix.config.job-config }}
