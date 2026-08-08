@@ -73,25 +73,25 @@ int internal_is_utf8_locale(int size);
 
 // standalone utility functions
 // [[Rcpp::export(rng = false, signature = {data, compress_level = qopt("compress_level")})]]
-std::vector<unsigned char> zstd_compress_raw(SEXP const data, int compress_level);
+SEXP zstd_compress_raw(SEXP const data, int compress_level);
 // [[Rcpp::export(rng = false)]]
 RawVector zstd_decompress_raw(SEXP const data);
 // [[Rcpp::export(rng = false)]]
 double zstd_compress_bound(SEXP const size);
 // [[Rcpp::export(rng = false)]]
-std::vector<unsigned char> blosc_shuffle_raw(SEXP const data, int bytesofsize);
+SEXP blosc_shuffle_raw(SEXP const data, int bytesofsize);
 // [[Rcpp::export(rng = false)]]
-std::vector<unsigned char> blosc_unshuffle_raw(SEXP const data, int bytesofsize);
+SEXP blosc_unshuffle_raw(SEXP const data, int bytesofsize);
 // [[Rcpp::export(rng = false)]]
 std::string xxhash_raw(SEXP const data);
 // [[Rcpp::export(rng = false)]]
-std::string base85_encode(const RawVector& rawdata);
+SEXP base85_encode(const RawVector& rawdata);
 // [[Rcpp::export(rng = false)]]
 RawVector base85_decode(const std::string& encoded_string);
 // [[Rcpp::export(rng = false)]]
-std::string c_base91_encode(const RawVector& rawdata);
+SEXP c_base91_encode(const RawVector& rawdata);
 // [[Rcpp::export(rng = false)]]
-RawVector c_base91_decode(const std::string& encoded_string);
+SEXP c_base91_decode(const std::string& encoded_string);
 
 // exported functions
 void qx_export_functions(DllInfo* dll);
@@ -139,6 +139,40 @@ size_t parse_nonnegative_whole_size(SEXP const size, const char* arg_name) {
     }
 
     throw std::runtime_error(std::string(arg_name) + " must be a single non-negative whole number");
+}
+
+// The output allocation is the most likely one to fail, because it doubles peak
+// memory. Protect it so the R error cannot skip the source buffer's destructor.
+SEXP alloc_raw(const std::vector<unsigned char>& bytes) {
+    return qx_unwind_protect([&]() -> SEXP {
+        SEXP out = Rf_allocVector(RAWSXP, static_cast<R_xlen_t>(bytes.size()));
+        if (!bytes.empty()) {
+            std::memcpy(RAW(out), bytes.data(), bytes.size());
+        }
+        return out;
+    });
+}
+
+SEXP alloc_string(const std::string& value) {
+    return qx_unwind_protect([&]() -> SEXP { return Rf_mkString(value.c_str()); });
+}
+
+// each block is released as it is converted, so a failure part way through
+// does not strand the whole dump
+SEXP blocks_to_list(std::vector<std::vector<unsigned char>>& blocks) {
+    return qx_unwind_protect([&]() -> SEXP {
+        SEXP out = PROTECT(Rf_allocVector(VECSXP, static_cast<R_xlen_t>(blocks.size())));
+        for (size_t i = 0; i < blocks.size(); ++i) {
+            SEXP block = Rf_allocVector(RAWSXP, static_cast<R_xlen_t>(blocks[i].size()));
+            SET_VECTOR_ELT(out, i, block);
+            if (!blocks[i].empty()) {
+                std::memcpy(RAW(block), blocks[i].data(), blocks[i].size());
+            }
+            std::vector<unsigned char>().swap(blocks[i]);
+        }
+        UNPROTECT(1);
+        return out;
+    });
 }
 
 }  // namespace
@@ -227,7 +261,7 @@ MemoryBuffer qs_serialize_impl(SEXP object, const int compress_level, const bool
 
 SEXP qs_serialize(SEXP object, const int compress_level, const bool shuffle, int nthreads) {
     MemoryBuffer result = qs_serialize_impl(object, compress_level, shuffle, nthreads);
-    return RawVector(result.begin(), result.end());
+    return alloc_raw(result);
 }
 
 #define DO_QS_READ(_STREAM_READER_, _BASE_CLASS_, _DECOMPRESSOR_, _RUNTIME_HASH_)                                             \
@@ -433,7 +467,7 @@ MemoryBuffer qd_serialize_impl(SEXP object, const int compress_level, const bool
 
 SEXP qd_serialize(SEXP object, const int compress_level, const bool shuffle, const bool warn_unsupported_types, int nthreads) {
     MemoryBuffer result = qd_serialize_impl(object, compress_level, shuffle, warn_unsupported_types, nthreads);
-    return RawVector(result.begin(), result.end());
+    return alloc_raw(result);
 }
 
 // DO_QD_READ macro assigns SEXP output
@@ -567,6 +601,8 @@ List qx_dump(const std::string& file) {
         output = qx_dump_impl<IfStreamReader, ZstdDecompressor>(myFile);
     }
 
+    RObject zblocks = blocks_to_list(std::get<0>(output));
+    RObject blocks = blocks_to_list(std::get<1>(output));
     return List::create(
         _["format"] = header_info.format,
         _["format_version"] = header_info.format_version,
@@ -575,8 +611,8 @@ List qx_dump(const std::string& file) {
         _["file_endian"] = header_info.file_endian,
         _["stored_hash"] = header_info.stored_hash,
         _["computed_hash"] = std::get<3>(output),
-        _["zblocks"] = std::get<0>(output),
-        _["blocks"] = std::get<1>(output),
+        _["zblocks"] = zblocks,
+        _["blocks"] = blocks,
         _["block_shuffled"] = std::get<2>(output)
     );
 }
@@ -641,7 +677,7 @@ SEXP internal_write_qx_hash(const std::string& file, const std::string& hash_str
 ///////////////////////////////////////////////////////////////////////////////
 /* standalone utility functions */
 
-std::vector<unsigned char> zstd_compress_raw(SEXP const data, const int compress_level) {
+SEXP zstd_compress_raw(SEXP const data, const int compress_level) {
     if (compress_level > ZSTD_maxCLevel() || compress_level < ZSTD_minCLevel()) {
         throw_error<StdErrorPolicy>(COMPRESS_LEVEL_ERR_MSG);
     }
@@ -659,7 +695,7 @@ std::vector<unsigned char> zstd_compress_raw(SEXP const data, const int compress
         throw_error<StdErrorPolicy>(std::string("zstd_compress_raw failed: ") + ZSTD_getErrorName(zsize));
     }
     ret.resize(zsize);
-    return ret;
+    return alloc_raw(ret);
 }
 RawVector zstd_decompress_raw(SEXP const data) {
     if (TYPEOF(data) != RAWSXP) throw std::runtime_error(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
@@ -696,7 +732,7 @@ double zstd_compress_bound(SEXP const size) {
     return static_cast<double>(bound);
 }
 
-std::vector<unsigned char> blosc_shuffle_raw(SEXP const data, int bytesofsize) {
+SEXP blosc_shuffle_raw(SEXP const data, int bytesofsize) {
     if (TYPEOF(data) != RAWSXP) throw std::runtime_error(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
     if (bytesofsize != 4 && bytesofsize != 8) throw std::runtime_error("bytesofsize must be 4 or 8");
     uint64_t blocksize = Rf_xlength(data);
@@ -705,11 +741,12 @@ std::vector<unsigned char> blosc_shuffle_raw(SEXP const data, int bytesofsize) {
     blosc_shuffle(xdata, xshuf.data(), blocksize, bytesofsize);
     uint64_t remainder = blocksize % bytesofsize;
     uint64_t vectorizablebytes = blocksize - remainder;
-    std::memcpy(xshuf.data() + vectorizablebytes, xdata + vectorizablebytes, remainder);
-    return xshuf;
+    // empty input gives xshuf.data() == nullptr, and memcpy's arguments are nonnull
+    if (remainder) std::memcpy(xshuf.data() + vectorizablebytes, xdata + vectorizablebytes, remainder);
+    return alloc_raw(xshuf);
 }
 
-std::vector<unsigned char> blosc_unshuffle_raw(SEXP const data, int bytesofsize) {
+SEXP blosc_unshuffle_raw(SEXP const data, int bytesofsize) {
     if (TYPEOF(data) != RAWSXP) throw std::runtime_error(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
     if (bytesofsize != 4 && bytesofsize != 8) throw std::runtime_error("bytesofsize must be 4 or 8");
     uint64_t blocksize = Rf_xlength(data);
@@ -718,8 +755,8 @@ std::vector<unsigned char> blosc_unshuffle_raw(SEXP const data, int bytesofsize)
     blosc_unshuffle(xdata, xshuf.data(), blocksize, bytesofsize);
     uint64_t remainder = blocksize % bytesofsize;
     uint64_t vectorizablebytes = blocksize - remainder;
-    std::memcpy(xshuf.data() + vectorizablebytes, xdata + vectorizablebytes, remainder);
-    return xshuf;
+    if (remainder) std::memcpy(xshuf.data() + vectorizablebytes, xdata + vectorizablebytes, remainder);
+    return alloc_raw(xshuf);
 }
 
 std::string xxhash_raw(SEXP const data) {
@@ -731,7 +768,7 @@ std::string xxhash_raw(SEXP const data) {
     return std::to_string(xenv.digest());
 }
 
-std::string base85_encode(const RawVector& rawdata) {
+SEXP base85_encode(const RawVector& rawdata) {
     size_t size = Rf_xlength(rawdata);
     uint8_t* data = reinterpret_cast<uint8_t*>(RAW(rawdata));
     size_t size_partial = (size / 4) * 4;
@@ -770,7 +807,7 @@ std::string base85_encode(const RawVector& rawdata) {
         encoded[ebyte + 2] = base85_encoder_ring[value / 85UL % 85];
         encoded[ebyte + 3] = base85_encoder_ring[value % 85];
     }
-    return encoded_string;
+    return alloc_string(encoded_string);
 }
 
 RawVector base85_decode(const std::string& encoded_string) {
@@ -837,7 +874,7 @@ RawVector base85_decode(const std::string& encoded_string) {
     return decoded_vector;
 }
 
-std::string c_base91_encode(const RawVector& rawdata) {
+SEXP c_base91_encode(const RawVector& rawdata) {
     basE91 b = basE91();
     size_t size = Rf_xlength(rawdata);
     size_t outsize = basE91_encode_bound(size);
@@ -845,10 +882,10 @@ std::string c_base91_encode(const RawVector& rawdata) {
     size_t nb_encoded = basE91_encode_internal(&b, RAW(rawdata), size, const_cast<char*>(output.data()), outsize);
     nb_encoded += basE91_encode_end(&b, const_cast<char*>(output.data()) + nb_encoded, outsize - nb_encoded);
     output.resize(nb_encoded);
-    return output;
+    return alloc_string(output);
 }
 
-RawVector c_base91_decode(const std::string& encoded_string) {
+SEXP c_base91_decode(const std::string& encoded_string) {
     basE91 b = basE91();
     size_t size = encoded_string.size();
     for (const char byte : encoded_string) {
@@ -859,7 +896,7 @@ RawVector c_base91_decode(const std::string& encoded_string) {
     size_t nb_decoded = basE91_decode_internal(&b, encoded_string.data(), size, output.data(), outsize);
     nb_decoded += basE91_decode_end(&b, output.data() + nb_decoded, outsize - nb_decoded);
     output.resize(nb_decoded);
-    return RawVector(output.begin(), output.end());
+    return alloc_raw(output);
 }
 
 // [[Rcpp::init]]

@@ -3,7 +3,7 @@
 
 #include <Rcpp.h>
 #include "qx_file_headers.h"
-  
+
 using namespace Rcpp;
 
 struct qsSaveImplArgs {
@@ -12,6 +12,9 @@ struct qsSaveImplArgs {
     R_outpstream_t out;
 };
 
+// Called by R from C. Stream and buffer failures are caught per block inside
+// write_and_update, so nothing unwinds across R's frames and there is no EH on
+// this per-item path.
 template<typename block_compress_writer>
 void qs_save_out_bytes(R_outpstream_t stream, void * buf, int length) {
     block_compress_writer * writer = reinterpret_cast<block_compress_writer*>(stream->data);

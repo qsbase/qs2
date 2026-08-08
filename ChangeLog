@@ -1,4 +1,11 @@
 Version 0.2.3 (2026-08-05)
+    * Error handling: make every stack frame between the unwind boundary and a fallible R call trivially destructible, so an R error no longer skips a C++ destructor. Attribute-name and string scratch buffers in the qdata reader, and the per-object attribute vector in the qdata writer, now live in the (de)serializer instead of in recursion frames; block IO error messages are no longer owning temporaries
+    * Unwind-protect the final R allocation in `qs_serialize()`, `qd_serialize()`, `qx_dump()` and the raw/string returning utilities, so an out-of-memory error there cannot strand the compressed buffer
+    * Catch stream and buffer failures once per block in the single threaded block writer, so a failed write (e.g. full disk) no longer unwinds a C++ exception through R's serializer
+    * `cleanup()` on the block IO objects is now `noexcept`, so a TBB teardown error cannot replace a pending R unwind
+    * Guard the multithreaded writer's per-block buffer allocation and flow graph handoff, and drop the redundant block copy in `push_data()` in favour of the block the writer already owns
+    * Remove the `QIO_MT_DIRECT_MEM_SWITCH` macro in favour of `if constexpr`; its pre-C++17 fallback selected the wrong branch, and C++17 is now required
+    * Skip the tail `memcpy` in `blosc_shuffle_raw()` / `blosc_unshuffle_raw()` when there is no remainder; on an empty raw vector it passed a null pointer, which UBSAN flags
     * Depend on RcppParallel (>= 6.1.1)
     * Use the built-in `RcppParallel::isProcessForkedChild()` for the forked-process thread check instead of qs2's own `getpid()`/`parallel::isChild()` heuristic (https://github.com/RcppCore/RcppParallel/pull/266, https://github.com/RcppCore/RcppParallel/issues/243)
 

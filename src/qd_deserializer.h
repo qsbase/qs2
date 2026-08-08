@@ -6,6 +6,10 @@
 #include <R_ext/Utils.h>
 
 #include <Rversion.h>
+#include <cstdio>
+#include <cstring>
+#include <memory>
+#include <string>
 
 #include "qx_file_headers.h"
 #include "io/io_common.h"
@@ -61,24 +65,45 @@ struct QdataDeserializer {
     DelayedAttribAssign delayed_attributes;
 #endif
 
-    QdataDeserializer(block_compress_reader & reader) : reader(reader) {}
+    QdataDeserializer(block_compress_reader & reader) : reader(reader), string_scratch_size(0) {}
 
     private:
     static constexpr uint64_t max_r_vector_length = static_cast<uint64_t>(R_XLEN_T_MAX);
     static constexpr uint32_t max_r_pairlist_length = static_cast<uint32_t>(R_LEN_T_MAX);
     static constexpr uint32_t max_r_string_length = static_cast<uint32_t>(R_LEN_T_MAX);
 
+    // reused scratch, owned here so that an R jump below cannot skip a destructor
+    std::string attr_name; // must be null terminated for Rf_install
+    std::unique_ptr<char[]> string_scratch;
+    size_t string_scratch_size;
+
+    char * string_buffer(const size_t size) {
+        if(size > string_scratch_size) {
+            size_t n = string_scratch_size == 0 ? 1024 : string_scratch_size;
+            while(n < size) n *= 2;
+            string_scratch.reset(new char[n]);
+            string_scratch_size = n;
+        }
+        return string_scratch.get();
+    }
+
+    void throw_limit(const char * const what, const char * const limit) {
+        char msg[128];
+        std::snprintf(msg, sizeof(msg), "%s %s", what, limit);
+        reader.cleanup_and_throw(msg);
+    }
+
 #ifndef LONG_VECTOR_SUPPORT
     void validate_object_length_32(const uint32_t length, const char * const what) {
         if(static_cast<uint64_t>(length) > max_r_vector_length) {
-            reader.cleanup_and_throw(std::string(what) + " exceeds R_xlen_t range");
+            throw_limit(what, "exceeds R_xlen_t range");
         }
     }
 #endif
 
     void validate_object_length_64(const uint64_t length, const char * const what) {
         if(length > max_r_vector_length) {
-            reader.cleanup_and_throw(std::string(what) + " exceeds R_xlen_t range");
+            throw_limit(what, "exceeds R_xlen_t range");
         }
     }
 
@@ -90,7 +115,7 @@ struct QdataDeserializer {
 
     void validate_string_length_32(const uint32_t length, const char * const what) {
         if(length > max_r_string_length) {
-            reader.cleanup_and_throw(std::string(what) + " exceeds R string size limit");
+            throw_limit(what, "exceeds R string size limit");
         }
     }
 
@@ -334,7 +359,6 @@ struct QdataDeserializer {
         // R_SpecSymbol is completely unused at all in r-source code, so it should be safe
         SEXP aptr = Rf_allocList(static_cast<int>(attr_length));
         Rf_setAttrib(object, R_SpecSymbol, aptr);
-        std::string attr_name; // use std::string here, must be null terminated for Rf_install
         for(uint32_t i=0; i<attr_length; ++i) {
             uint32_t string_len;
             read_string_header(string_len);
@@ -356,7 +380,6 @@ struct QdataDeserializer {
         SET_ATTRIB(object, aptr); // assign immediately for protection
         bool set_class = false;
         SEXP class_attr = R_NilValue;
-        std::string attr_name; // use std::string here, must be null terminated for Rf_install
         for(uint32_t i=0; i<attr_length; ++i) {
             uint32_t string_len;
             read_string_header(string_len);
@@ -368,13 +391,14 @@ struct QdataDeserializer {
                 reader.get_data(attr_name.data(), string_len);
             }
             SET_TAG(aptr, Rf_install(attr_name.c_str()));
+            const bool is_class = std::strcmp(attr_name.c_str(), "class") == 0; // attr_name is clobbered by the recursion below
             SEXP aobj = read_object();
             SETCAR(aptr, aobj);
             aptr = CDR(aptr);
-            
+
             // setting class name also sets object bit
             // SET_OBJECT is no longer part of API in R 4.5, so we use a workaround to set the object bit
-            if( (strcmp(attr_name.c_str(), "class") == 0) && Rf_isString(aobj) && (Rf_xlength(aobj) >= 1) ) {
+            if( is_class && Rf_isString(aobj) && (Rf_xlength(aobj) >= 1) ) {
                 set_class = true;
                 class_attr = aobj;
             }
@@ -477,9 +501,9 @@ struct QdataDeserializer {
                 } else {
                     const char * string_ptr = reader.get_ptr(string_length);
                     if(string_ptr == nullptr) {
-                        std::unique_ptr<char[]> string_buf(MAKE_UNIQUE_BLOCK(string_length));
-                        reader.get_data(string_buf.get(), string_length);
-                        SET_STRING_ELT(object, i, Rf_mkCharLenCE(string_buf.get(), static_cast<int>(string_length), CE_UTF8));
+                        char * string_buf = string_buffer(string_length);
+                        reader.get_data(string_buf, string_length);
+                        SET_STRING_ELT(object, i, Rf_mkCharLenCE(string_buf, static_cast<int>(string_length), CE_UTF8));
                     } else {
                         SET_STRING_ELT(object, i, Rf_mkCharLenCE(string_ptr, static_cast<int>(string_length), CE_UTF8));
                     }

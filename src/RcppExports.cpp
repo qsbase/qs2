@@ -263,7 +263,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // zstd_compress_raw
-std::vector<unsigned char> zstd_compress_raw(SEXP const data, int compress_level);
+SEXP zstd_compress_raw(SEXP const data, int compress_level);
 RcppExport SEXP _qs2_zstd_compress_raw(SEXP dataSEXP, SEXP compress_levelSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -294,7 +294,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // blosc_shuffle_raw
-std::vector<unsigned char> blosc_shuffle_raw(SEXP const data, int bytesofsize);
+SEXP blosc_shuffle_raw(SEXP const data, int bytesofsize);
 RcppExport SEXP _qs2_blosc_shuffle_raw(SEXP dataSEXP, SEXP bytesofsizeSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -305,7 +305,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // blosc_unshuffle_raw
-std::vector<unsigned char> blosc_unshuffle_raw(SEXP const data, int bytesofsize);
+SEXP blosc_unshuffle_raw(SEXP const data, int bytesofsize);
 RcppExport SEXP _qs2_blosc_unshuffle_raw(SEXP dataSEXP, SEXP bytesofsizeSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -326,7 +326,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // base85_encode
-std::string base85_encode(const RawVector& rawdata);
+SEXP base85_encode(const RawVector& rawdata);
 RcppExport SEXP _qs2_base85_encode(SEXP rawdataSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -346,7 +346,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // c_base91_encode
-std::string c_base91_encode(const RawVector& rawdata);
+SEXP c_base91_encode(const RawVector& rawdata);
 RcppExport SEXP _qs2_c_base91_encode(SEXP rawdataSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -356,7 +356,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // c_base91_decode
-RawVector c_base91_decode(const std::string& encoded_string);
+SEXP c_base91_decode(const std::string& encoded_string);
 RcppExport SEXP _qs2_c_base91_decode(SEXP encoded_stringSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;

@@ -6,6 +6,9 @@
 
 using namespace Rcpp;
 
+// Called by R from C. The reader raises through its error policy and does not
+// throw here, so nothing unwinds across R's frames and there is no EH on this
+// per-item path.
 template<typename block_compress_reader>
 void qs_read_in_bytes(R_inpstream_t stream, void * buf, int length) {
     block_compress_reader * reader = reinterpret_cast<block_compress_reader*>(stream->data);

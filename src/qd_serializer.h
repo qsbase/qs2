@@ -53,67 +53,92 @@ struct QdataSerializer {
     std::vector<std::pair<SEXP, uint64_t>> integer_sexp; // and logical
     std::vector<std::pair<SEXP, uint64_t>> raw_sexp;
 
-    QdataSerializer(block_compress_writer & writer, const bool warn) : 
+    // shared scratch, so no recursion frame owns heap across a fallible R call.
+    // Each frame holds the slice [base, base + count) and pops it in write_attributes().
+    // Depth is attribute nesting depth, not object nesting depth.
+    std::vector< std::pair<SEXP, SEXP> > attr_stack;
+
+    QdataSerializer(block_compress_writer & writer, const bool warn) :
     writer(writer), warn(warn) {}
 
-    std::vector< std::pair<SEXP, SEXP> > get_attributes(SEXP const object) {
-        std::vector< std::pair<SEXP, SEXP> > attrs;
-#if R_VERSION >= R_Version(4, 6, 0)
-        struct {
-            std::vector<std::pair<SEXP, SEXP>>* attrs;
-            bool warn;
-        } ctx{&attrs, warn};
-        auto mapper = [](SEXP tag, SEXP attr_value, void* data) -> SEXP {
-            auto* c = static_cast<decltype(ctx)*>(data);
-            switch(TYPEOF(attr_value)) {
-                case LGLSXP:
-                case INTSXP:
-                case REALSXP:
-                case CPLXSXP:
-                case STRSXP:
-                case VECSXP:
-                case RAWSXP:
-                    c->attrs->push_back(std::make_pair(PRINTNAME(tag), attr_value));
-                    break;
-                default:
-                    if(c->warn) qd_warn_unsupported_type_once("Attributes", TYPEOF(attr_value));
-                    break;
-            }
-            return NULL;
-        };
-        R_mapAttrib(object, mapper, &ctx);
-#else
-        SEXP alist = ATTRIB(object);
-        while(alist != R_NilValue) {
-            SEXP attr_value = CAR(alist);
-            switch(TYPEOF(attr_value)) {
-                // valid attribute types
-                case LGLSXP:
-                case INTSXP:
-                case REALSXP:
-                case CPLXSXP:
-                case STRSXP:
-                case VECSXP:
-                case RAWSXP:
-                    attrs.push_back(std::make_pair(PRINTNAME(TAG(alist)), attr_value));
-                    break;
-                default:
-                    if(warn) qd_warn_unsupported_type_once("Attributes", TYPEOF(attr_value));
-                    break;
-            }
-            alist = CDR(alist);
+    static bool attr_is_supported(SEXP const attr_value) {
+        switch(TYPEOF(attr_value)) {
+            case LGLSXP:
+            case INTSXP:
+            case REALSXP:
+            case CPLXSXP:
+            case STRSXP:
+            case VECSXP:
+            case RAWSXP:
+                return true;
+            default:
+                return false;
         }
-#endif
-        return attrs;
     }
 
-    void write_attributes(std::vector< std::pair<SEXP, SEXP> > const & attrs) {
-        for(uint64_t i = 0; i < attrs.size(); i++) {
-            uint32_t alen = LENGTH(attrs[i].first);
-            write_string_header(alen);
-            writer.push_data(CHAR(attrs[i].first), alen);
-            write_object(attrs[i].second);
+    struct attr_ctx {
+        QdataSerializer* self;
+        uint32_t count;
+    };
+
+#if R_VERSION >= R_Version(4, 6, 0)
+    static SEXP count_attrib(SEXP, SEXP attr_value, void* data) {
+        attr_ctx* c = static_cast<attr_ctx*>(data);
+        if(attr_is_supported(attr_value)) {
+            c->count++;
+        } else if(c->self->warn) {
+            qd_warn_unsupported_type_once("Attributes", TYPEOF(attr_value));
         }
+        return NULL;
+    }
+    static SEXP fill_attrib(SEXP tag, SEXP attr_value, void* data) {
+        attr_ctx* c = static_cast<attr_ctx*>(data);
+        if(attr_is_supported(attr_value)) {
+            c->self->attr_stack.push_back(std::make_pair(PRINTNAME(tag), attr_value)); // reserved, cannot throw
+        }
+        return NULL;
+    }
+#endif
+
+    // appends to attr_stack; counted first so the append cannot allocate mid-walk
+    uint32_t collect_attributes(SEXP const object) {
+        attr_ctx ctx{this, 0};
+#if R_VERSION >= R_Version(4, 6, 0)
+        R_mapAttrib(object, &count_attrib, &ctx);
+        if(ctx.count > 0) {
+            attr_stack.reserve(attr_stack.size() + ctx.count);
+            R_mapAttrib(object, &fill_attrib, &ctx);
+        }
+#else
+        for(SEXP alist = ATTRIB(object); alist != R_NilValue; alist = CDR(alist)) {
+            if(attr_is_supported(CAR(alist))) {
+                ctx.count++;
+            } else if(warn) {
+                qd_warn_unsupported_type_once("Attributes", TYPEOF(CAR(alist)));
+            }
+        }
+        if(ctx.count > 0) {
+            attr_stack.reserve(attr_stack.size() + ctx.count);
+            for(SEXP alist = ATTRIB(object); alist != R_NilValue; alist = CDR(alist)) {
+                if(attr_is_supported(CAR(alist))) {
+                    attr_stack.push_back(std::make_pair(PRINTNAME(TAG(alist)), CAR(alist)));
+                }
+            }
+        }
+#endif
+        return ctx.count;
+    }
+
+    void write_attributes(const size_t base, const uint32_t count) {
+        for(size_t i = base; i < base + count; ++i) {
+            SEXP name = attr_stack[i].first;   // copied out: the recursion may reallocate
+            SEXP value = attr_stack[i].second;
+            uint32_t alen = LENGTH(name);
+            write_string_header(alen);
+            writer.push_data(CHAR(name), alen);
+            write_object(value);
+        }
+        attr_stack.resize(base);
     }
 
     void write_attr_header(uint32_t length) {
@@ -279,9 +304,10 @@ struct QdataSerializer {
             case LGLSXP:
             {
                 uint64_t object_length = Rf_xlength(object);
-                std::vector< std::pair<SEXP, SEXP> > attrs = get_attributes(object);
-                write_header_lglsxp(object_length, attrs.size());
-                write_attributes(attrs);
+                const size_t base = attr_stack.size();
+                const uint32_t attr_count = collect_attributes(object);
+                write_header_lglsxp(object_length, attr_count);
+                write_attributes(base, attr_count);
                 if(object_length > 0) integer_sexp.push_back(std::make_pair(object, object_length));
                 // writer.push_data(reinterpret_cast<char*>(LOGICAL(object)), object_length * 4);
                 return;
@@ -289,9 +315,10 @@ struct QdataSerializer {
             case INTSXP:
             {
                 uint64_t object_length = Rf_xlength(object);
-                std::vector< std::pair<SEXP, SEXP> > attrs = get_attributes(object);
-                write_header_intsxp(object_length, attrs.size());
-                write_attributes(attrs);
+                const size_t base = attr_stack.size();
+                const uint32_t attr_count = collect_attributes(object);
+                write_header_intsxp(object_length, attr_count);
+                write_attributes(base, attr_count);
                 if(object_length > 0) integer_sexp.push_back(std::make_pair(object, object_length));
                 // writer.push_data(reinterpret_cast<char*>(INTEGER(object)), object_length * 4);
                 return;
@@ -299,9 +326,10 @@ struct QdataSerializer {
             case REALSXP:
             {
                 uint64_t object_length = Rf_xlength(object);
-                std::vector< std::pair<SEXP, SEXP> > attrs = get_attributes(object);
-                write_header_realsxp(object_length, attrs.size());
-                write_attributes(attrs);
+                const size_t base = attr_stack.size();
+                const uint32_t attr_count = collect_attributes(object);
+                write_header_realsxp(object_length, attr_count);
+                write_attributes(base, attr_count);
                 if(object_length > 0) real_sexp.push_back(std::make_pair(object, object_length));
                 // writer.push_data(reinterpret_cast<char*>(REAL(object)), object_length * 8);
                 return;
@@ -309,9 +337,10 @@ struct QdataSerializer {
             case CPLXSXP:
             {
                 uint64_t object_length = Rf_xlength(object);
-                std::vector< std::pair<SEXP, SEXP> > attrs = get_attributes(object);
-                write_header_cplxsxp(object_length, attrs.size());
-                write_attributes(attrs);
+                const size_t base = attr_stack.size();
+                const uint32_t attr_count = collect_attributes(object);
+                write_header_cplxsxp(object_length, attr_count);
+                write_attributes(base, attr_count);
                 if(object_length > 0) complex_sexp.push_back(std::make_pair(object, object_length));
                 // writer.push_data(reinterpret_cast<char*>(COMPLEX(object)), object_length * 16);
                 return;
@@ -319,18 +348,20 @@ struct QdataSerializer {
             case STRSXP:
             {
                 uint64_t object_length = Rf_xlength(object);
-                std::vector< std::pair<SEXP, SEXP> > attrs = get_attributes(object);
-                write_header_strsxp(object_length, attrs.size());
-                write_attributes(attrs);
+                const size_t base = attr_stack.size();
+                const uint32_t attr_count = collect_attributes(object);
+                write_header_strsxp(object_length, attr_count);
+                write_attributes(base, attr_count);
                 if(object_length > 0) character_sexp.push_back(std::make_pair(object, object_length));
                 return;
             }
             case VECSXP:
             {
                 uint64_t object_length = Rf_xlength(object);
-                std::vector< std::pair<SEXP, SEXP> > attrs = get_attributes(object);
-                write_header_vecsxp(object_length, attrs.size());
-                write_attributes(attrs);
+                const size_t base = attr_stack.size();
+                const uint32_t attr_count = collect_attributes(object);
+                write_header_vecsxp(object_length, attr_count);
+                write_attributes(base, attr_count);
                 const SEXP * xptr = reinterpret_cast<const SEXP*>(DATAPTR_RO(object));
                 for(uint64_t i=0; i<object_length; ++i) {
                     write_object(xptr[i]);
@@ -340,9 +371,10 @@ struct QdataSerializer {
             case RAWSXP:
             {
                 uint64_t object_length = Rf_xlength(object);
-                std::vector< std::pair<SEXP, SEXP> > attrs = get_attributes(object);
-                write_header_rawsxp(object_length, attrs.size());
-                write_attributes(attrs);
+                const size_t base = attr_stack.size();
+                const uint32_t attr_count = collect_attributes(object);
+                write_header_rawsxp(object_length, attr_count);
+                write_attributes(base, attr_count);
                 if(object_length > 0) raw_sexp.push_back(std::make_pair(object, object_length));
                 // writer.push_data(reinterpret_cast<char*>(RAW(object)), object_length);
                 return;
