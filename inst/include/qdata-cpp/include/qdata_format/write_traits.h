@@ -98,6 +98,33 @@ private:
 template <class T>
 using decay_t = std::decay_t<T>;
 
+template <class T>
+using attribute_get_result_t = decltype(
+    ATTRSXP_traits<decay_t<T>>::get(std::declval<const decay_t<T>&>(), std::size_t{})
+);
+
+template <class T>
+inline constexpr bool attribute_get_returns_lvalue_reference_v =
+    std::is_lvalue_reference<attribute_get_result_t<T>>::value;
+
+template <class T>
+using internal_list_get_result_t = decltype(
+    VECSXP_traits<decay_t<T>>::get(std::declval<const decay_t<T>&>(), std::size_t{})
+);
+
+template <class T>
+inline constexpr bool internal_list_get_returns_lvalue_reference_v =
+    std::is_lvalue_reference<internal_list_get_result_t<T>>::value;
+
+template <class T>
+using generic_list_element_result_t = decltype(
+    *std::begin(std::declval<const decay_t<T>&>())
+);
+
+template <class T>
+inline constexpr bool generic_list_iterator_returns_lvalue_reference_v =
+    std::is_lvalue_reference<generic_list_element_result_t<T>>::value;
+
 template <class T, class = void>
 struct has_logical_traits : std::false_type {};
 
@@ -233,6 +260,10 @@ template <class T>
 void write_attributes(serializer& s, const T& x) {
     using traits = ATTRSXP_traits<decay_t<T>>;
     if constexpr (traits::has_attributes) {
+        static_assert(
+            attribute_get_returns_lvalue_reference_v<T>,
+            "qdata attribute getters must return a stable lvalue reference because leaf payloads are deferred"
+        );
         const auto n = traits::size(x);
         for(std::size_t i = 0; i < n; ++i) {
             s.write_attribute_name(traits::name(x, i));
@@ -394,6 +425,10 @@ void write_raw_vector(serializer& s, const T& x) {
 template <class T>
 void write_internal_list(serializer& s, const T& x) {
     using traits = VECSXP_traits<decay_t<T>>;
+    static_assert(
+        internal_list_get_returns_lvalue_reference_v<T>,
+        "qdata internal-list getters must return a stable lvalue reference because leaf payloads are deferred"
+    );
     const auto n = traits::size(x);
     s.begin_list_vector(n, attr_count(x));
     write_attributes(s, x);
@@ -404,6 +439,10 @@ void write_internal_list(serializer& s, const T& x) {
 
 template <class T>
 void write_iterable_list(serializer& s, const T& x) {
+    static_assert(
+        generic_list_iterator_returns_lvalue_reference_v<T>,
+        "qdata generic-list iterators must return a stable lvalue reference because leaf payloads are deferred"
+    );
     const auto n = std::size(x);
     s.begin_list_vector(n, attr_count(x));
     write_attributes(s, x);

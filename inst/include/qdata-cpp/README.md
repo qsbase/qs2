@@ -33,9 +33,8 @@ int main() {
 }
 ```
 
-`qdata-cpp` is header-only for standalone use. Copy `include/*` to your project and link against `zstd` and `TBB`.
-
-`zstd` is required but `TBB` is optional only if you want multithreading.
+`qdata-cpp` is header-only for standalone use. Copy `include/*` to your project
+and link against `zstd`. Link against oneTBB when multithreading is enabled.
 
 ## Testing
 
@@ -46,6 +45,8 @@ Multithreading requires oneTBB 2021.1 or newer (`TBB_INTERFACE_VERSION` 12000
 and up). Classic TBB, through 2020.3, spelled the flow-graph source as
 `source_node` rather than `input_node` and is not supported; configure with
 `-DQDATA_USE_TBB=OFF` to build single-threaded against an older toolchain.
+On a fresh CMake build, `QDATA_BUILD_BENCHMARKS` follows `QDATA_USE_TBB`.
+Explicitly enabling the benchmark target requires oneTBB.
 
 ## Core qdata types
 
@@ -63,7 +64,7 @@ It is not a general "serialize any C++ object graph" library. Instead, custom ty
 
 ## Custom type example
 
-qdata does not need a native representation for every C++ POD type. Any same-size trivially copyable type can be mapped onto an existing qdata type with traits.
+qdata does not need a dedicated representation for every C++ POD type. Any same-size trivially copyable type can be mapped onto an existing qdata type with traits.
 
 ```cpp
 #include "qdata.h"

@@ -2,9 +2,12 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <iterator>
 #include <optional>
 #include <string>
 #include <string_view>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 #include "qdata.h"
@@ -21,6 +24,19 @@ struct AttributedIntVector {
     auto begin() const { return values.begin(); }
     auto end() const { return values.end(); }
     std::size_t size() const { return values.size(); }
+};
+
+struct ByValueAttribute {};
+struct ByValueInternalList {};
+
+struct ByValueGenericList {
+    struct const_iterator {
+        MyIntVector operator*() const { return {}; }
+    };
+
+    const_iterator begin() const { return {}; }
+    const_iterator end() const { return {}; }
+    std::size_t size() const { return 0; }
 };
 
 namespace qdata {
@@ -62,7 +78,34 @@ struct ATTRSXP_traits<AttributedIntVector> {
     }
 };
 
+template <>
+struct ATTRSXP_traits<ByValueAttribute> {
+    static constexpr bool has_attributes = true;
+
+    static std::vector<std::int32_t> get(const ByValueAttribute&, std::size_t) {
+        return {};
+    }
+};
+
+namespace detail {
+
+template <>
+struct VECSXP_traits<ByValueInternalList> {
+    static MyIntVector get(const ByValueInternalList&, std::size_t) {
+        return {};
+    }
+};
+
+} // namespace detail
+
 } // namespace qdata
+
+static_assert(qdata::detail::attribute_get_returns_lvalue_reference_v<AttributedIntVector>);
+static_assert(qdata::detail::internal_list_get_returns_lvalue_reference_v<qdata::list_vector>);
+static_assert(qdata::detail::generic_list_iterator_returns_lvalue_reference_v<std::vector<MyIntVector>>);
+static_assert(!qdata::detail::attribute_get_returns_lvalue_reference_v<ByValueAttribute>);
+static_assert(!qdata::detail::internal_list_get_returns_lvalue_reference_v<ByValueInternalList>);
+static_assert(!qdata::detail::generic_list_iterator_returns_lvalue_reference_v<ByValueGenericList>);
 
 namespace {
 

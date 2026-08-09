@@ -68,12 +68,12 @@ public:
     reader_(reader),
     max_depth_(checked_max_nesting_depth(max_depth)) {}
 
-    object read_object() {
-        object out;
+    void read_object(object& out) {
         read_into(out);
-        return out;
+        read_object_data();
     }
 
+private:
     void read_object_data() {
         for(auto* values : string_payloads_) {
             read_string_payloads(*values);
@@ -102,9 +102,13 @@ public:
                 values->size() * sizeof(std::byte)
             );
         }
+        string_payloads_.clear();
+        complex_payloads_.clear();
+        real_payloads_.clear();
+        integer_payloads_.clear();
+        raw_payloads_.clear();
     }
 
-private:
     class recursion_depth_guard {
     public:
         explicit recursion_depth_guard(qdata_deserializer& owner) : owner_(owner) {
@@ -133,18 +137,8 @@ private:
 
     void read_string_payloads(string_vector& values) {
         const auto expected_strings = values.records.size();
-        auto storage = std::make_shared<string_storage>();
-        std::unique_ptr<char[]> current_slab;
-        std::size_t slab_used = 0;
-        std::size_t slab_capacity = 0;
-
-        auto finish_current_slab = [&]() {
-            if(current_slab) {
-                storage->slabs.push_back(std::move(current_slab));
-                slab_used = 0;
-                slab_capacity = 0;
-            }
-        };
+        string_storage_builder storage_builder;
+        values.storage = storage_builder.storage();
 
         for(std::size_t i = 0; i < expected_strings; ++i) {
             std::uint32_t string_length = 0;
@@ -161,29 +155,10 @@ private:
             }
 
             const auto payload_size = checked_r_compatible_string_size(string_length, "string length");
-            if(payload_size > default_string_storage_bytes) {
-                finish_current_slab();
-                auto large_slab = std::make_unique<char[]>(payload_size);
-                reader_.get_data(large_slab.get(), payload_size);
-                values.records[i] = {large_slab.get(), string_length};
-                storage->slabs.push_back(std::move(large_slab));
-                continue;
-            }
-
-            if(!current_slab || slab_capacity - slab_used < payload_size) {
-                finish_current_slab();
-                slab_capacity = default_string_storage_bytes;
-                current_slab = std::make_unique<char[]>(slab_capacity);
-            }
-
-            char* const destination = current_slab.get() + slab_used;
+            char* const destination = storage_builder.allocate_bytes(payload_size, expected_strings);
             reader_.get_data(destination, payload_size);
             values.records[i] = {destination, string_length};
-            slab_used += payload_size;
         }
-
-        finish_current_slab();
-        values.storage = std::move(storage);
     }
 
     void read_attributes(std::vector<box<named_object>>& attrs, const std::uint32_t attr_length) {
@@ -299,8 +274,8 @@ template <class StreamReader, class Decompressor>
 inline object read_single_thread(StreamReader& stream, const std::size_t max_depth) {
     BlockCompressReader<StreamReader, Decompressor, StdErrorPolicy> block_reader(stream);
     qdata_deserializer<decltype(block_reader)> stream_reader(block_reader, max_depth);
-    auto output = stream_reader.read_object();
-    stream_reader.read_object_data();
+    object output;
+    stream_reader.read_object(output);
     block_reader.finish();
     return output;
 }
@@ -311,8 +286,8 @@ inline object read_multi_thread(StreamReader& stream, const int nthreads, const 
     tbb::global_control gc(tbb::global_control::parameter::max_allowed_parallelism, normalized_read_nthreads(nthreads));
     BlockCompressReaderMT<StreamReader, Decompressor, StdErrorPolicy> block_reader(stream);
     qdata_deserializer<decltype(block_reader)> stream_reader(block_reader, max_depth);
-    auto output = stream_reader.read_object();
-    stream_reader.read_object_data();
+    object output;
+    stream_reader.read_object(output);
     block_reader.finish();
     return output;
 }

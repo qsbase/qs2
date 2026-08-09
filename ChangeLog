@@ -1,4 +1,15 @@
 Version 0.2.3 (2026-08-05)
+    * (qdata-cpp) Read top-level vector objects without relying on optional copy elision
+    * Fix qdata reads larger than 4 GiB by tracking block progress with 64-bit counters
+    * Close the remaining read and `qx_dump()` unwind gaps so promoted checksum warnings and allocation failures do not skip live C++ owners
+    * Bound geometric qdata string scratch growth to one block and allocate larger requests at their exact size
+    * Detect zstd compression and context-allocation failures instead of writing invalid blocks
+    * (qdata-cpp) Validate save arguments before opening and truncating the destination file
+    * (qdata-cpp) Use adaptive storage for each string vector, keeping sibling vectors' allocations independent
+    * (qdata-cpp) Reject custom nested accessors that return temporary objects before their vector data is written
+    * (qdata-cpp) Report version 1.1.0 in CMake and fail configuration when requested TBB targets cannot be built
+    * Require R 3.6.0, matching the minimum version required by RcppParallel 6.1.1
+    * Alternate A/B benchmark execution order and report paired timing results alongside the minimum-time summary
     * Error handling: make every stack frame between the unwind boundary and a fallible R call trivially destructible, so an R error no longer skips a C++ destructor. Attribute-name and string scratch buffers in the qdata reader, and the per-object attribute vector in the qdata writer, now live in the (de)serializer instead of in recursion frames; block IO error messages are no longer owning temporaries
     * Unwind-protect the final R allocation in `qs_serialize()`, `qd_serialize()`, `qx_dump()` and the raw/string returning utilities, so an out-of-memory error there cannot strand the compressed buffer
     * Catch stream and buffer failures once per block in the single threaded block writer, so a failed write (e.g. full disk) no longer unwinds a C++ exception through R's serializer

@@ -1,5 +1,7 @@
 #include <cstdint>
+#include <fstream>
 #include <iostream>
+#include <iterator>
 #include <limits>
 #include <stdexcept>
 #include <string>
@@ -94,6 +96,60 @@ void expect_deep_deserialize_default_rejected() {
     throw std::runtime_error("deeply nested bytes unexpectedly deserialized under default max_depth");
 }
 
+void write_file(const std::string& path, const std::string& contents) {
+    std::ofstream output(path, std::ios::binary | std::ios::trunc);
+    output.write(contents.data(), static_cast<std::streamsize>(contents.size()));
+    if(!output) throw std::runtime_error("failed to prepare save validation test file");
+}
+
+std::string read_file(const std::string& path) {
+    std::ifstream input(path, std::ios::binary);
+    return std::string(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
+}
+
+void expect_invalid_save_preserves_file(const std::string& path,
+                                        const int compress_level,
+                                        const std::size_t max_depth,
+                                        const std::string& needle) {
+    const std::string marker = "existing qdata destination";
+    write_file(path, marker);
+    expect_runtime_error(
+        [&] {
+            qdata::save(path, std::vector<std::int32_t>{1, 2, 3}, compress_level, true, 1, max_depth);
+        },
+        needle
+    );
+    if(read_file(path) != marker) {
+        throw std::runtime_error("invalid save arguments modified the destination file");
+    }
+}
+
+void expect_invalid_serialize_preserves_buffer(const int compress_level,
+                                               const std::size_t max_depth,
+                                               const std::string& needle) {
+    const std::vector<std::uint8_t> marker{11, 22, 33, 44};
+    std::vector<std::uint8_t> output = marker;
+    const std::vector<std::int32_t> input{1, 2, 3};
+    expect_runtime_error(
+        [&] {
+            qdata::detail::serialize_erased_impl(
+                static_cast<void*>(std::addressof(output)),
+                qdata::detail::make_output_buffer_ops<std::vector<std::uint8_t>>(),
+                std::addressof(input),
+                &qdata::detail::write_erased<std::vector<std::int32_t>>,
+                compress_level,
+                true,
+                1,
+                max_depth
+            );
+        },
+        needle
+    );
+    if(output != marker) {
+        throw std::runtime_error("invalid serialize arguments modified the destination buffer");
+    }
+}
+
 } // namespace
 
 namespace qdata {
@@ -164,7 +220,7 @@ struct ATTRSXP_traits<too_many_attrs_vector> {
 
 } // namespace qdata
 
-int main() {
+int main(const int argc, char** argv) {
     debug_log("start");
 
     if constexpr (std::numeric_limits<std::size_t>::max() > qdata::detail::max_r_compatible_vector_length) {
@@ -189,6 +245,29 @@ int main() {
 
     debug_log("explicit max_depth override succeeds");
     expect_deep_nesting_override_succeeds();
+
+    if(argc != 2) throw std::runtime_error("expected save validation test path");
+
+    debug_log("invalid compression level preserves destination");
+    expect_invalid_save_preserves_file(
+        argv[1],
+        ZSTD_maxCLevel() + 1,
+        qdata::detail::default_qdata_max_nesting_depth,
+        "compress_level"
+    );
+
+    debug_log("invalid max_depth preserves destination");
+    expect_invalid_save_preserves_file(argv[1], 3, 0, "max_depth");
+
+    debug_log("invalid compression level preserves erased buffer");
+    expect_invalid_serialize_preserves_buffer(
+        ZSTD_maxCLevel() + 1,
+        qdata::detail::default_qdata_max_nesting_depth,
+        "compress_level"
+    );
+
+    debug_log("invalid max_depth preserves erased buffer");
+    expect_invalid_serialize_preserves_buffer(3, 0, "max_depth");
 
     debug_log("done");
     return 0;

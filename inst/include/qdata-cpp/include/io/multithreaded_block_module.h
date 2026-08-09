@@ -5,6 +5,7 @@
 #include "xxhash_module.h"
 
 #include <atomic>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <tbb/concurrent_queue.h>
@@ -75,27 +76,44 @@ struct BlockCompressWriterMT {
     compressor_node(this->myGraph, tbb::flow::unlimited,
     [this](OrderedBlock block) {
         OrderedBlock zblock;
-        if(!available_zblocks.try_pop(zblock.block)) {
-            zblock.block = MAKE_SHARED_BLOCK_ASSIGNMENT(MAX_ZBLOCKSIZE);
+        try {
+            if(!available_zblocks.try_pop(zblock.block)) {
+                zblock.block = MAKE_SHARED_BLOCK_ASSIGNMENT(MAX_ZBLOCKSIZE);
+            }
+            typename tbb::enumerable_thread_specific<compressor>::reference cp_local = cp.local();
+            zblock.blocksize = cp_local.compress(zblock.block.get(), MAX_ZBLOCKSIZE,
+                                                 block.block.get(), block.blocksize,
+                                                 compress_level);
+            if(compressor::is_error(zblock.blocksize)) {
+                throw std::runtime_error("Compression error");
+            }
+        } catch(...) {
+            recycle_block(block.block);
+            recycle_zblock(zblock.block);
+            throw;
         }
-        typename tbb::enumerable_thread_specific<compressor>::reference cp_local = cp.local();
-        zblock.blocksize = cp_local.compress(zblock.block.get(), MAX_ZBLOCKSIZE,
-                                                block.block.get(), block.blocksize,
-                                                compress_level);
         zblock.blocknumber = block.blocknumber;
-        available_blocks.push(block.block);
+        recycle_block(block.block);
         return zblock;
     }),
     compressor_direct_node(this->myGraph, tbb::flow::unlimited,
     [this](OrderedPtr ptr) {
         OrderedBlock zblock;
-        if(!available_zblocks.try_pop(zblock.block)) {
-            zblock.block = MAKE_SHARED_BLOCK_ASSIGNMENT(MAX_ZBLOCKSIZE);
+        try {
+            if(!available_zblocks.try_pop(zblock.block)) {
+                zblock.block = MAKE_SHARED_BLOCK_ASSIGNMENT(MAX_ZBLOCKSIZE);
+            }
+            typename tbb::enumerable_thread_specific<compressor>::reference cp_local = cp.local();
+            zblock.blocksize = cp_local.compress(zblock.block.get(), MAX_ZBLOCKSIZE,
+                                                 ptr.block, MAX_BLOCKSIZE,
+                                                 compress_level);
+            if(compressor::is_error(zblock.blocksize)) {
+                throw std::runtime_error("Compression error");
+            }
+        } catch(...) {
+            recycle_zblock(zblock.block);
+            throw;
         }
-        typename tbb::enumerable_thread_specific<compressor>::reference cp_local = cp.local();
-        zblock.blocksize = cp_local.compress(zblock.block.get(), MAX_ZBLOCKSIZE,
-                                                ptr.block, MAX_BLOCKSIZE,
-                                                compress_level);
         zblock.blocknumber = ptr.blocknumber;
         return zblock;
     }),
@@ -118,6 +136,14 @@ struct BlockCompressWriterMT {
         tbb::flow::make_edge(sequencer_node, writer_node);
     }
     private:
+    void recycle_block(const std::shared_ptr<char[]> & block) noexcept {
+        if(!block) return;
+        try { available_blocks.push(block); } catch(...) {}
+    }
+    void recycle_zblock(const std::shared_ptr<char[]> & block) noexcept {
+        if(!block) return;
+        try { available_zblocks.push(block); } catch(...) {}
+    }
     void write_and_update(const char * const inbuffer, const uint64_t len) {
         myFile.write(inbuffer, len);
         hp.update(inbuffer, len);
@@ -230,7 +256,7 @@ struct BlockCompressWriterMT {
     }
 };
 
-template <class stream_reader, class decompressor, class error_policy>
+template <class stream_reader, class decompressor, class error_policy, class byte_copier = QioByteCopier>
 struct BlockCompressReaderMT {
     stream_reader & myFile;
     tbb::enumerable_thread_specific<decompressor> dp;
@@ -397,17 +423,17 @@ struct BlockCompressReaderMT {
 
     void get_data(char * outbuffer, const uint64_t len) {
         if(current_blocksize - data_offset >= len) {
-            std::memcpy(outbuffer, current_block.get()+data_offset, len);
+            byte_copier::copy(outbuffer, current_block.get()+data_offset, len);
             data_offset += len;
         } else {
-            uint32_t bytes_accounted = current_blocksize - data_offset;
-            std::memcpy(outbuffer, current_block.get()+data_offset, bytes_accounted);
+            uint64_t bytes_accounted = current_blocksize - data_offset;
+            byte_copier::copy(outbuffer, current_block.get()+data_offset, bytes_accounted);
             while(len - bytes_accounted >= MAX_BLOCKSIZE) {
                 get_new_block();
                 if(current_blocksize != MAX_BLOCKSIZE) {
                     cleanup_and_throw("Corrupted block data");
                 }
-                std::memcpy(outbuffer + bytes_accounted, current_block.get(), MAX_BLOCKSIZE);
+                byte_copier::copy(outbuffer + bytes_accounted, current_block.get(), MAX_BLOCKSIZE);
                 bytes_accounted += MAX_BLOCKSIZE;
                 data_offset = MAX_BLOCKSIZE;
             }
@@ -416,7 +442,7 @@ struct BlockCompressReaderMT {
                 if(current_blocksize < len - bytes_accounted) {
                     cleanup_and_throw("Corrupted block data");
                 }
-                std::memcpy(outbuffer + bytes_accounted, current_block.get(), len - bytes_accounted);
+                byte_copier::copy(outbuffer + bytes_accounted, current_block.get(), len - bytes_accounted);
                 data_offset = len - bytes_accounted;
             }
         }

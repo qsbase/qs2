@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.18)
 
-project(qdata_cpp VERSION 1.0.0 LANGUAGES CXX)
+project(qdata_cpp VERSION 1.1.0 LANGUAGES CXX)
 
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the build type." FORCE)
@@ -8,6 +8,7 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND NOT CMAKE_CONFIGURATION_TYPES AN
 endif()
 
 option(QDATA_USE_TBB "Link oneTBB for multithreaded qdata/io consumers" ON)
+option(QDATA_BUILD_BENCHMARKS "Build qdata-cpp benchmarks" ${QDATA_USE_TBB})
 
 find_package(PkgConfig QUIET)
 
@@ -42,6 +43,11 @@ if(QDATA_USE_TBB)
         if(TARGET PkgConfig::TBB)
             set(QDATA_TBB_TARGET PkgConfig::TBB)
         endif()
+    endif()
+    if(NOT QDATA_TBB_TARGET)
+        message(FATAL_ERROR
+            "QDATA_USE_TBB=ON requires oneTBB 2021.1 or newer. Install oneTBB, "
+            "or configure with -DQDATA_USE_TBB=OFF for a single-threaded build.")
     endif()
 endif()
 
@@ -95,7 +101,6 @@ endif()
 
 option(QDATA_BUILD_EXAMPLES "Build qdata-cpp examples" ON)
 option(QDATA_BUILD_TESTS "Build qdata-cpp tests" ON)
-option(QDATA_BUILD_BENCHMARKS "Build qdata-cpp benchmarks" ON)
 
 if(QDATA_BUILD_EXAMPLES)
     add_executable(qdata_mtcars_roundtrip examples/mtcars_roundtrip.cpp)
@@ -103,7 +108,11 @@ if(QDATA_BUILD_EXAMPLES)
     target_link_libraries(qdata_mtcars_roundtrip PRIVATE qdata)
 endif()
 
-if(QDATA_BUILD_BENCHMARKS AND QDATA_TBB_TARGET)
+if(QDATA_BUILD_BENCHMARKS)
+    if(NOT QDATA_TBB_TARGET)
+        message(FATAL_ERROR
+            "QDATA_BUILD_BENCHMARKS=ON requires QDATA_USE_TBB=ON and oneTBB 2021.1 or newer.")
+    endif()
     add_executable(qdata_benchmark benchmarks/qdata_benchmark.cpp)
     target_compile_features(qdata_benchmark PRIVATE cxx_std_17)
     target_link_libraries(qdata_benchmark PRIVATE qdata)
@@ -126,6 +135,9 @@ if(QDATA_BUILD_TESTS)
 
     add_executable(qdata_buffer_api tests/cpp/buffer_api.cpp)
     target_compile_features(qdata_buffer_api PRIVATE cxx_std_17)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(qdata_buffer_api PRIVATE -fno-elide-constructors)
+    endif()
     target_link_libraries(qdata_buffer_api PRIVATE qdata)
     add_test(NAME qdata_buffer_api COMMAND qdata_buffer_api)
     set_tests_properties(qdata_buffer_api PROPERTIES TIMEOUT 120)
@@ -133,8 +145,17 @@ if(QDATA_BUILD_TESTS)
     add_executable(qdata_compat_limits tests/cpp/compat_limits.cpp)
     target_compile_features(qdata_compat_limits PRIVATE cxx_std_17)
     target_link_libraries(qdata_compat_limits PRIVATE qdata)
-    add_test(NAME qdata_compat_limits COMMAND qdata_compat_limits)
+    add_test(
+        NAME qdata_compat_limits
+        COMMAND qdata_compat_limits ${CMAKE_CURRENT_BINARY_DIR}/invalid_save_destination.qdata
+    )
     set_tests_properties(qdata_compat_limits PROPERTIES TIMEOUT 120)
+
+    add_executable(qdata_io_regressions tests/cpp/io_regressions.cpp)
+    target_compile_features(qdata_io_regressions PRIVATE cxx_std_17)
+    target_link_libraries(qdata_io_regressions PRIVATE qdata)
+    add_test(NAME qdata_io_regressions COMMAND qdata_io_regressions)
+    set_tests_properties(qdata_io_regressions PROPERTIES TIMEOUT 120)
 
     find_program(RSCRIPT_EXECUTABLE Rscript REQUIRED)
     execute_process(

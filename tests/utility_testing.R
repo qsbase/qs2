@@ -98,6 +98,14 @@ tmp_qs <- tempfile(fileext = ".qs2")
 obj <- as.raw(sample(0:255, size = 2 * 1024 * 1024, replace = TRUE))
 qs_save(obj, tmp_qs, shuffle = TRUE, compress_level = 1L)
 qd <- qx_dump(tmp_qs)
+stopifnot(identical(
+  names(qd),
+  c("format", "format_version", "compression", "shuffle", "file_endian",
+    "stored_hash", "computed_hash", "zblocks", "blocks", "block_shuffled")
+))
+stopifnot(is.list(qd$zblocks), all(vapply(qd$zblocks, is.raw, logical(1))))
+stopifnot(is.list(qd$blocks), all(vapply(qd$blocks, is.raw, logical(1))))
+stopifnot(is.integer(qd$block_shuffled))
 stopifnot(any(qd$block_shuffled == 1))
 recovered <- do.call(c, qd$blocks)
 stopifnot(identical(unserialize(recovered), obj))

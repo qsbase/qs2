@@ -13,7 +13,9 @@
 #include <iterator>
 #include <limits>
 #include <memory>
+#include <new>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -62,6 +64,7 @@ struct nil_value {};
 
 struct string_storage {
     std::vector<std::unique_ptr<char[]>> slabs;
+    std::size_t capacity_bytes = 0;
 };
 
 struct string_ref {
@@ -71,7 +74,7 @@ struct string_ref {
     bool is_na() const noexcept { return size == NA_STRING_LENGTH; }
 
     std::string_view view() const noexcept {
-        if(is_na()) {
+        if(is_na() || size == 0) {
             return {};
         }
         return std::string_view(data, size);
@@ -84,83 +87,114 @@ struct string_ref {
 
 namespace detail {
 
-inline constexpr std::size_t default_string_storage_bytes = 1U << 20;
+inline constexpr std::size_t min_multi_string_slice_bytes = 64;
+inline constexpr std::size_t max_initial_string_slice_bytes = 16U << 10;
+inline constexpr std::size_t max_regular_string_slice_bytes = 256U << 10;
+inline constexpr std::size_t string_slice_alignment = 64;
+inline constexpr std::size_t string_vector_length_scale = 4;
+
+inline std::size_t initial_string_slice_bytes(const std::size_t vector_length) noexcept {
+    if(vector_length <= 1) {
+        return 0;
+    }
+    if(vector_length >= max_initial_string_slice_bytes / string_vector_length_scale) {
+        return max_initial_string_slice_bytes;
+    }
+
+    const auto scaled = vector_length * string_vector_length_scale;
+    std::size_t rounded = 1;
+    while(rounded < scaled) {
+        rounded <<= 1;
+    }
+    return std::min(
+        std::max(min_multi_string_slice_bytes, rounded),
+        max_initial_string_slice_bytes
+    );
+}
+
+inline std::size_t round_up_string_slice_bytes(const std::size_t bytes) {
+    const auto remainder = bytes % string_slice_alignment;
+    if(remainder == 0) {
+        return bytes;
+    }
+    const auto padding = string_slice_alignment - remainder;
+    if(bytes > std::numeric_limits<std::size_t>::max() - padding) {
+        throw std::bad_alloc();
+    }
+    return bytes + padding;
+}
 
 class string_storage_builder {
 public:
-    explicit string_storage_builder(const std::size_t default_slab_bytes = default_string_storage_bytes) :
-    storage_(std::make_shared<string_storage>()),
-    default_slab_bytes_(default_slab_bytes),
-    current_slab_(),
-    used_(0),
-    capacity_(0) {}
+    string_storage_builder() : storage_(std::make_shared<string_storage>()) {}
+    string_storage_builder(const string_storage_builder&) = delete;
+    string_storage_builder& operator=(const string_storage_builder&) = delete;
+    string_storage_builder(string_storage_builder&&) = delete;
+    string_storage_builder& operator=(string_storage_builder&&) = delete;
 
-    string_ref append_string(const std::optional<std::string>& value) {
+    string_ref append_string(const std::optional<std::string>& value,
+                             const std::size_t vector_length_hint = 0) {
         if(!value) {
             return string_ref{};
         }
 
-        char header[1 + sizeof(std::uint32_t)] = {};
-        const auto string_length = static_cast<std::uint32_t>(value->size());
-        const auto header_size = encode_string_header(string_length, header);
-        const auto payload_size = value->size();
-        char* const record = allocate_record(header_size + payload_size);
-        std::memcpy(record, header, header_size);
-        if(payload_size > 0) {
-            std::memcpy(record + header_size, value->data(), payload_size);
+        if(value->size() >= static_cast<std::size_t>(NA_STRING_LENGTH)) {
+            throw std::length_error("string length collides with the NA string sentinel");
         }
-        return string_ref{record + header_size, string_length};
+        const auto string_length = static_cast<std::uint32_t>(value->size());
+        char* const payload = allocate_bytes(value->size(), vector_length_hint);
+        if(string_length > 0) {
+            std::memcpy(payload, value->data(), string_length);
+        }
+        return string_ref{payload, string_length};
     }
 
-    std::shared_ptr<const string_storage> freeze() {
-        finalize_current_slab();
+    char* allocate_bytes(const std::size_t bytes, const std::size_t vector_length_hint = 0) {
+        if(bytes == 0) {
+            return nullptr;
+        }
+
+        if(current_slab_ == nullptr || current_capacity_ - current_used_ < bytes) {
+            const auto initial = initial_string_slice_bytes(vector_length_hint);
+            const auto growth_base = std::min(
+                payload_bytes_ / 2,
+                max_regular_string_slice_bytes
+            );
+            const auto regular = std::min(
+                round_up_string_slice_bytes(std::max(initial, growth_base)),
+                max_regular_string_slice_bytes
+            );
+            const auto next_capacity = round_up_string_slice_bytes(std::max(regular, bytes));
+
+            if(storage_->capacity_bytes > std::numeric_limits<std::size_t>::max() - next_capacity) {
+                throw std::bad_alloc();
+            }
+            std::unique_ptr<char[]> next_slab(new char[next_capacity]);
+            storage_->slabs.push_back(std::move(next_slab));
+            storage_->capacity_bytes += next_capacity;
+            current_slab_ = storage_->slabs.back().get();
+            current_used_ = 0;
+            current_capacity_ = next_capacity;
+        }
+
+        char* const output = current_slab_ + current_used_;
+        current_used_ += bytes;
+        payload_bytes_ += bytes;
+        return output;
+    }
+
+    std::shared_ptr<const string_storage> storage() const noexcept {
         return storage_;
     }
 
+    std::shared_ptr<const string_storage> freeze() const noexcept { return storage(); }
+
 private:
     std::shared_ptr<string_storage> storage_;
-    std::size_t default_slab_bytes_;
-    std::unique_ptr<char[]> current_slab_;
-    std::size_t used_;
-    std::size_t capacity_;
-
-    static std::uint32_t encode_string_header(const std::uint32_t string_length,
-                                              char* const header_bytes) noexcept {
-        if(string_length < MAX_STRING_8_BIT_LENGTH) {
-            header_bytes[0] = static_cast<char>(string_length);
-            return 1;
-        }
-        if(string_length < MAX_STRING_16_BIT_LENGTH) {
-            header_bytes[0] = static_cast<char>(string_header_16);
-            const auto narrow = static_cast<std::uint16_t>(string_length);
-            std::memcpy(header_bytes + 1, &narrow, sizeof(narrow));
-            return 1 + static_cast<std::uint32_t>(sizeof(narrow));
-        }
-        header_bytes[0] = static_cast<char>(string_header_32);
-        std::memcpy(header_bytes + 1, &string_length, sizeof(string_length));
-        return 1 + static_cast<std::uint32_t>(sizeof(string_length));
-    }
-
-    char* allocate_record(const std::size_t bytes) {
-        if(!current_slab_ || capacity_ - used_ < bytes) {
-            finalize_current_slab();
-            capacity_ = std::max(default_slab_bytes_, bytes);
-            current_slab_ = std::make_unique<char[]>(capacity_);
-            used_ = 0;
-        }
-
-        char* const record = current_slab_.get() + used_;
-        used_ += bytes;
-        return record;
-    }
-
-    void finalize_current_slab() {
-        if(current_slab_) {
-            storage_->slabs.push_back(std::move(current_slab_));
-            used_ = 0;
-            capacity_ = 0;
-        }
-    }
+    char* current_slab_ = nullptr;
+    std::size_t current_used_ = 0;
+    std::size_t current_capacity_ = 0;
+    std::size_t payload_bytes_ = 0;
 };
 
 } // namespace detail
@@ -278,7 +312,7 @@ private:
         detail::string_storage_builder builder;
         records.reserve(values_in.size());
         for(const auto& value : values_in) {
-            records.push_back(builder.append_string(value));
+            records.push_back(builder.append_string(value, values_in.size()));
         }
         storage = builder.freeze();
     }

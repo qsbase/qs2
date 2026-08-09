@@ -225,7 +225,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // qx_dump
-List qx_dump(const std::string& file);
+SEXP qx_dump(const std::string& file);
 RcppExport SEXP _qs2_qx_dump(SEXP fileSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;

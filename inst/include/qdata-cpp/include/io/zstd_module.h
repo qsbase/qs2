@@ -17,9 +17,23 @@ static constexpr int HIGH_COMPRESS_LEVEL_THRESHOLD = 14;
 static constexpr double HIGH_HEURISTIC_THRESHOLD = -0.25;
 static constexpr double LOW_HEURISTIC_THRESHOLD = 0;
 
+inline ZSTD_CCtx * checked_zstd_compression_context(ZSTD_CCtx * const context) {
+    if(context == nullptr) {
+        throw std::runtime_error("Failed to create Zstd compression context");
+    }
+    return context;
+}
+
+inline ZSTD_DCtx * checked_zstd_decompression_context(ZSTD_DCtx * const context) {
+    if(context == nullptr) {
+        throw std::runtime_error("Failed to create Zstd decompression context");
+    }
+    return context;
+}
+
 struct ZstdCompressor {
     ZSTD_CCtx * cctx;
-    ZstdCompressor() : cctx(ZSTD_createCCtx()) {}
+    ZstdCompressor() : cctx(checked_zstd_compression_context(ZSTD_createCCtx())) {}
     ~ZstdCompressor() {
         ZSTD_freeCCtx(cctx);
     }
@@ -33,13 +47,16 @@ struct ZstdCompressor {
             return output;
         }
     }
+    static bool is_error(const uint32_t blocksize) { return blocksize == COMPRESSION_ERROR; }
 };
 
 struct ZstdShuffleCompressor {
 
-    ZSTD_CCtx * cctx;
     std::unique_ptr<char[]> shuffleblock;
-    ZstdShuffleCompressor() : cctx(ZSTD_createCCtx()), shuffleblock(MAKE_UNIQUE_BLOCK(MAX_BLOCKSIZE)) {}
+    ZSTD_CCtx * cctx;
+    ZstdShuffleCompressor() :
+    shuffleblock(MAKE_UNIQUE_BLOCK(MAX_BLOCKSIZE)),
+    cctx(checked_zstd_compression_context(ZSTD_createCCtx())) {}
     ~ZstdShuffleCompressor() {
         ZSTD_freeCCtx(cctx);
     }
@@ -140,7 +157,7 @@ struct ZstdShuffleCompressor {
 
 struct ZstdDecompressor {
     ZSTD_DCtx * dctx;
-    ZstdDecompressor() : dctx(ZSTD_createDCtx()) {}
+    ZstdDecompressor() : dctx(checked_zstd_decompression_context(ZSTD_createDCtx())) {}
     ~ZstdDecompressor() {
         ZSTD_freeDCtx(dctx);
     }
@@ -159,9 +176,11 @@ struct ZstdDecompressor {
 };
 
 struct ZstdShuffleDecompressor {
-    ZSTD_DCtx * dctx;
     std::unique_ptr<char[]> shuffleblock;
-    ZstdShuffleDecompressor() : dctx(ZSTD_createDCtx()), shuffleblock(MAKE_UNIQUE_BLOCK(MAX_BLOCKSIZE)) {}
+    ZSTD_DCtx * dctx;
+    ZstdShuffleDecompressor() :
+    shuffleblock(MAKE_UNIQUE_BLOCK(MAX_BLOCKSIZE)),
+    dctx(checked_zstd_decompression_context(ZSTD_createDCtx())) {}
     ~ZstdShuffleDecompressor() {
         ZSTD_freeDCtx(dctx);
     }

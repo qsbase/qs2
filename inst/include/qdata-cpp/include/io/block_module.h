@@ -43,6 +43,9 @@ struct BlockCompressWriter {
     void flush() {
         if(current_blocksize > 0) {
             uint32_t zsize = cp.compress(zblock.get(), MAX_ZBLOCKSIZE, block.get(), current_blocksize, compress_level);
+            if(compressor::is_error(zsize)) {
+                cleanup_and_throw("Compression error");
+            }
             write_and_update(zsize);
             // zsize contains metadata, filter it out to get size of write
             write_and_update(zblock.get(), zsize & (~BLOCK_METADATA));
@@ -78,6 +81,9 @@ struct BlockCompressWriter {
         if(current_blocksize >= MAX_BLOCKSIZE) { flush(); }
         while(len - current_pointer_consumed >= MAX_BLOCKSIZE) {
             uint32_t zsize = cp.compress(zblock.get(), MAX_ZBLOCKSIZE, inbuffer + current_pointer_consumed, MAX_BLOCKSIZE, compress_level);
+            if(compressor::is_error(zsize)) {
+                cleanup_and_throw("Compression error");
+            }
             write_and_update(zsize);
             // zsize contains metadata, filter it out to get size of write
             write_and_update(zblock.get(), zsize & (~BLOCK_METADATA));
@@ -114,7 +120,7 @@ struct BlockCompressWriter {
     }
 };
 
-template <class stream_reader, class decompressor, class error_policy>
+template <class stream_reader, class decompressor, class error_policy, class byte_copier = QioByteCopier>
 struct BlockCompressReader {
     stream_reader & myFile;
     decompressor dp;
@@ -207,12 +213,12 @@ struct BlockCompressReader {
     }
     void get_data(char * outbuffer, const uint64_t len) {
         if(current_blocksize - data_offset >= len) {
-            std::memcpy(outbuffer, block.get()+data_offset, len);
+            byte_copier::copy(outbuffer, block.get()+data_offset, len);
             data_offset += len;
         } else {
             // remainder of current block, may be zero
-            uint32_t bytes_accounted = current_blocksize - data_offset;
-            std::memcpy(outbuffer, block.get()+data_offset, bytes_accounted);
+            uint64_t bytes_accounted = current_blocksize - data_offset;
+            byte_copier::copy(outbuffer, block.get()+data_offset, bytes_accounted);
             while(len - bytes_accounted >= MAX_BLOCKSIZE) {
                 decompress_direct(outbuffer + bytes_accounted);
                 if(current_blocksize != MAX_BLOCKSIZE) {
@@ -226,7 +232,7 @@ struct BlockCompressReader {
                 if(current_blocksize < len - bytes_accounted) {
                     cleanup_and_throw("Corrupted block data");
                 }
-                std::memcpy(outbuffer + bytes_accounted, block.get(), len - bytes_accounted);
+                byte_copier::copy(outbuffer + bytes_accounted, block.get(), len - bytes_accounted);
                 data_offset = len - bytes_accounted;
                 // bytes_accounted += data_offset; // no need to update since we are returning
             }

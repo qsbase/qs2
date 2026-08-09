@@ -16,7 +16,7 @@ Description: Streamlines and accelerates the process of saving and loading R obj
 License: GPL-3
 LazyData: true
 Biarch: true
-Depends: R (>= 3.5.0)
+Depends: R (>= 3.6.0)
 Imports:
     Rcpp, RcppParallel (>= 6.1.1), stringfish (>= 0.18.0)
 LinkingTo: Rcpp, RcppParallel (>= 6.1.1)

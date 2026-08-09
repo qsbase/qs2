@@ -503,6 +503,8 @@ inline void save_erased(const std::string& file,
                         const bool shuffle,
                         const int nthreads,
                         const std::size_t max_depth) {
+    validate_write_arguments(compress_level);
+    checked_max_nesting_depth(max_depth);
     OfStreamWriter stream(file.c_str());
     if(!stream.isValid()) {
         throw std::runtime_error("failed to open file for writing: " + file);
@@ -520,6 +522,8 @@ inline void serialize_erased_impl(void* const buffer_ctx,
                                   const bool shuffle,
                                   const int nthreads,
                                   const std::size_t max_depth) {
+    validate_write_arguments(compress_level);
+    checked_max_nesting_depth(max_depth);
     erased_memory_writer stream(buffer_ctx, buffer_ops);
     write_qdata_header(stream, shuffle);
     const auto hash = write_qdata_object(stream, object_ptr, write_fn, compress_level, shuffle, nthreads, max_depth);

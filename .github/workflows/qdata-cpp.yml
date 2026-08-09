@@ -1,0 +1,150 @@
+name: qdata-cpp CI
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'man/**'
+      - 'vignettes/**'
+      - 'README.md'
+      - 'ChangeLog'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: ${{ matrix.platform }} (TBB ${{ matrix.qdata_use_tbb }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+        qdata_use_tbb:
+          - "ON"
+          - "OFF"
+        include:
+          - os: ubuntu-latest
+            platform: Ubuntu
+          - os: macos-latest
+            platform: macOS
+          - os: windows-latest
+            platform: Windows
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up MSVC developer command prompt
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build pkg-config libzstd-dev libtbb-dev libicu-dev
+
+      - name: Install macOS dependencies
+        if: runner.os == 'macOS'
+        run: |
+          brew update
+          brew install ninja pkg-config zstd tbb
+
+      - name: Expose Homebrew dependency prefixes
+        if: runner.os == 'macOS'
+        run: |
+          echo "PKG_CONFIG_PATH=$(brew --prefix zstd)/lib/pkgconfig:$(brew --prefix tbb)/lib/pkgconfig:$PKG_CONFIG_PATH" >> "$GITHUB_ENV"
+          echo "CMAKE_PREFIX_PATH=$(brew --prefix zstd);$(brew --prefix tbb)" >> "$GITHUB_ENV"
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - name: Set up vcpkg
+        if: runner.os == 'Windows'
+        run: |
+          git clone https://github.com/microsoft/vcpkg "$env:RUNNER_TEMP\vcpkg"
+          & "$env:RUNNER_TEMP\vcpkg\bootstrap-vcpkg.bat"
+          & "$env:RUNNER_TEMP\vcpkg\vcpkg.exe" install zstd tbb --triplet x64-windows
+          "VCPKG_ROOT=$env:RUNNER_TEMP\vcpkg" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "PATH=$env:RUNNER_TEMP\vcpkg\installed\x64-windows\bin;$env:RUNNER_TEMP\vcpkg\installed\x64-windows\debug\bin;$env:PATH" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Install R test packages on Linux
+        if: runner.os == 'Linux'
+        run: |
+          Rscript -e "install.packages(c('Rcpp', 'RcppParallel', 'stringfish', 'stringi', 'data.table', 'tibble'), Ncpus = max(1L, parallel::detectCores()))"
+
+      - name: Install R test packages on macOS and Windows
+        if: runner.os != 'Linux'
+        run: |
+          Rscript -e "install.packages(c('Rcpp', 'RcppParallel', 'stringfish', 'stringi', 'data.table', 'tibble'), repos = 'https://cloud.r-project.org', Ncpus = max(1L, parallel::detectCores()))"
+
+      # The C++ tests round trip against the R package, so install qs2 from this
+      # checkout to keep both sides on the same file format.
+      - name: Install qs2 from this checkout
+        if: runner.os != 'Windows'
+        run: R CMD INSTALL .
+
+      # PowerShell resolves a bare R to its Invoke-History alias.
+      - name: Install qs2 from this checkout on Windows
+        if: runner.os == 'Windows'
+        run: R.exe CMD INSTALL .
+
+      - name: Verify R test packages
+        run: |
+          Rscript -e "for (p in c('qs2', 'stringi', 'stringfish')) { cat('loading', p, '... '); library(p, character.only = TRUE); cat(format(packageVersion(p)), 'ok\n') }"
+
+      - name: Show Unix toolchain
+        if: runner.os != 'Windows'
+        run: |
+          cmake --version
+          ninja --version
+          ctest --version
+          c++ --version
+          Rscript --version
+
+      - name: Show Windows toolchain
+        if: runner.os == 'Windows'
+        run: |
+          cmake --version
+          ninja --version
+          ctest --version
+          cl
+          Rscript --version
+
+      - name: Configure on Unix
+        if: runner.os != 'Windows'
+        run: |
+          cmake -S inst/include/qdata-cpp -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DQDATA_USE_TBB=${{ matrix.qdata_use_tbb }} \
+            -DQDATA_BUILD_BENCHMARKS=${{ matrix.qdata_use_tbb }} \
+            -DQDATA_BUILD_EXAMPLES=ON \
+            -DQDATA_BUILD_TESTS=ON
+
+      - name: Configure on Windows
+        if: runner.os == 'Windows'
+        run: |
+          cmake -S inst/include/qdata-cpp -B build -G Ninja `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_C_COMPILER=cl `
+            -DCMAKE_CXX_COMPILER=cl `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows `
+            -DQDATA_USE_TBB=${{ matrix.qdata_use_tbb }} `
+            -DQDATA_BUILD_BENCHMARKS=${{ matrix.qdata_use_tbb }} `
+            -DQDATA_BUILD_EXAMPLES=ON `
+            -DQDATA_BUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure -V

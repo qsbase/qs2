@@ -29,6 +29,12 @@ static constexpr uint32_t MAX_ZBLOCKSIZE = static_cast<uint32_t>(ZSTD_COMPRESSBO
 static constexpr uint32_t BLOCK_METADATA = 0x80000000; // 10000000 00000000 00000000 00000000
 static constexpr uint32_t SHUFFLE_MASK = (1ULL << 31);
 
+struct QioByteCopier {
+    static void copy(void * const destination, const void * const source, const std::size_t size) {
+        std::memcpy(destination, source, size);
+    }
+};
+
 inline constexpr uint32_t compressed_block_size(const uint32_t zsize) noexcept {
     return zsize & (~BLOCK_METADATA);
 }

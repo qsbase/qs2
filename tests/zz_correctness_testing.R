@@ -178,6 +178,47 @@ restored <- withCallingHandlers(
 stopifnot(grepl("hash mismatch", warning_msg, fixed = TRUE))
 stopifnot(identical(restored, x))
 
+tmp_qd_hash <- tempfile(fileext = ".qd")
+qs2::qd_save(x, tmp_qd_hash, nthreads = 1)
+stored_hash <- qs2:::internal_compute_qx_hash(tmp_qd_hash)
+bad_hash <- if (stored_hash != "1") "1" else "2"
+qs2:::internal_write_qx_hash(tmp_qd_hash, bad_hash)
+warning_msg <- NULL
+restored <- withCallingHandlers(
+  qs2::qd_read(tmp_qd_hash, use_alt_rep = FALSE, validate_checksum = FALSE, nthreads = 1),
+  warning = function(w) {
+    warning_msg <<- conditionMessage(w)
+    invokeRestart("muffleWarning")
+  }
+)
+stopifnot(grepl("hash mismatch", warning_msg, fixed = TRUE))
+stopifnot(identical(restored, x))
+
+if (dir.exists("/proc/self/fd")) {
+  check_warning_fd_cleanup <- function() {
+    old_options <- options(warn = 2)
+    on.exit(options(old_options))
+    fd_count <- function() length(list.files("/proc/self/fd", all.files = TRUE))
+    before <- fd_count()
+    qs_errors <- vapply(seq_len(12L), function(i) {
+      inherits(try(qs2::qs_read(tmp, validate_checksum = FALSE, nthreads = 1), silent = TRUE), "try-error")
+    }, logical(1))
+    qd_errors <- vapply(seq_len(12L), function(i) {
+      inherits(try(qs2::qd_read(tmp_qd_hash, use_alt_rep = FALSE, validate_checksum = FALSE, nthreads = 1), silent = TRUE), "try-error")
+    }, logical(1))
+    stopifnot(all(qs_errors), all(qd_errors), identical(fd_count(), before))
+  }
+  check_warning_fd_cleanup()
+}
+
+scratch_strings <- c(strrep("a", 1024L * 1024L + 1L), "short")
+tmp_qd_scratch <- tempfile(fileext = ".qd")
+qs2::qd_save(scratch_strings, tmp_qd_scratch, nthreads = 1)
+stopifnot(identical(
+  qs2::qd_read(tmp_qd_scratch, use_alt_rep = FALSE, validate_checksum = TRUE, nthreads = 1),
+  scratch_strings
+))
+
 # qdata ALTREP option should warn and fall back to ordinary character vectors
 tmp <- tempfile(fileext = ".qd")
 x <- c("hello", NA_character_, "world")

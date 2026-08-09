@@ -79,8 +79,13 @@ struct QdataDeserializer {
 
     char * string_buffer(const size_t size) {
         if(size > string_scratch_size) {
-            size_t n = string_scratch_size == 0 ? 1024 : string_scratch_size;
-            while(n < size) n *= 2;
+            size_t n;
+            if(size > MAX_BLOCKSIZE) {
+                n = size;
+            } else {
+                n = string_scratch_size == 0 ? 1024 : string_scratch_size;
+                while(n < size) n *= 2;
+            }
             string_scratch.reset(new char[n]);
             string_scratch_size = n;
         }

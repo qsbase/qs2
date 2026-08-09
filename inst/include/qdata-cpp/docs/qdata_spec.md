@@ -100,11 +100,19 @@ real_vector rvec_moved = get<real_vector>(std::move(obj)); // moves the real_vec
 
 ### String Layout
 
-- `string_storage` owns fixed allocations used to back deserialized string data.
-- `string_vector::records` stores `payload_ptr + uint32_t size`, with `UINT32_MAX` as the `NA` sentinel.
+- `string_storage` owns adaptively sized byte slices used to back string data.
+- `string_storage::capacity_bytes` reports the total capacity of those slices.
+- `string_vector::records` stores `data_ptr + uint32_t size`, with `UINT32_MAX` as the `NA` sentinel.
 - `string_vector` is array-like; `operator[]` and iterators yield `string_ref`.
 - `string_ref` exposes `is_na()` and `view()`, and implicitly converts to `std::string_view`.
 - That implicit conversion is lossy for `NA` and yields an empty view.
+
+Each string vector produced by a read has its own storage arena. Small vectors
+use compact slices instead of reserving a large fixed allocation. Keeping one
+vector does not retain the backing data for sibling vectors. Copies of a
+`string_vector` share that vector's storage through its `shared_ptr`; a copied
+`string_ref` remains valid only while an owning `string_vector` or storage
+pointer is still alive.
 
 ## Compatibility Limits
 
@@ -112,21 +120,21 @@ qdata-cpp uses R-compatible size limits for serialized structure sizes:
 
 - vector and list lengths are limited to `R_XLEN_T_MAX` compatibility (`2^52`)
 - attribute counts are limited to `R_LEN_T_MAX` / `INT_MAX`
-- string payload lengths and attribute-name lengths are limited to `INT_MAX`
+- encoded string lengths and attribute-name lengths are limited to `INT_MAX`
 
-These limits apply on both read and write. Native qdata-cpp therefore stays within the same intended R-compatible format subset instead of emitting or materializing larger structures that the R layer would later reject.
+These limits apply on both read and write. qdata-cpp therefore stays within the same intended R-compatible format subset instead of emitting or materializing larger structures that the R layer would later reject.
 
 ## Nesting Limit
 
 qdata-cpp recursive read and write traversal uses a `max_depth` budget with a default of `512`.
 
-This applies to nested list structure and recursively nested attribute values. The library rejects deeper inputs or objects instead of relying on unbounded native call-stack recursion.
+This applies to nested list structure and recursively nested attribute values. The library rejects deeper inputs or objects instead of relying on unbounded C++ call-stack recursion.
 
 ## Attribute Semantics
 
-Native qdata-cpp preserves attributes structurally as `name + object` pairs on the native object model.
+qdata-cpp preserves attributes structurally as `name + object` pairs in its C++ object model.
 
-It does not try to emulate R's special attribute setter semantics for attributes such as `dim`, `dimnames`, `class`, `tsp`, `row.names`, or `names`. Those semantics are interpreted in the R layer, not in the native qdata-cpp object model.
+It does not try to emulate R's special attribute setter semantics for attributes such as `dim`, `dimnames`, `class`, `tsp`, `row.names`, or `names`. Those semantics are interpreted in the R layer, not in the qdata-cpp object model.
 
 ## Write-side traits
 
@@ -155,7 +163,7 @@ These are the traits a user specializes when a type serializes as a logical, int
 Each leaf traits family uses one of two access patterns:
 
 1. direct
-   - contiguous qdata-native memory
+   - contiguous memory in the matching qdata vector format
    - serialize directly from `data()`
 2. elementwise
    - use `get(i)`
@@ -358,6 +366,24 @@ struct ATTRSXP_traits<MyListWithAttrs> {
 
 `MyListWithAttrs` serializes as a qdata list because it is range-like. Its attributes serialize through `ATTRSXP_traits<MyListWithAttrs>`.
 `attr_names` and `attr_values` stay aligned by index.
+
+## Deferred vector-data lifetimes
+
+qdata writes object structure first and vector contents afterward. Accessors
+used during structural traversal must therefore return stable lvalue
+references. The library checks this requirement at compile time for:
+
+- `ATTRSXP_traits<T>::get(...)`
+- internal list `VECSXP_traits<T>::get(...)`
+- dereferencing a generic list's const iterator
+
+The referenced object and any leaf data it exposes must remain valid for the
+whole `save()` or `serialize()` call. Store `writable::own(...)` in the parent
+container and return a reference to it; do not return a newly constructed
+`writable` from an attribute getter or iterator proxy. Leaf element accessors,
+such as `INTSXP_traits<T>::get(...)`, may still return scalar values because
+the serializer consumes those values immediately while flushing the stable
+leaf object.
 
 ## Built-in write support
 

@@ -63,7 +63,7 @@ SEXP qd_deserialize(SEXP input, const bool use_alt_rep, const bool validate_chec
 
 // qx utility functions
 // [[Rcpp::export(rng = false)]]
-List qx_dump(const std::string& file);
+SEXP qx_dump(const std::string& file);
 // [[Rcpp::export(rng = false)]]
 std::string check_SIMD();
 // [[Rcpp::export(rng = false)]]
@@ -101,8 +101,6 @@ void qx_export_functions(DllInfo* dll);
 #define FILE_READ_ERR_MSG "For file " + file + ": " + "Failed to open for reading. Does the file exist? Do you have file permissions? Is the file name long? (>255 chars)"
 #define NO_HASH_ERR_MSG "For file " + file + ": hash not stored, save file may be incomplete."
 #define HASH_MISMATCH_ERR_MSG "For file " + file + ": hash mismatch, file may be corrupted."
-#define NO_HASH_WARN_MSG "For file " + file + ": hash not stored; object returned without checksum validation."
-#define HASH_MISMATCH_WARN_MSG "For file " + file + ": hash mismatch after read; object returned but data may be corrupted."
 #define IN_MEMORY_NO_HASH_ERR_MSG "Hash not stored, data may be incomplete."
 #define IN_MEMORY_HASH_MISMATCH_ERR_MSG "Hash mismatch, data may be corrupted."
 #define IN_MEMORY_NO_HASH_WARN_MSG "Hash not stored; object returned without checksum validation."
@@ -157,22 +155,20 @@ SEXP alloc_string(const std::string& value) {
     return qx_unwind_protect([&]() -> SEXP { return Rf_mkString(value.c_str()); });
 }
 
-// each block is released as it is converted, so a failure part way through
-// does not strand the whole dump
-SEXP blocks_to_list(std::vector<std::vector<unsigned char>>& blocks) {
-    return qx_unwind_protect([&]() -> SEXP {
-        SEXP out = PROTECT(Rf_allocVector(VECSXP, static_cast<R_xlen_t>(blocks.size())));
-        for (size_t i = 0; i < blocks.size(); ++i) {
-            SEXP block = Rf_allocVector(RAWSXP, static_cast<R_xlen_t>(blocks[i].size()));
-            SET_VECTOR_ELT(out, i, block);
-            if (!blocks[i].empty()) {
-                std::memcpy(RAW(block), blocks[i].data(), blocks[i].size());
-            }
-            std::vector<unsigned char>().swap(blocks[i]);
+// The caller protects the returned list immediately. Releasing each source
+// block after its copy avoids retaining both complete representations.
+SEXP blocks_to_list_unprotected(std::vector<std::vector<unsigned char>>& blocks) {
+    SEXP out = PROTECT(Rf_allocVector(VECSXP, static_cast<R_xlen_t>(blocks.size())));
+    for (size_t i = 0; i < blocks.size(); ++i) {
+        SEXP block = Rf_allocVector(RAWSXP, static_cast<R_xlen_t>(blocks[i].size()));
+        SET_VECTOR_ELT(out, i, block);
+        if (!blocks[i].empty()) {
+            std::memcpy(RAW(block), blocks[i].data(), blocks[i].size());
         }
-        UNPROTECT(1);
-        return out;
-    });
+        std::vector<unsigned char>().swap(blocks[i]);
+    }
+    UNPROTECT(1);
+    return out;
 }
 
 }  // namespace
@@ -278,47 +274,49 @@ SEXP qs_serialize(SEXP object, const int compress_level, const bool shuffle, int
 SEXP qs_read(const std::string& file, const bool validate_checksum, int nthreads) {
     nthreads = normalize_nthreads(nthreads);
 
-    IfStreamReader myFile(R_ExpandFileName(file.c_str()));
-    if (!myFile.isValid()) {
-        throw_error<StdErrorPolicy>(FILE_READ_ERR_MSG);
-    }
-
-    bool shuffle;
-    uint64_t stored_hash;
-    read_qs2_header(myFile, shuffle, stored_hash);
-    if (validate_checksum) {
-        if (stored_hash == 0) {
-            throw_error<StdErrorPolicy>(NO_HASH_ERR_MSG);
-        }
-        uint64_t computed_hash = read_qx_hash(myFile);
-        if (computed_hash != stored_hash) {
-            throw_error<StdErrorPolicy>(HASH_MISMATCH_ERR_MSG);
-        }
-    }
-
     SEXP output = R_NilValue;
     uint64_t runtime_hash = 0;
-    if (nthreads > 1) {
-#if RCPP_PARALLEL_USE_TBB != 0
-        tbb::global_control gc(tbb::global_control::parameter::max_allowed_parallelism, nthreads);
-        if (shuffle) {
-            DO_QS_READ(IfStreamReader, BlockCompressReaderMT, ZstdShuffleDecompressor, runtime_hash);
-        } else {
-            DO_QS_READ(IfStreamReader, BlockCompressReaderMT, ZstdDecompressor, runtime_hash);
+    uint64_t stored_hash = 0;
+    {
+        IfStreamReader myFile(R_ExpandFileName(file.c_str()));
+        if (!myFile.isValid()) {
+            throw_error<StdErrorPolicy>(FILE_READ_ERR_MSG);
         }
+
+        bool shuffle;
+        read_qs2_header(myFile, shuffle, stored_hash);
+        if (validate_checksum) {
+            if (stored_hash == 0) {
+                throw_error<StdErrorPolicy>(NO_HASH_ERR_MSG);
+            }
+            uint64_t computed_hash = read_qx_hash(myFile);
+            if (computed_hash != stored_hash) {
+                throw_error<StdErrorPolicy>(HASH_MISMATCH_ERR_MSG);
+            }
+        }
+
+        if (nthreads > 1) {
+#if RCPP_PARALLEL_USE_TBB != 0
+            tbb::global_control gc(tbb::global_control::parameter::max_allowed_parallelism, nthreads);
+            if (shuffle) {
+                DO_QS_READ(IfStreamReader, BlockCompressReaderMT, ZstdShuffleDecompressor, runtime_hash);
+            } else {
+                DO_QS_READ(IfStreamReader, BlockCompressReaderMT, ZstdDecompressor, runtime_hash);
+            }
 #endif
-    } else {
-        if (shuffle) {
-            DO_QS_READ(IfStreamReader, BlockCompressReader, ZstdShuffleDecompressor, runtime_hash);
         } else {
-            DO_QS_READ(IfStreamReader, BlockCompressReader, ZstdDecompressor, runtime_hash);
+            if (shuffle) {
+                DO_QS_READ(IfStreamReader, BlockCompressReader, ZstdShuffleDecompressor, runtime_hash);
+            } else {
+                DO_QS_READ(IfStreamReader, BlockCompressReader, ZstdDecompressor, runtime_hash);
+            }
         }
     }
     if (!validate_checksum) {
         if (stored_hash == 0) {
-            Rf_warning("%s", (NO_HASH_WARN_MSG).c_str());
+            Rf_warning("For file %s: hash not stored; object returned without checksum validation.", file.c_str());
         } else if (runtime_hash != stored_hash) {
-            Rf_warning("%s", (HASH_MISMATCH_WARN_MSG).c_str());
+            Rf_warning("For file %s: hash mismatch after read; object returned but data may be corrupted.", file.c_str());
         }
     }
     UNPROTECT(1);
@@ -483,46 +481,49 @@ SEXP qd_read(const std::string& file, const bool use_alt_rep, const bool validat
 
     warn_if_qdata_altrep_requested(use_alt_rep);
 
-    IfStreamReader myFile(R_ExpandFileName(file.c_str()));
-    if (!myFile.isValid()) {
-        throw std::runtime_error(FILE_READ_ERR_MSG);
-    }
-    bool shuffle;
-    uint64_t stored_hash;
-    read_qdata_header(myFile, shuffle, stored_hash);
-    if (validate_checksum) {
-        if (stored_hash == 0) {
-            throw std::runtime_error(NO_HASH_ERR_MSG);
-        }
-        uint64_t computed_hash = read_qx_hash(myFile);
-        if (computed_hash != stored_hash) {
-            throw_error<StdErrorPolicy>(HASH_MISMATCH_ERR_MSG);
-        }
-    }
-
     SEXP output = R_NilValue;
     uint64_t runtime_hash = 0;
-    if (nthreads > 1) {
-#if RCPP_PARALLEL_USE_TBB != 0
-        tbb::global_control gc(tbb::global_control::parameter::max_allowed_parallelism, nthreads);
-        if (shuffle) {
-            DO_QD_READ(IfStreamReader, BlockCompressReaderMT, ZstdShuffleDecompressor, runtime_hash);
-        } else {
-            DO_QD_READ(IfStreamReader, BlockCompressReaderMT, ZstdDecompressor, runtime_hash);
+    uint64_t stored_hash = 0;
+    {
+        IfStreamReader myFile(R_ExpandFileName(file.c_str()));
+        if (!myFile.isValid()) {
+            throw std::runtime_error(FILE_READ_ERR_MSG);
         }
+
+        bool shuffle;
+        read_qdata_header(myFile, shuffle, stored_hash);
+        if (validate_checksum) {
+            if (stored_hash == 0) {
+                throw std::runtime_error(NO_HASH_ERR_MSG);
+            }
+            uint64_t computed_hash = read_qx_hash(myFile);
+            if (computed_hash != stored_hash) {
+                throw_error<StdErrorPolicy>(HASH_MISMATCH_ERR_MSG);
+            }
+        }
+
+        if (nthreads > 1) {
+#if RCPP_PARALLEL_USE_TBB != 0
+            tbb::global_control gc(tbb::global_control::parameter::max_allowed_parallelism, nthreads);
+            if (shuffle) {
+                DO_QD_READ(IfStreamReader, BlockCompressReaderMT, ZstdShuffleDecompressor, runtime_hash);
+            } else {
+                DO_QD_READ(IfStreamReader, BlockCompressReaderMT, ZstdDecompressor, runtime_hash);
+            }
 #endif
-    } else {
-        if (shuffle) {
-            DO_QD_READ(IfStreamReader, BlockCompressReader, ZstdShuffleDecompressor, runtime_hash);
         } else {
-            DO_QD_READ(IfStreamReader, BlockCompressReader, ZstdDecompressor, runtime_hash);
+            if (shuffle) {
+                DO_QD_READ(IfStreamReader, BlockCompressReader, ZstdShuffleDecompressor, runtime_hash);
+            } else {
+                DO_QD_READ(IfStreamReader, BlockCompressReader, ZstdDecompressor, runtime_hash);
+            }
         }
     }
     if (!validate_checksum) {
         if (stored_hash == 0) {
-            Rf_warning("%s", (NO_HASH_WARN_MSG).c_str());
+            Rf_warning("For file %s: hash not stored; object returned without checksum validation.", file.c_str());
         } else if (runtime_hash != stored_hash) {
-            Rf_warning("%s", (HASH_MISMATCH_WARN_MSG).c_str());
+            Rf_warning("For file %s: hash mismatch after read; object returned but data may be corrupted.", file.c_str());
         }
     }
     UNPROTECT(1);
@@ -587,7 +588,7 @@ SEXP qd_deserialize(SEXP input, const bool use_alt_rep, const bool validate_chec
 ///////////////////////////////////////////////////////////////////////////////
 /* qx utility functions */
 
-List qx_dump(const std::string& file) {
+SEXP qx_dump(const std::string& file) {
     IfStreamReader myFile(R_ExpandFileName(file.c_str()));
     if (!myFile.isValid()) {
         throw std::runtime_error(FILE_READ_ERR_MSG);
@@ -601,20 +602,44 @@ List qx_dump(const std::string& file) {
         output = qx_dump_impl<IfStreamReader, ZstdDecompressor>(myFile);
     }
 
-    RObject zblocks = blocks_to_list(std::get<0>(output));
-    RObject blocks = blocks_to_list(std::get<1>(output));
-    return List::create(
-        _["format"] = header_info.format,
-        _["format_version"] = header_info.format_version,
-        _["compression"] = header_info.compression,
-        _["shuffle"] = header_info.shuffle,
-        _["file_endian"] = header_info.file_endian,
-        _["stored_hash"] = header_info.stored_hash,
-        _["computed_hash"] = std::get<3>(output),
-        _["zblocks"] = zblocks,
-        _["blocks"] = blocks,
-        _["block_shuffled"] = std::get<2>(output)
-    );
+    return qx_unwind_protect([&]() -> SEXP {
+        constexpr int output_size = 10;
+        const char* output_names[output_size] = {
+            "format", "format_version", "compression", "shuffle", "file_endian",
+            "stored_hash", "computed_hash", "zblocks", "blocks", "block_shuffled"
+        };
+        SEXP result = PROTECT(Rf_allocVector(VECSXP, output_size));
+        SEXP names = PROTECT(Rf_allocVector(STRSXP, output_size));
+        for (int i = 0; i < output_size; ++i) {
+            SET_STRING_ELT(names, i, Rf_mkChar(output_names[i]));
+        }
+
+        SET_VECTOR_ELT(result, 0, Rf_mkString(header_info.format.c_str()));
+        SET_VECTOR_ELT(result, 1, Rf_ScalarInteger(header_info.format_version));
+        SET_VECTOR_ELT(result, 2, Rf_mkString(header_info.compression.c_str()));
+        SET_VECTOR_ELT(result, 3, Rf_ScalarInteger(header_info.shuffle));
+        SET_VECTOR_ELT(result, 4, Rf_mkString(header_info.file_endian.c_str()));
+        SET_VECTOR_ELT(result, 5, Rf_mkString(header_info.stored_hash.c_str()));
+        SET_VECTOR_ELT(result, 6, Rf_mkString(std::get<3>(output).c_str()));
+
+        SEXP zblocks = PROTECT(blocks_to_list_unprotected(std::get<0>(output)));
+        SET_VECTOR_ELT(result, 7, zblocks);
+        UNPROTECT(1);
+        SEXP blocks = PROTECT(blocks_to_list_unprotected(std::get<1>(output)));
+        SET_VECTOR_ELT(result, 8, blocks);
+        UNPROTECT(1);
+
+        const std::vector<int>& block_shuffled = std::get<2>(output);
+        SEXP shuffled = Rf_allocVector(INTSXP, static_cast<R_xlen_t>(block_shuffled.size()));
+        SET_VECTOR_ELT(result, 9, shuffled);
+        if (!block_shuffled.empty()) {
+            std::memcpy(INTEGER(shuffled), block_shuffled.data(), block_shuffled.size() * sizeof(int));
+        }
+
+        Rf_setAttrib(result, R_NamesSymbol, names);
+        UNPROTECT(2);
+        return result;
+    });
 }
 
 std::string check_SIMD() {
