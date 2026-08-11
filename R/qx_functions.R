@@ -288,8 +288,9 @@ NULL
 #' @usage zstd_compress_bound(size)
 #'
 #' @param size A single non-negative whole number. Values larger than
-#'   `2^31 - 1` are allowed as long as they can still be represented exactly by
-#'   an R numeric value.
+#'   `2^31 - 1` are allowed, up to `2^53 - 1`. Beyond that an R numeric no
+#'   longer identifies a single integer, since `2^53` and `2^53 + 1` are the
+#'   same double.
 #'
 #' @return A numeric scalar giving the maximum compressed size.
 #' @export

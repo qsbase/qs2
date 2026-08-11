@@ -89,7 +89,7 @@ inline unsigned int basE91_decode_value(const unsigned char byte) {
 // 	b->val = -1;
 // }
 
-size_t basE91_encode_internal(struct basE91 *b, const void *i, size_t len, void *o, size_t olen)
+inline size_t basE91_encode_internal(struct basE91 *b, const void *i, size_t len, void *o, size_t olen)
 {
 	const unsigned char *ib = reinterpret_cast<const unsigned char*>(i);
 	unsigned char *ob = reinterpret_cast<unsigned char*>(o);
@@ -120,7 +120,7 @@ size_t basE91_encode_internal(struct basE91 *b, const void *i, size_t len, void 
 
 /* process remaining bits from bit queue; write up to 2 bytes */
 
-size_t basE91_encode_end(struct basE91 *b, void *o, size_t olen)
+inline size_t basE91_encode_end(struct basE91 *b, void *o, size_t olen)
 {
 	unsigned char *ob = reinterpret_cast<unsigned char*>(o);
 	size_t n = 0;
@@ -139,7 +139,7 @@ size_t basE91_encode_end(struct basE91 *b, void *o, size_t olen)
 	return n;
 }
 
-size_t basE91_decode_internal(struct basE91 *b, const void *i, size_t len, void *o, size_t olen)
+inline size_t basE91_decode_internal(struct basE91 *b, const void *i, size_t len, void *o, size_t olen)
 {
   const unsigned char *ib = reinterpret_cast<const unsigned char*>(i);
   unsigned char *ob = reinterpret_cast<unsigned char*>(o);
@@ -169,7 +169,7 @@ size_t basE91_decode_internal(struct basE91 *b, const void *i, size_t len, void 
 
 /* process remaining bits; write at most 1 byte */
 
-size_t basE91_decode_end(struct basE91 *b, void *o, size_t olen)
+inline size_t basE91_decode_end(struct basE91 *b, void *o, size_t olen)
 {
   unsigned char *ob = reinterpret_cast<unsigned char*>(o);
 	size_t n = 0;
@@ -185,13 +185,13 @@ size_t basE91_decode_end(struct basE91 *b, void *o, size_t olen)
 }
 
 // calculate bounds so we don't segfault
-size_t basE91_encode_bound(size_t len) {
+inline size_t basE91_encode_bound(size_t len) {
   size_t bound = len / 13 * 16;
   bound       += (len % 13 > 0) ? 16 : 0;
   return bound;
 }
 
-size_t basE91_decode_bound(size_t len) {
+inline size_t basE91_decode_bound(size_t len) {
   size_t bound = len / 16 * 14;
   bound       += (len % 16 > 0) ? 14 : 0;
   return bound;

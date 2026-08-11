@@ -259,7 +259,7 @@ env_messages <- capture_qdata_messages(
   )
 )
 stopifnot(sum(grepl("Objects of type environment", env_messages, fixed = TRUE)) == 1L)
-stopifnot(any(grepl("Repeated warnings suppressed", env_messages, fixed = TRUE)))
+stopifnot(any(grepl("suppressed for the session", env_messages, fixed = TRUE)))
 
 tmp <- tempfile(fileext = ".qd")
 env_messages <- capture_qdata_messages(
@@ -283,7 +283,7 @@ closure_messages <- capture_qdata_messages(
   )
 )
 stopifnot(sum(grepl("Objects of type closure", closure_messages, fixed = TRUE)) == 1L)
-stopifnot(any(grepl("Repeated warnings suppressed", closure_messages, fixed = TRUE)))
+stopifnot(any(grepl("suppressed for the session", closure_messages, fixed = TRUE)))
 
 ################################################################################################
 for(format in c("qs2_memory", "qdata_memory", "qdata", "qs2")) {

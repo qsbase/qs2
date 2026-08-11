@@ -28,7 +28,9 @@ qs_savem <- function (...) {
   unnamed <- which(names(objects) == "")
   unnamed_list <- objects[unnamed]
   names(unnamed_list) <- sapply(unnamed, function(i) parse(text = full_call[[i]]))
-  named_list <- objects[-unnamed]
+  # x[-integer(0)] drops everything rather than nothing, which would silently
+  # discard the named arguments (including `file`) when nothing is unnamed
+  named_list <- if (length(unnamed)) objects[-unnamed] else objects
   named_list[["object"]] <- unnamed_list
   do.call(qs_save,named_list)
 }

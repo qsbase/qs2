@@ -1,5 +1,8 @@
 #include <RcppParallel.h>
+#include <cerrno>
 #include <cmath>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <cstdint>
 #include <limits>
@@ -29,6 +32,7 @@
 #include "qs_deserializer.h"
 #include "qs_serializer.h"
 #include "qx_nthreads_guard.h"
+#include "qx_string_arg.h"
 #include "qx_unwind_protect.h"
 #include "qx_dump.h"
 #include "zstd_file_functions.h"
@@ -39,37 +43,35 @@ using MemoryWriter = qdata::detail::memory_writer<MemoryBuffer>;
 
 // qs2 format functions
 // [[Rcpp::export(rng = false, invisible = true, signature = {object, file, compress_level = qopt("compress_level"), shuffle = qopt("shuffle"), nthreads = qopt("nthreads")})]]
-SEXP qs_save(SEXP object, const std::string& file, const int compress_level, const bool shuffle, int nthreads);
+SEXP qs_save(SEXP object, SEXP file, const int compress_level, const bool shuffle, int nthreads);
 MemoryBuffer qs_serialize_impl(SEXP object, const int compress_level, const bool shuffle, int nthreads);
 // [[Rcpp::export(rng = false, invisible = true, signature = {object, compress_level = qopt("compress_level"), shuffle = qopt("shuffle"), nthreads = qopt("nthreads")})]]
 SEXP qs_serialize(SEXP object, const int compress_level, const bool shuffle, int nthreads);
 // [[Rcpp::export(rng = false, signature = {file, validate_checksum = qopt("validate_checksum"), nthreads = qopt("nthreads")})]]
-SEXP qs_read(const std::string& file, const bool validate_checksum, int nthreads);
+SEXP qs_read(SEXP file, const bool validate_checksum, int nthreads);
 SEXP qs_deserialize_impl(MemoryReader& myFile, const bool validate_checksum, int nthreads);
 // [[Rcpp::export(rng = false, signature = {input, validate_checksum = qopt("validate_checksum"), nthreads = qopt("nthreads")})]]
 SEXP qs_deserialize(SEXP input, const bool validate_checksum, int nthreads);
 
 // qdata format functions
 // [[Rcpp::export(rng = false, invisible = true, signature = {object, file, compress_level = qopt("compress_level"), shuffle = qopt("shuffle"), warn_unsupported_types = qopt("warn_unsupported_types"), nthreads = qopt("nthreads")})]]
-SEXP qd_save(SEXP object, const std::string& file, const int compress_level, const bool shuffle, const bool warn_unsupported_types, int nthreads);
+SEXP qd_save(SEXP object, SEXP file, const int compress_level, const bool shuffle, const bool warn_unsupported_types, int nthreads);
 MemoryBuffer qd_serialize_impl(SEXP object, const int compress_level, const bool shuffle, const bool warn_unsupported_types, int nthreads);
 // [[Rcpp::export(rng = false, signature = {object, compress_level = qopt("compress_level"), shuffle = qopt("shuffle"), warn_unsupported_types = qopt("warn_unsupported_types"), nthreads = qopt("nthreads")})]]
 SEXP qd_serialize(SEXP object, const int compress_level, const bool shuffle, const bool warn_unsupported_types, int nthreads);
 // [[Rcpp::export(rng = false, signature = {file, use_alt_rep = qopt("use_alt_rep"), validate_checksum = qopt("validate_checksum"), nthreads = qopt("nthreads")})]]
-SEXP qd_read(const std::string& file, const bool use_alt_rep, const bool validate_checksum, int nthreads);
+SEXP qd_read(SEXP file, const bool use_alt_rep, const bool validate_checksum, int nthreads);
 SEXP qd_deserialize_impl(MemoryReader& myFile, const bool validate_checksum, int nthreads);
 // [[Rcpp::export(rng = false, signature = {input, use_alt_rep = qopt("use_alt_rep"), validate_checksum = qopt("validate_checksum"), nthreads = qopt("nthreads")})]]
 SEXP qd_deserialize(SEXP input, const bool use_alt_rep, const bool validate_checksum, int nthreads);
 
 // qx utility functions
 // [[Rcpp::export(rng = false)]]
-SEXP qx_dump(const std::string& file);
+SEXP qx_dump(SEXP file);
 // [[Rcpp::export(rng = false)]]
-std::string check_SIMD();
+SEXP check_SIMD();
 // [[Rcpp::export(rng = false)]]
 bool check_TBB();
-// [[Rcpp::export(rng = false)]]
-int internal_is_utf8_locale(int size);
 
 // standalone utility functions
 // [[Rcpp::export(rng = false, signature = {data, compress_level = qopt("compress_level")})]]
@@ -83,24 +85,24 @@ SEXP blosc_shuffle_raw(SEXP const data, int bytesofsize);
 // [[Rcpp::export(rng = false)]]
 SEXP blosc_unshuffle_raw(SEXP const data, int bytesofsize);
 // [[Rcpp::export(rng = false)]]
-std::string xxhash_raw(SEXP const data);
+SEXP xxhash_raw(SEXP const data);
 // [[Rcpp::export(rng = false)]]
 SEXP base85_encode(const RawVector& rawdata);
 // [[Rcpp::export(rng = false)]]
-RawVector base85_decode(const std::string& encoded_string);
+RawVector base85_decode(SEXP encoded_string);
 // [[Rcpp::export(rng = false)]]
 SEXP c_base91_encode(const RawVector& rawdata);
 // [[Rcpp::export(rng = false)]]
-SEXP c_base91_decode(const std::string& encoded_string);
+SEXP c_base91_decode(SEXP encoded_string);
 
 // exported functions
 void qx_export_functions(DllInfo* dll);
 
 #define COMPRESS_LEVEL_ERR_MSG "compress_level must be an integer between " + std::to_string(ZSTD_minCLevel()) + " and " + std::to_string(ZSTD_maxCLevel()) + "."
-#define FILE_SAVE_ERR_MSG "For file " + file + ": " + "Failed to open for writing. Does the directory exist? Do you have file permissions? Is the file name long? (>255 chars)"
-#define FILE_READ_ERR_MSG "For file " + file + ": " + "Failed to open for reading. Does the file exist? Do you have file permissions? Is the file name long? (>255 chars)"
-#define NO_HASH_ERR_MSG "For file " + file + ": hash not stored, save file may be incomplete."
-#define HASH_MISMATCH_ERR_MSG "For file " + file + ": hash mismatch, file may be corrupted."
+#define FILE_SAVE_ERR_MSG (std::string("For file ") + file_path + ": " + "Failed to open for writing. Does the directory exist? Do you have file permissions? Is the file name long? (>255 chars)")
+#define FILE_READ_ERR_MSG (std::string("For file ") + file_path + ": " + "Failed to open for reading. Does the file exist? Do you have file permissions? Is the file name long? (>255 chars)")
+#define NO_HASH_ERR_MSG (std::string("For file ") + file_path + ": hash not stored, save file may be incomplete.")
+#define HASH_MISMATCH_ERR_MSG (std::string("For file ") + file_path + ": hash mismatch, file may be corrupted.")
 #define IN_MEMORY_NO_HASH_ERR_MSG "Hash not stored, data may be incomplete."
 #define IN_MEMORY_HASH_MISMATCH_ERR_MSG "Hash mismatch, data may be corrupted."
 #define IN_MEMORY_NO_HASH_WARN_MSG "Hash not stored; object returned without checksum validation."
@@ -111,6 +113,10 @@ void qx_export_functions(DllInfo* dll);
 namespace {
 
 constexpr double MAX_EXACT_R_NUMERIC = 9007199254740991.0;
+
+// see qx_string_arg.h for why string arguments are taken as SEXP
+using ::qs2_as_single_string;
+using ::qs2_single_string_length;
 
 size_t parse_nonnegative_whole_size(SEXP const size, const char* arg_name) {
     if (Rf_xlength(size) != 1) {
@@ -127,8 +133,13 @@ size_t parse_nonnegative_whole_size(SEXP const size, const char* arg_name) {
 
     if (TYPEOF(size) == REALSXP) {
         double value = REAL(size)[0];
-        if (!R_finite(value) || value < 0 || value > MAX_EXACT_R_NUMERIC || value != std::floor(value)) {
+        if (!R_finite(value) || value < 0 || value != std::floor(value)) {
             throw std::runtime_error(std::string(arg_name) + " must be a single non-negative whole number");
+        }
+        // 2^53 itself is exactly representable, but 2^53 + 1 is not, so above
+        // this bound a double no longer identifies a single integer
+        if (value > MAX_EXACT_R_NUMERIC) {
+            throw std::runtime_error(std::string(arg_name) + " exceeds 2^53 - 1, the largest integer an R numeric can represent unambiguously");
         }
         if (value > static_cast<double>(std::numeric_limits<size_t>::max())) {
             throw std::runtime_error(std::string(arg_name) + " is too large for this platform");
@@ -151,8 +162,10 @@ SEXP alloc_raw(const std::vector<unsigned char>& bytes) {
     });
 }
 
-SEXP alloc_string(const std::string& value) {
-    return qx_unwind_protect([&]() -> SEXP { return Rf_mkString(value.c_str()); });
+// Takes const char* so callers need not materialize a std::string that the
+// allocation below could jump past.
+SEXP alloc_string(const char* const value) {
+    return qx_unwind_protect([&]() -> SEXP { return Rf_mkString(value); });
 }
 
 // The caller protects the returned list immediately. Releasing each source
@@ -188,14 +201,15 @@ SEXP blocks_to_list_unprotected(std::vector<std::vector<unsigned char>>& blocks)
         },                                                                                                                 \
         "Object save interrupted, file may be incomplete");
 
-SEXP qs_save(SEXP object, const std::string& file, const int compress_level, const bool shuffle, int nthreads) {
+SEXP qs_save(SEXP object, SEXP file, const int compress_level, const bool shuffle, int nthreads) {
+    const char* const file_path = qs2_as_single_string(file, "file");
     nthreads = normalize_nthreads(nthreads);
 
     if (compress_level > ZSTD_maxCLevel() || compress_level < ZSTD_minCLevel()) {
         throw_error<StdErrorPolicy>(COMPRESS_LEVEL_ERR_MSG);
     }
 
-    OfStreamWriter myFile(R_ExpandFileName(file.c_str()));
+    OfStreamWriter myFile(R_ExpandFileName(file_path));
     if (!myFile.isValid()) {
         throw_error<StdErrorPolicy>(FILE_SAVE_ERR_MSG);
     }
@@ -271,14 +285,15 @@ SEXP qs_serialize(SEXP object, const int compress_level, const bool shuffle, int
         return protected_output;                                                                                              \
     }));
 
-SEXP qs_read(const std::string& file, const bool validate_checksum, int nthreads) {
+SEXP qs_read(SEXP file, const bool validate_checksum, int nthreads) {
+    const char* const file_path = qs2_as_single_string(file, "file");
     nthreads = normalize_nthreads(nthreads);
 
     SEXP output = R_NilValue;
     uint64_t runtime_hash = 0;
     uint64_t stored_hash = 0;
     {
-        IfStreamReader myFile(R_ExpandFileName(file.c_str()));
+        IfStreamReader myFile(R_ExpandFileName(file_path));
         if (!myFile.isValid()) {
             throw_error<StdErrorPolicy>(FILE_READ_ERR_MSG);
         }
@@ -314,9 +329,9 @@ SEXP qs_read(const std::string& file, const bool validate_checksum, int nthreads
     }
     if (!validate_checksum) {
         if (stored_hash == 0) {
-            Rf_warning("For file %s: hash not stored; object returned without checksum validation.", file.c_str());
+            Rf_warning("For file %s: hash not stored; object returned without checksum validation.", file_path);
         } else if (runtime_hash != stored_hash) {
-            Rf_warning("For file %s: hash mismatch after read; object returned but data may be corrupted.", file.c_str());
+            Rf_warning("For file %s: hash mismatch after read; object returned but data may be corrupted.", file_path);
         }
     }
     UNPROTECT(1);
@@ -398,14 +413,15 @@ inline void warn_if_qdata_altrep_requested(const bool use_alt_rep) {
 ///////////////////////////////////////////////////////////////////////////////
 /* qdata format functions */
 
-SEXP qd_save(SEXP object, const std::string& file, const int compress_level, const bool shuffle, const bool warn_unsupported_types, int nthreads) {
+SEXP qd_save(SEXP object, SEXP file, const int compress_level, const bool shuffle, const bool warn_unsupported_types, int nthreads) {
+    const char* const file_path = qs2_as_single_string(file, "file");
     nthreads = normalize_nthreads(nthreads);
 
     if (compress_level > ZSTD_maxCLevel() || compress_level < ZSTD_minCLevel()) {
         throw_error<StdErrorPolicy>(COMPRESS_LEVEL_ERR_MSG);
     }
 
-    OfStreamWriter myFile(R_ExpandFileName(file.c_str()));
+    OfStreamWriter myFile(R_ExpandFileName(file_path));
     if (!myFile.isValid()) {
         throw std::runtime_error(FILE_SAVE_ERR_MSG);
     }
@@ -476,7 +492,8 @@ SEXP qd_serialize(SEXP object, const int compress_level, const bool shuffle, con
         return deserializer.read_root_object(_RUNTIME_HASH_);                                                                \
     }));
 
-SEXP qd_read(const std::string& file, const bool use_alt_rep, const bool validate_checksum, int nthreads) {
+SEXP qd_read(SEXP file, const bool use_alt_rep, const bool validate_checksum, int nthreads) {
+    const char* const file_path = qs2_as_single_string(file, "file");
     nthreads = normalize_nthreads(nthreads);
 
     warn_if_qdata_altrep_requested(use_alt_rep);
@@ -485,7 +502,7 @@ SEXP qd_read(const std::string& file, const bool use_alt_rep, const bool validat
     uint64_t runtime_hash = 0;
     uint64_t stored_hash = 0;
     {
-        IfStreamReader myFile(R_ExpandFileName(file.c_str()));
+        IfStreamReader myFile(R_ExpandFileName(file_path));
         if (!myFile.isValid()) {
             throw std::runtime_error(FILE_READ_ERR_MSG);
         }
@@ -521,9 +538,9 @@ SEXP qd_read(const std::string& file, const bool use_alt_rep, const bool validat
     }
     if (!validate_checksum) {
         if (stored_hash == 0) {
-            Rf_warning("For file %s: hash not stored; object returned without checksum validation.", file.c_str());
+            Rf_warning("For file %s: hash not stored; object returned without checksum validation.", file_path);
         } else if (runtime_hash != stored_hash) {
-            Rf_warning("For file %s: hash mismatch after read; object returned but data may be corrupted.", file.c_str());
+            Rf_warning("For file %s: hash mismatch after read; object returned but data may be corrupted.", file_path);
         }
     }
     UNPROTECT(1);
@@ -588,8 +605,9 @@ SEXP qd_deserialize(SEXP input, const bool use_alt_rep, const bool validate_chec
 ///////////////////////////////////////////////////////////////////////////////
 /* qx utility functions */
 
-SEXP qx_dump(const std::string& file) {
-    IfStreamReader myFile(R_ExpandFileName(file.c_str()));
+SEXP qx_dump(SEXP file) {
+    const char* const file_path = qs2_as_single_string(file, "file");
+    IfStreamReader myFile(R_ExpandFileName(file_path));
     if (!myFile.isValid()) {
         throw std::runtime_error(FILE_READ_ERR_MSG);
     }
@@ -642,13 +660,16 @@ SEXP qx_dump(const std::string& file) {
     });
 }
 
-std::string check_SIMD() {
+// Returns SEXP rather than std::string for the same reason the arguments take
+// SEXP: Rcpp::wrap() of a returned std::string allocates, and an allocation
+// failure there would jump past the temporary's destructor.
+SEXP check_SIMD() {
 #if defined(__AVX2__)
-    return "AVX2";
+    return alloc_string("AVX2");
 #elif defined(__SSE2__)
-    return "SSE2";
+    return alloc_string("SSE2");
 #else
-    return "no SIMD";
+    return alloc_string("no SIMD");
 #endif
 }
 
@@ -656,38 +677,44 @@ bool check_TBB() {
     return RCPP_PARALLEL_USE_TBB;
 }
 
-int internal_is_utf8_locale(const int size) {
-    return IS_UTF8_LOCALE;
-}
-
 // [[Rcpp::export(rng = false)]]
-std::string internal_compute_qx_hash(const std::string& file) {
-    IfStreamReader myFile(R_ExpandFileName(file.c_str()));
-    if (!myFile.isValid()) {
-        throw_error<StdErrorPolicy>(FILE_READ_ERR_MSG);
+SEXP internal_compute_qx_hash(SEXP file) {
+    const char* const file_path = qs2_as_single_string(file, "file");
+    uint64_t hash;
+    {
+        IfStreamReader myFile(R_ExpandFileName(file_path));
+        if (!myFile.isValid()) {
+            throw_error<StdErrorPolicy>(FILE_READ_ERR_MSG);
+        }
+        myFile.seekg(24);
+        hash = read_qx_hash(myFile);
     }
-    myFile.seekg(24);
-    return std::to_string(read_qx_hash(myFile));
+    char digest[32];
+    std::snprintf(digest, sizeof(digest), "%llu", static_cast<unsigned long long>(hash));
+    return alloc_string(digest);
 }
 
 // [[Rcpp::export(rng = false, invisible = true)]]
-SEXP internal_write_qx_hash(const std::string& file, const std::string& hash_string) {
-    if (hash_string.empty()) {
+SEXP internal_write_qx_hash(SEXP file, SEXP hash_string) {
+    const char* const file_path = qs2_as_single_string(file, "file");
+    const char* const hash_text = qs2_as_single_string(hash_string, "hash_string");
+    if (hash_text[0] == '\0') {
         throw_error<StdErrorPolicy>("internal_write_qx_hash: empty hash string");
     }
-
-    size_t parsed_chars = 0;
-    uint64_t hash_value = 0;
-    try {
-        hash_value = std::stoull(hash_string, &parsed_chars, 10);
-    } catch (...) {
-        throw_error<StdErrorPolicy>("internal_write_qx_hash: hash string is not a valid unsigned integer");
-    }
-    if (parsed_chars != hash_string.size()) {
+    // strtoull silently negates a leading '-', so reject sign characters up front
+    if (hash_text[0] == '-' || hash_text[0] == '+') {
         throw_error<StdErrorPolicy>("internal_write_qx_hash: hash string is not a valid unsigned integer");
     }
 
-    std::fstream out(R_ExpandFileName(file.c_str()), std::ios::in | std::ios::out | std::ios::binary);
+    errno = 0;
+    char* parse_end = nullptr;
+    const unsigned long long parsed = std::strtoull(hash_text, &parse_end, 10);
+    if (errno == ERANGE || parse_end == hash_text || *parse_end != '\0') {
+        throw_error<StdErrorPolicy>("internal_write_qx_hash: hash string is not a valid unsigned integer");
+    }
+    const uint64_t hash_value = static_cast<uint64_t>(parsed);
+
+    std::fstream out(R_ExpandFileName(file_path), std::ios::in | std::ios::out | std::ios::binary);
     if (!out.is_open()) {
         throw_error<StdErrorPolicy>(FILE_SAVE_ERR_MSG);
     }
@@ -784,13 +811,15 @@ SEXP blosc_unshuffle_raw(SEXP const data, int bytesofsize) {
     return alloc_raw(xshuf);
 }
 
-std::string xxhash_raw(SEXP const data) {
+SEXP xxhash_raw(SEXP const data) {
     if (TYPEOF(data) != RAWSXP) throw std::runtime_error(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
     uint64_t xsize = Rf_xlength(data);
     uint8_t* xdata = reinterpret_cast<uint8_t*>(RAW(data));
     xxHashEnv xenv = xxHashEnv();
     xenv.update(xdata, xsize);
-    return std::to_string(xenv.digest());
+    char digest[32];
+    std::snprintf(digest, sizeof(digest), "%llu", static_cast<unsigned long long>(xenv.digest()));
+    return alloc_string(digest);
 }
 
 SEXP base85_encode(const RawVector& rawdata) {
@@ -832,15 +861,16 @@ SEXP base85_encode(const RawVector& rawdata) {
         encoded[ebyte + 2] = base85_encoder_ring[value / 85UL % 85];
         encoded[ebyte + 3] = base85_encoder_ring[value % 85];
     }
-    return alloc_string(encoded_string);
+    return alloc_string(encoded_string.c_str());
 }
 
-RawVector base85_decode(const std::string& encoded_string) {
-    size_t size = encoded_string.size();
+RawVector base85_decode(SEXP encoded_string) {
+    const char* const encoded = qs2_as_single_string(encoded_string, "encoded_string");
+    size_t size = static_cast<size_t>(qs2_single_string_length(encoded_string));
     size_t size_partial = (size / 5) * 5;
     size_t leftover_bytes = size - size_partial;
     if (leftover_bytes == 1) throw std::runtime_error("base85_decode: corrupted input data, incorrect input size");
-    const uint8_t* data = reinterpret_cast<const uint8_t*>(encoded_string.data());
+    const uint8_t* data = reinterpret_cast<const uint8_t*>(encoded);
     size_t decoded_size_partial = (size / 5) * 4;
     size_t decoded_size = decoded_size_partial + (size % 5 != 0 ? size % 5 - 1 : 0);
     RawVector decoded_vector(decoded_size);
@@ -907,18 +937,19 @@ SEXP c_base91_encode(const RawVector& rawdata) {
     size_t nb_encoded = basE91_encode_internal(&b, RAW(rawdata), size, const_cast<char*>(output.data()), outsize);
     nb_encoded += basE91_encode_end(&b, const_cast<char*>(output.data()) + nb_encoded, outsize - nb_encoded);
     output.resize(nb_encoded);
-    return alloc_string(output);
+    return alloc_string(output.c_str());
 }
 
-SEXP c_base91_decode(const std::string& encoded_string) {
+SEXP c_base91_decode(SEXP encoded_string) {
+    const char* const encoded = qs2_as_single_string(encoded_string, "encoded_string");
     basE91 b = basE91();
-    size_t size = encoded_string.size();
-    for (const char byte : encoded_string) {
-        basE91_decode_value(static_cast<unsigned char>(byte));
+    size_t size = static_cast<size_t>(qs2_single_string_length(encoded_string));
+    for (size_t i = 0; i < size; ++i) {
+        basE91_decode_value(static_cast<unsigned char>(encoded[i]));
     }
     size_t outsize = basE91_decode_bound(size);
     std::vector<uint8_t> output(outsize);
-    size_t nb_decoded = basE91_decode_internal(&b, encoded_string.data(), size, output.data(), outsize);
+    size_t nb_decoded = basE91_decode_internal(&b, encoded, size, output.data(), outsize);
     nb_decoded += basE91_decode_end(&b, output.data() + nb_decoded, outsize - nb_decoded);
     output.resize(nb_decoded);
     return alloc_raw(output);

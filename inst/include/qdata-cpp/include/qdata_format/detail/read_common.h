@@ -178,6 +178,10 @@ inline void read_object_header(Reader& reader,
         if(type == qstype::ATTRIBUTE) {
             reader.cleanup_and_throw("Malformed qdata header sequence");
         }
+        // NIL cannot have attributes
+        if(type == qstype::NIL) {
+            reader.cleanup_and_throw("Malformed qdata header sequence: NIL cannot have attributes");
+        }
     }
 }
 

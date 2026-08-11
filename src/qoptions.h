@@ -4,6 +4,33 @@
 #include <Rcpp.h>
 using namespace Rcpp;
 
+// Whether the session's native encoding is UTF-8, used to decide whether
+// CE_NATIVE strings need translating before they are written.
+//
+// Determined once, at package load, by .onLoad() in R/zzz.R -- not per call.
+// Re-checking the locale for every string would cost far more than it could
+// save, so a Sys.setlocale() partway through a session is not picked up until
+// qs2 is reloaded. This replaces a value that used to be baked in at compile
+// time by configure, which was wrong for any binary package whose build machine
+// and user did not share a locale.
+//
+// Defaults to false, i.e. "assume translation is needed", which fails safe: in
+// a UTF-8 locale R's own translateCharUTF8() short-circuits on native strings
+// (needsTranslationUTF8 returns NT_NONE when utf8locale), so guessing wrong in
+// this direction costs nothing, while the other direction would write native
+// bytes tagged as UTF-8.
+static bool qs2_utf8_locale = false;
+
+// [[Rcpp::export(rng = false)]]
+bool qs2_get_utf8_locale() {
+  return qs2_utf8_locale;
+}
+
+// [[Rcpp::export(rng = false, invisible = true)]]
+void qs2_set_utf8_locale(bool value) {
+  qs2_utf8_locale = value;
+}
+
 // Static variables for qs2 options
 static int qs2_compress_level = 3;
 static bool qs2_shuffle = true;

@@ -5,7 +5,7 @@ CXX_STD = CXX17
 endif
 
 # Compile/link flags; configure fills in the placeholders (empty TBB => RcppParallel decides)
-PKG_CPPFLAGS = -DRCPP_USE_UNWIND_PROTECT -DRCPP_MASK_RF_ERROR -DRCPP_NO_RTTI -DRCPP_NO_SUGAR -I../inst/include -I../inst/include/qdata-cpp/include -I. @ZSTD_INCLUDE_PATH@ @SIMD_FLAG@ -DIS_UTF8_LOCALE=$(shell "${R_HOME}/bin/Rscript" -e "cat(as.integer(identical(utils::localeToCharset()[1], 'UTF-8')))")
+PKG_CPPFLAGS = -DRCPP_USE_UNWIND_PROTECT -DRCPP_MASK_RF_ERROR -DRCPP_NO_RTTI -DRCPP_NO_SUGAR -I../inst/include -I../inst/include/qdata-cpp/include -I. @ZSTD_INCLUDE_PATH@ @SIMD_FLAG@
 PKG_CXXFLAGS = $(shell ${R_HOME}/bin/Rscript -e "RcppParallel::CxxFlags()") @TBB_FLAG@
 PKG_LIBS = -L. @COMPILER_SPECIFIC_LIBS@ @ZSTD_LIBS@ $(shell ${R_HOME}/bin/Rscript -e "RcppParallel::RcppParallelLibs()")
 

@@ -309,12 +309,15 @@ struct BlockCompressReaderMT {
         if(!available_blocks.try_pop(block.block)) {
             block.block = MAKE_SHARED_BLOCK_ASSIGNMENT(MAX_BLOCKSIZE);
         }
+        // carry the sequence number before anything can return: sequencer_node
+        // is a successor on every path, and a duplicate sequence number (the
+        // default-constructed 0) is undefined behaviour in oneTBB
+        block.blocknumber = zblock.blocknumber;
         block.blocksize = dp_local.decompress(block.block.get(), MAX_BLOCKSIZE, zblock.block.get(), zblock.blocksize);
         if(decompressor::is_error(block.blocksize)) {
             tgc.cancel_group_execution();
             return block;
         }
-        block.blocknumber = zblock.blocknumber;
         available_zblocks.push(zblock.block);
         return block;
     }),

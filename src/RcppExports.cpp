@@ -10,6 +10,24 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// qs2_get_utf8_locale
+bool qs2_get_utf8_locale();
+RcppExport SEXP _qs2_qs2_get_utf8_locale() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    rcpp_result_gen = Rcpp::wrap(qs2_get_utf8_locale());
+    return rcpp_result_gen;
+END_RCPP
+}
+// qs2_set_utf8_locale
+void qs2_set_utf8_locale(bool value);
+RcppExport SEXP _qs2_qs2_set_utf8_locale(SEXP valueSEXP) {
+BEGIN_RCPP
+    Rcpp::traits::input_parameter< bool >::type value(valueSEXP);
+    qs2_set_utf8_locale(value);
+    return R_NilValue;
+END_RCPP
+}
 // qs2_get_compress_level
 int qs2_get_compress_level();
 RcppExport SEXP _qs2_qs2_get_compress_level() {
@@ -119,12 +137,12 @@ BEGIN_RCPP
 END_RCPP
 }
 // qs_save
-SEXP qs_save(SEXP object, const std::string& file, const int compress_level, const bool shuffle, int nthreads);
+SEXP qs_save(SEXP object, SEXP file, const int compress_level, const bool shuffle, int nthreads);
 RcppExport SEXP _qs2_qs_save(SEXP objectSEXP, SEXP fileSEXP, SEXP compress_levelSEXP, SEXP shuffleSEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< SEXP >::type object(objectSEXP);
-    Rcpp::traits::input_parameter< const std::string& >::type file(fileSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type file(fileSEXP);
     Rcpp::traits::input_parameter< const int >::type compress_level(compress_levelSEXP);
     Rcpp::traits::input_parameter< const bool >::type shuffle(shuffleSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
@@ -146,11 +164,11 @@ BEGIN_RCPP
 END_RCPP
 }
 // qs_read
-SEXP qs_read(const std::string& file, const bool validate_checksum, int nthreads);
+SEXP qs_read(SEXP file, const bool validate_checksum, int nthreads);
 RcppExport SEXP _qs2_qs_read(SEXP fileSEXP, SEXP validate_checksumSEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< const std::string& >::type file(fileSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type file(fileSEXP);
     Rcpp::traits::input_parameter< const bool >::type validate_checksum(validate_checksumSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
     rcpp_result_gen = Rcpp::wrap(qs_read(file, validate_checksum, nthreads));
@@ -170,12 +188,12 @@ BEGIN_RCPP
 END_RCPP
 }
 // qd_save
-SEXP qd_save(SEXP object, const std::string& file, const int compress_level, const bool shuffle, const bool warn_unsupported_types, int nthreads);
+SEXP qd_save(SEXP object, SEXP file, const int compress_level, const bool shuffle, const bool warn_unsupported_types, int nthreads);
 RcppExport SEXP _qs2_qd_save(SEXP objectSEXP, SEXP fileSEXP, SEXP compress_levelSEXP, SEXP shuffleSEXP, SEXP warn_unsupported_typesSEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< SEXP >::type object(objectSEXP);
-    Rcpp::traits::input_parameter< const std::string& >::type file(fileSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type file(fileSEXP);
     Rcpp::traits::input_parameter< const int >::type compress_level(compress_levelSEXP);
     Rcpp::traits::input_parameter< const bool >::type shuffle(shuffleSEXP);
     Rcpp::traits::input_parameter< const bool >::type warn_unsupported_types(warn_unsupported_typesSEXP);
@@ -199,11 +217,11 @@ BEGIN_RCPP
 END_RCPP
 }
 // qd_read
-SEXP qd_read(const std::string& file, const bool use_alt_rep, const bool validate_checksum, int nthreads);
+SEXP qd_read(SEXP file, const bool use_alt_rep, const bool validate_checksum, int nthreads);
 RcppExport SEXP _qs2_qd_read(SEXP fileSEXP, SEXP use_alt_repSEXP, SEXP validate_checksumSEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< const std::string& >::type file(fileSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type file(fileSEXP);
     Rcpp::traits::input_parameter< const bool >::type use_alt_rep(use_alt_repSEXP);
     Rcpp::traits::input_parameter< const bool >::type validate_checksum(validate_checksumSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
@@ -225,17 +243,17 @@ BEGIN_RCPP
 END_RCPP
 }
 // qx_dump
-SEXP qx_dump(const std::string& file);
+SEXP qx_dump(SEXP file);
 RcppExport SEXP _qs2_qx_dump(SEXP fileSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< const std::string& >::type file(fileSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type file(fileSEXP);
     rcpp_result_gen = Rcpp::wrap(qx_dump(file));
     return rcpp_result_gen;
 END_RCPP
 }
 // check_SIMD
-std::string check_SIMD();
+SEXP check_SIMD();
 RcppExport SEXP _qs2_check_SIMD() {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -249,16 +267,6 @@ RcppExport SEXP _qs2_check_TBB() {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     rcpp_result_gen = Rcpp::wrap(check_TBB());
-    return rcpp_result_gen;
-END_RCPP
-}
-// internal_is_utf8_locale
-int internal_is_utf8_locale(int size);
-RcppExport SEXP _qs2_internal_is_utf8_locale(SEXP sizeSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< int >::type size(sizeSEXP);
-    rcpp_result_gen = Rcpp::wrap(internal_is_utf8_locale(size));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -316,7 +324,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // xxhash_raw
-std::string xxhash_raw(SEXP const data);
+SEXP xxhash_raw(SEXP const data);
 RcppExport SEXP _qs2_xxhash_raw(SEXP dataSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -336,11 +344,11 @@ BEGIN_RCPP
 END_RCPP
 }
 // base85_decode
-RawVector base85_decode(const std::string& encoded_string);
+RawVector base85_decode(SEXP encoded_string);
 RcppExport SEXP _qs2_base85_decode(SEXP encoded_stringSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< const std::string& >::type encoded_string(encoded_stringSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type encoded_string(encoded_stringSEXP);
     rcpp_result_gen = Rcpp::wrap(base85_decode(encoded_string));
     return rcpp_result_gen;
 END_RCPP
@@ -356,55 +364,55 @@ BEGIN_RCPP
 END_RCPP
 }
 // c_base91_decode
-SEXP c_base91_decode(const std::string& encoded_string);
+SEXP c_base91_decode(SEXP encoded_string);
 RcppExport SEXP _qs2_c_base91_decode(SEXP encoded_stringSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< const std::string& >::type encoded_string(encoded_stringSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type encoded_string(encoded_stringSEXP);
     rcpp_result_gen = Rcpp::wrap(c_base91_decode(encoded_string));
     return rcpp_result_gen;
 END_RCPP
 }
 // internal_compute_qx_hash
-std::string internal_compute_qx_hash(const std::string& file);
+SEXP internal_compute_qx_hash(SEXP file);
 RcppExport SEXP _qs2_internal_compute_qx_hash(SEXP fileSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< const std::string& >::type file(fileSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type file(fileSEXP);
     rcpp_result_gen = Rcpp::wrap(internal_compute_qx_hash(file));
     return rcpp_result_gen;
 END_RCPP
 }
 // internal_write_qx_hash
-SEXP internal_write_qx_hash(const std::string& file, const std::string& hash_string);
+SEXP internal_write_qx_hash(SEXP file, SEXP hash_string);
 RcppExport SEXP _qs2_internal_write_qx_hash(SEXP fileSEXP, SEXP hash_stringSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< const std::string& >::type file(fileSEXP);
-    Rcpp::traits::input_parameter< const std::string& >::type hash_string(hash_stringSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type file(fileSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type hash_string(hash_stringSEXP);
     rcpp_result_gen = Rcpp::wrap(internal_write_qx_hash(file, hash_string));
     return rcpp_result_gen;
 END_RCPP
 }
 // zstd_compress_file
-SEXP zstd_compress_file(const std::string& input_file, const std::string& output_file, const int compress_level);
+SEXP zstd_compress_file(SEXP input_file, SEXP output_file, const int compress_level);
 RcppExport SEXP _qs2_zstd_compress_file(SEXP input_fileSEXP, SEXP output_fileSEXP, SEXP compress_levelSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< const std::string& >::type input_file(input_fileSEXP);
-    Rcpp::traits::input_parameter< const std::string& >::type output_file(output_fileSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type input_file(input_fileSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type output_file(output_fileSEXP);
     Rcpp::traits::input_parameter< const int >::type compress_level(compress_levelSEXP);
     rcpp_result_gen = Rcpp::wrap(zstd_compress_file(input_file, output_file, compress_level));
     return rcpp_result_gen;
 END_RCPP
 }
 // zstd_decompress_file
-SEXP zstd_decompress_file(const std::string& input_file, const std::string& output_file, SEXP max_output_bytes);
+SEXP zstd_decompress_file(SEXP input_file, SEXP output_file, SEXP max_output_bytes);
 RcppExport SEXP _qs2_zstd_decompress_file(SEXP input_fileSEXP, SEXP output_fileSEXP, SEXP max_output_bytesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< const std::string& >::type input_file(input_fileSEXP);
-    Rcpp::traits::input_parameter< const std::string& >::type output_file(output_fileSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type input_file(input_fileSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type output_file(output_fileSEXP);
     Rcpp::traits::input_parameter< SEXP >::type max_output_bytes(max_output_bytesSEXP);
     rcpp_result_gen = Rcpp::wrap(zstd_decompress_file(input_file, output_file, max_output_bytes));
     return rcpp_result_gen;
@@ -412,6 +420,8 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_qs2_qs2_get_utf8_locale", (DL_FUNC) &_qs2_qs2_get_utf8_locale, 0},
+    {"_qs2_qs2_set_utf8_locale", (DL_FUNC) &_qs2_qs2_set_utf8_locale, 1},
     {"_qs2_qs2_get_compress_level", (DL_FUNC) &_qs2_qs2_get_compress_level, 0},
     {"_qs2_qs2_set_compress_level", (DL_FUNC) &_qs2_qs2_set_compress_level, 1},
     {"_qs2_qs2_get_shuffle", (DL_FUNC) &_qs2_qs2_get_shuffle, 0},
@@ -435,7 +445,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_qs2_qx_dump", (DL_FUNC) &_qs2_qx_dump, 1},
     {"_qs2_check_SIMD", (DL_FUNC) &_qs2_check_SIMD, 0},
     {"_qs2_check_TBB", (DL_FUNC) &_qs2_check_TBB, 0},
-    {"_qs2_internal_is_utf8_locale", (DL_FUNC) &_qs2_internal_is_utf8_locale, 1},
     {"_qs2_zstd_compress_raw", (DL_FUNC) &_qs2_zstd_compress_raw, 2},
     {"_qs2_zstd_decompress_raw", (DL_FUNC) &_qs2_zstd_decompress_raw, 1},
     {"_qs2_zstd_compress_bound", (DL_FUNC) &_qs2_zstd_compress_bound, 1},

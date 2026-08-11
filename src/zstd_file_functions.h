@@ -19,6 +19,7 @@
 #include <zstd.h>
 
 #include "io/error_policy.h"
+#include "qx_string_arg.h"
 
 using namespace Rcpp;
 
@@ -97,32 +98,37 @@ inline bool parse_max_output_bytes(SEXP max_output_bytes, uint64_t& parsed_max_o
 }
 
 struct ZstdWriter : IWriter {
-    FILE* _f;
-    ZSTD_CCtx* _cctx;
+    // Buffers first: if either allocation throws, no file handle or compression
+    // context has been acquired yet, so there is nothing for the (never-run)
+    // destructor to have released.
     std::vector<char> _inBuf;
     std::vector<char> _outBuf;
     size_t _bufSize;
     size_t _inPos{0};
+    std::string _path;
+    FILE* _f;
+    ZSTD_CCtx* _cctx;
 
     explicit ZstdWriter(const std::string& path,
                         int compress_level,
                         size_t bufSize = 64 * 1024) :
-    _f(std::fopen(path.c_str(), "wb")),
-    _cctx(ZSTD_createCCtx()),
     _inBuf(bufSize),
     _outBuf(ZSTD_CStreamOutSize()),
-    _bufSize(bufSize) {
+    _bufSize(bufSize),
+    _path(path),
+    _f(std::fopen(path.c_str(), "wb")),
+    _cctx(nullptr) {
         if(!_f) {
-            throw std::runtime_error("Failed to open " + path);
+            throw std::runtime_error("Failed to open " + path + ": " + std::strerror(errno));
         }
+        _cctx = ZSTD_createCCtx();
         if(!_cctx) {
-            std::fclose(_f);
+            release();
             throw std::runtime_error("ZSTD_createCCtx failed");
         }
         size_t init = ZSTD_initCStream(_cctx, compress_level);
         if(ZSTD_isError(init)) {
-            ZSTD_freeCCtx(_cctx);
-            std::fclose(_f);
+            release();
             throw std::runtime_error(std::string("ZSTD_initCStream failed: ") + ZSTD_getErrorName(init));
         }
     }
@@ -131,6 +137,7 @@ struct ZstdWriter : IWriter {
         try {
             close();
         } catch(...) {}
+        release();  // no-op if close() already released; never leak on a failed flush
     }
 
     void write(const char* data, size_t len) override {
@@ -165,34 +172,59 @@ struct ZstdWriter : IWriter {
             if(ZSTD_isError(ret)) {
                 throw std::runtime_error(std::string("ZSTD_endStream failed: ") + ZSTD_getErrorName(ret));
             }
-            if(out.pos > 0) {
-                size_t written = std::fwrite(_outBuf.data(), 1, out.pos, _f);
-                if(written != out.pos) {
-                    throw std::runtime_error("fwrite failed");
-                }
-                out.pos = 0;
-            }
+            writeOut(out);
         } while(ret > 0);
 
-        std::fflush(_f);
+        // stdio buffers, so a full filesystem can surface for the first time
+        // here rather than at any fwrite.
+        if(std::fflush(_f) != 0) {
+            throw std::runtime_error("Failed to write " + _path + ": " + std::strerror(errno));
+        }
     }
 
     void close() override {
         if(!_cctx && !_f) {
             return;
         }
-        flush();
-        if(_cctx) {
-            ZSTD_freeCCtx(_cctx);
-            _cctx = nullptr;
+        try {
+            flush();
+        } catch(...) {
+            release();  // a failed flush must still hand back the descriptor
+            throw;
         }
-        if(_f) {
-            std::fclose(_f);
-            _f = nullptr;
+        // fclose can report a deferred write error of its own
+        if(!release()) {
+            throw std::runtime_error("Failed to close " + _path + ": " + std::strerror(errno));
         }
     }
 
 private:
+    // Idempotent, and safe to call while unwinding. Returns false only when
+    // fclose() itself failed.
+    bool release() noexcept {
+        if(_cctx) {
+            ZSTD_freeCCtx(_cctx);
+            _cctx = nullptr;
+        }
+        bool ok = true;
+        if(_f) {
+            ok = (std::fclose(_f) == 0);
+            _f = nullptr;
+        }
+        return ok;
+    }
+
+    void writeOut(ZSTD_outBuffer& out) {
+        if(out.pos == 0) {
+            return;
+        }
+        size_t written = std::fwrite(_outBuf.data(), 1, out.pos, _f);
+        if(written != out.pos) {
+            throw std::runtime_error("Failed to write " + _path + ": " + std::strerror(errno));
+        }
+        out.pos = 0;
+    }
+
     void compressChunk() {
         ZSTD_inBuffer in = {_inBuf.data(), _inPos, 0};
         ZSTD_outBuffer out = {_outBuf.data(), _outBuf.size(), 0};
@@ -202,13 +234,7 @@ private:
             if(ZSTD_isError(ret)) {
                 throw std::runtime_error(std::string("ZSTD_compressStream failed: ") + ZSTD_getErrorName(ret));
             }
-            if(out.pos > 0) {
-                size_t written = std::fwrite(_outBuf.data(), 1, out.pos, _f);
-                if(written != out.pos) {
-                    throw std::runtime_error("fwrite failed");
-                }
-                out.pos = 0;
-            }
+            writeOut(out);
         }
         _inPos = 0;
     }
@@ -293,8 +319,19 @@ struct ZstdReader : IReader {
             tot += chunk;
             _outPos += chunk;
         }
-        if(tot < cnt && _inSize == 0 && _outSize == 0 && _pendingFrameBytes > 0) {
-            throw std::runtime_error("zstd input truncated before end of frame");
+        // A short read means the loop hit end of input. _pendingFrameBytes is
+        // the last ZSTD_decompressStream return: zero once a frame completed,
+        // nonzero while more input is still expected, so nonzero here means the
+        // stream stopped mid-frame. _outSize deliberately plays no part -- it is
+        // never reset, so at EOF it still holds the last chunk's size, which
+        // suppressed this check entirely.
+        if (tot < cnt) {
+            if (std::ferror(_f)) {
+                throw std::runtime_error("zstd read failed: " + std::string(std::strerror(errno)));
+            }
+            if (_pendingFrameBytes > 0) {
+                throw std::runtime_error("zstd input truncated before end of frame");
+            }
         }
         return tot;
     }
@@ -313,46 +350,66 @@ struct ZstdReader : IReader {
 };
 
 // [[Rcpp::export(rng = false, invisible = true, signature = {input_file, output_file, compress_level = qopt("compress_level")})]]
-SEXP zstd_compress_file(const std::string& input_file, const std::string& output_file, const int compress_level) {
+SEXP zstd_compress_file(SEXP input_file, SEXP output_file, const int compress_level) {
+    const char* const input_arg = qs2_as_single_string(input_file, "input_file");
+    const char* const output_arg = qs2_as_single_string(output_file, "output_file");
+
     if (compress_level > ZSTD_maxCLevel() || compress_level < ZSTD_minCLevel()) {
         throw_error<StdErrorPolicy>("compress_level out of range for zstd");
     }
 
-    const std::string input_path = R_ExpandFileName(input_file.c_str());
-    const std::string output_path = R_ExpandFileName(output_file.c_str());
+    // R_ExpandFileName may return a pointer into a shared buffer, so copy each
+    // result before calling it again
+    const std::string input_path = R_ExpandFileName(input_arg);
+    const std::string output_path = R_ExpandFileName(output_arg);
 
     std::ifstream in(input_path, std::ios::binary);
     if (!in) {
-        throw_error<StdErrorPolicy>(std::string("Failed to open input file: ") + input_file);
+        throw_error<StdErrorPolicy>(std::string("Failed to open input file: ") + input_arg);
     }
 
     ZstdWriter writer(output_path, compress_level);
-    std::vector<char> buffer(1 << 20);
-    while (in) {
-        in.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
-        std::streamsize got = in.gcount();
-        if (got > 0) {
-            writer.write(buffer.data(), static_cast<size_t>(got));
+    // Declared after the writer, which has already created/truncated the file:
+    // the guard can then never remove a pre-existing file we merely failed to
+    // open.
+    PartialOutputGuard output_guard(output_path);
+
+    try {
+        std::vector<char> buffer(1 << 20);
+        while (in) {
+            in.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
+            std::streamsize got = in.gcount();
+            if (got > 0) {
+                writer.write(buffer.data(), static_cast<size_t>(got));
+            }
         }
+        if (!in.eof()) {
+            throw_error<StdErrorPolicy>(std::string("Error while reading input file: ") + input_arg);
+        }
+        writer.close();
+        output_guard.release();
+    } catch(...) {
+        // Close before the guard removes the file: Windows cannot unlink a file
+        // that is still open.
+        try { writer.close(); } catch(...) {}
+        throw;
     }
-    if (!in.eof()) {
-        throw_error<StdErrorPolicy>(std::string("Error while reading input file: ") + input_file);
-    }
-    writer.close();
     return R_NilValue;
 }
 
 // [[Rcpp::export(rng = false, invisible = true, signature = {input_file, output_file, max_output_bytes = NULL})]]
-SEXP zstd_decompress_file(const std::string& input_file, const std::string& output_file, SEXP max_output_bytes) {
-    const std::string input_path = R_ExpandFileName(input_file.c_str());
-    const std::string output_path = R_ExpandFileName(output_file.c_str());
+SEXP zstd_decompress_file(SEXP input_file, SEXP output_file, SEXP max_output_bytes) {
+    const char* const input_arg = qs2_as_single_string(input_file, "input_file");
+    const char* const output_arg = qs2_as_single_string(output_file, "output_file");
+    const std::string input_path = R_ExpandFileName(input_arg);
+    const std::string output_path = R_ExpandFileName(output_arg);
     uint64_t parsed_max_output_bytes = 0;
     const bool has_max_output_bytes = parse_max_output_bytes(max_output_bytes, parsed_max_output_bytes);
 
     ZstdReader reader(input_path, 1 << 20);
     std::ofstream out(output_path, std::ios::binary);
     if (!out) {
-        throw_error<StdErrorPolicy>(std::string("Failed to open output file for writing: ") + output_file);
+        throw_error<StdErrorPolicy>(std::string("Failed to open output file for writing: ") + output_arg);
     }
     PartialOutputGuard output_guard(output_path);
 
@@ -367,13 +424,13 @@ SEXP zstd_decompress_file(const std::string& input_file, const std::string& outp
             decoded_bytes += static_cast<uint64_t>(got);
             out.write(buffer.data(), static_cast<std::streamsize>(got));
             if (!out) {
-                throw_error<StdErrorPolicy>(std::string("Error while writing output file: ") + output_file);
+                throw_error<StdErrorPolicy>(std::string("Error while writing output file: ") + output_arg);
             }
             got = reader.read(buffer.data(), buffer.size());
         }
         out.close();
         if (!out) {
-            throw_error<StdErrorPolicy>(std::string("Error while closing output file: ") + output_file);
+            throw_error<StdErrorPolicy>(std::string("Error while closing output file: ") + output_arg);
         }
         output_guard.release();
     } catch(...) {

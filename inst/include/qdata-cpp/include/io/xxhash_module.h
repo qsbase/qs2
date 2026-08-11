@@ -3,9 +3,20 @@
 
 #include "io_common.h"
 
+#include <stdexcept>
+
+// XXH3_createState() mallocs and can return NULL; matches the checked_zstd_*
+// helpers in zstd_module.h
+inline XXH3_state_t * checked_xxhash_state(XXH3_state_t * const state) {
+    if(state == nullptr) {
+        throw std::runtime_error("Failed to create xxHash state");
+    }
+    return state;
+}
+
 struct xxHashEnv {
     XXH3_state_t* state;
-    xxHashEnv() : state(XXH3_createState()) {
+    xxHashEnv() : state(checked_xxhash_state(XXH3_createState())) {
         XXH3_64bits_reset(state);
     }
     ~xxHashEnv() {

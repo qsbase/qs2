@@ -332,6 +332,10 @@ struct QdataDeserializer {
             if(type == qstype::ATTRIBUTE) {
                 reader.cleanup_and_throw("Unknown header type");
             }
+            // NIL cannot have attributes
+            if(type == qstype::NIL) {
+                reader.cleanup_and_throw("NIL object cannot have attributes");
+            }
         }
     }
 

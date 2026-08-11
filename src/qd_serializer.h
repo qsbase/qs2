@@ -10,21 +10,34 @@
 #include <R_ext/Utils.h>
 #include <Rversion.h>
 
+#include "qoptions.h"
 #include "qx_file_headers.h"
 
 using namespace Rcpp;
 
+// Deliberately once per type per session, not once per call: an unsupported
+// type usually appears many times within a single object, and warning on each
+// would bury the user. The flags are intentionally never reset -- a second
+// qd_save() of a similar object stays quiet.
+//
+// REprintf rather than Rf_warning: this runs underneath the serializer, where
+// an R jump (options(warn = 2), or a calling handler) would abandon a
+// half-written stream.
 inline void qd_warn_unsupported_type_once(const char* const label, const SEXPTYPE type) {
+    // TYPEOF is a 5-bit field, so every real SEXPTYPE indexes the table; the
+    // guard is belt-and-braces for a corrupt type and must not itself index
+    // out of bounds (Rf_type2char does no bounds checking of its own).
     static constexpr unsigned int QD_MAX_SEXPTYPE = 32;
     static bool warned_types[QD_MAX_SEXPTYPE] = {};
     const unsigned int type_index = static_cast<unsigned int>(type);
     if(type_index >= QD_MAX_SEXPTYPE) {
-        REprintf("%s of type %s are not supported in qdata format\n", label, Rf_type2char(type));
+        REprintf("%s of an unrecognized type (%u) are not supported in qdata format\n", label, type_index);
         return;
     }
     if(warned_types[type_index]) return;
     warned_types[type_index] = true;
-    REprintf("%s of type %s are not supported in qdata format; Repeated warnings suppressed\n", label, Rf_type2char(type));
+    REprintf("%s of type %s are not supported in qdata format; further warnings for this type are suppressed for the session\n",
+             label, Rf_type2char(type));
 }
 
 inline bool qd_is_ascii(SEXP x) {
@@ -401,9 +414,13 @@ struct QdataSerializer {
                     uint32_t li = LENGTH(xi);
                     const char * ci = CHAR(xi);
                     // STRING_ELT materializes ALTREP-backed strings as needed.
+                    // qs2_get_utf8_locale() is resolved once at package load; see qoptions.h
                     bool needs_translation = (enc == cetype_t::CE_LATIN1) ||
-                                                ((enc == cetype_t::CE_NATIVE) && (IS_UTF8_LOCALE == 0) && !qd_is_ascii(xi));
+                                                ((enc == cetype_t::CE_NATIVE) && !qs2_get_utf8_locale() && !qd_is_ascii(xi));
                     if(needs_translation) {
+                        // R_alloc'd, so valid until this .Call returns -- which is what lets
+                        // push_data defer the pointer to a compressor thread. Copies accumulate
+                        // over the whole save; a vmaxset() here would free one still in flight.
                         ci = Rf_translateCharUTF8(xi);
                         li = strlen(ci);
                     }

@@ -13,9 +13,9 @@
 extern "C" {
 #endif
 
-inline SEXP qs_save(SEXP object, const std::string& file, const int compress_level = 3, const bool shuffle = true, const int nthreads = 1) {
-  static SEXP (*fun)(SEXP, const std::string&, const int, const bool, int) =
-    (SEXP (*)(SEXP, const std::string&, const int, const bool, int)) R_GetCCallable("qs2", "qs_save");
+inline SEXP qs_save(SEXP object, SEXP file, const int compress_level = 3, const bool shuffle = true, const int nthreads = 1) {
+  static SEXP (*fun)(SEXP, SEXP, const int, const bool, int) =
+    (SEXP (*)(SEXP, SEXP, const int, const bool, int)) R_GetCCallable("qs2", "qs_save");
   return fun(object, file, compress_level, shuffle, nthreads);
 }
 inline SEXP qs_serialize(SEXP object, const int compress_level = 3, const bool shuffle = true, const int nthreads = 1) {
@@ -23,9 +23,9 @@ inline SEXP qs_serialize(SEXP object, const int compress_level = 3, const bool s
     (SEXP (*)(SEXP, const int, const bool, int)) R_GetCCallable("qs2", "qs_serialize");
   return fun(object, compress_level, shuffle, nthreads);
 }
-inline SEXP qs_read(const std::string& file, const bool validate_checksum = false, const int nthreads = 1) {
-  static SEXP (*fun)(const std::string&, const bool, int) =
-    (SEXP (*)(const std::string&, const bool, int)) R_GetCCallable("qs2", "qs_read");
+inline SEXP qs_read(SEXP file, const bool validate_checksum = false, const int nthreads = 1) {
+  static SEXP (*fun)(SEXP, const bool, int) =
+    (SEXP (*)(SEXP, const bool, int)) R_GetCCallable("qs2", "qs_read");
   return fun(file, validate_checksum, nthreads);
 }
 inline SEXP qs_deserialize(SEXP input, const bool validate_checksum = false, const int nthreads = 1) {
@@ -34,9 +34,9 @@ inline SEXP qs_deserialize(SEXP input, const bool validate_checksum = false, con
   return fun(input, validate_checksum, nthreads);
 }
 
-inline SEXP qd_save(SEXP object, const std::string& file, const int compress_level = 3, const bool shuffle = true, const bool warn_unsupported_types = true, const int nthreads = 1) {
-  static SEXP (*fun)(SEXP, const std::string&, const int, const bool, const bool, int) =
-    (SEXP (*)(SEXP, const std::string&, const int, const bool, const bool, int)) R_GetCCallable("qs2", "qd_save");
+inline SEXP qd_save(SEXP object, SEXP file, const int compress_level = 3, const bool shuffle = true, const bool warn_unsupported_types = true, const int nthreads = 1) {
+  static SEXP (*fun)(SEXP, SEXP, const int, const bool, const bool, int) =
+    (SEXP (*)(SEXP, SEXP, const int, const bool, const bool, int)) R_GetCCallable("qs2", "qd_save");
   return fun(object, file, compress_level, shuffle, warn_unsupported_types, nthreads);
 }
 inline SEXP qd_serialize(SEXP object, const int compress_level = 3, const bool shuffle = true, const bool warn_unsupported_types = true, const int nthreads = 1) {
@@ -44,9 +44,9 @@ inline SEXP qd_serialize(SEXP object, const int compress_level = 3, const bool s
     (SEXP (*)(SEXP, const int, const bool, const bool, int)) R_GetCCallable("qs2", "qd_serialize");
   return fun(object, compress_level, shuffle, warn_unsupported_types, nthreads);
 }
-inline SEXP qd_read(const std::string& file, const bool use_alt_rep = false, const bool validate_checksum = false, const int nthreads = 1) {
-  static SEXP (*fun)(const std::string&, const bool, const bool, int) =
-    (SEXP (*)(const std::string&, const bool, const bool, int)) R_GetCCallable("qs2", "qd_read");
+inline SEXP qd_read(SEXP file, const bool use_alt_rep = false, const bool validate_checksum = false, const int nthreads = 1) {
+  static SEXP (*fun)(SEXP, const bool, const bool, int) =
+    (SEXP (*)(SEXP, const bool, const bool, int)) R_GetCCallable("qs2", "qd_read");
   return fun(file, use_alt_rep, validate_checksum, nthreads);
 }
 inline SEXP qd_deserialize(SEXP input, const bool use_alt_rep = false, const bool validate_checksum = false, const int nthreads = 1) {

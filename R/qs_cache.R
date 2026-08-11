@@ -45,7 +45,8 @@
 qs_cache <- function(expr, name, envir = parent.frame(), cache_dir = ".cache", clear = FALSE, prompt = TRUE, qs_save_params = list(), qs_read_params = list(), verbose = TRUE) {
   if (clear) {
     if (missing(name)) {
-      files <- list.files(cache_dir, pattern = ".qs2$", full.names = TRUE)
+      # escaped: an unescaped dot would also match e.g. "dataXqs2"
+      files <- list.files(cache_dir, pattern = "\\.qs2$", full.names = TRUE)
     } else {
       stopifnot(length(name) == 1)
       files <- file.path(cache_dir, paste0(name, ".qs2"))
