@@ -26,7 +26,15 @@ NULL
 #' outfile <- tempfile()
 #' zstd_compress_file(infile, outfile, compress_level = 1)
 #' stopifnot(file.exists(outfile))
-NULL
+zstd_compress_file <- function(input_file, output_file,
+                               compress_level = qopt("compress_level")) {
+  .qs2_validate_path(input_file, "input_file")
+  .qs2_validate_path(output_file, "output_file")
+  if (.qs2_existing_paths_same(input_file, output_file)) {
+    stop("input_file and output_file must refer to different files", call. = FALSE)
+  }
+  invisible(c_zstd_compress_file(input_file, output_file, compress_level))
+}
 
 #' Zstd file decompression
 #'
@@ -53,7 +61,15 @@ NULL
 #' outfile <- tempfile()
 #' zstd_decompress_file(zfile, outfile)
 #' stopifnot(identical(readBin(infile, what = "raw", n = 5), readBin(outfile, what = "raw", n = 5)))
-NULL
+zstd_decompress_file <- function(input_file, output_file,
+                                 max_output_bytes = NULL) {
+  .qs2_validate_path(input_file, "input_file")
+  .qs2_validate_path(output_file, "output_file")
+  if (.qs2_existing_paths_same(input_file, output_file)) {
+    stop("input_file and output_file must refer to different files", call. = FALSE)
+  }
+  invisible(c_zstd_decompress_file(input_file, output_file, max_output_bytes))
+}
 
 
 
@@ -91,12 +107,11 @@ zstd_in <- function(FUN, ..., envir = parent.frame(), tmpfile = tempfile(), max_
   if (length(w) == 0) stop("expecting at least one named parameter for file path")
   w <- w[1]
   input_path <- params[[w]]
-  if (!is.character(input_path) || length(input_path) != 1 || is.na(input_path)) {
-    stop("file path must be a character string of length 1")
-  }
+  .qs2_validate_path(input_path, "file path")
   if (!file.exists(input_path)) {
     stop("file path does not exist: ", input_path)
   }
+  .qs2_validate_tmpfile(tmpfile, input_path, "input file")
   on.exit(unlink(tmpfile), add = TRUE)
   zstd_decompress_file(input_path, tmpfile, max_output_bytes = max_output_bytes)
   params[[w]] <- tmpfile
@@ -127,9 +142,7 @@ zstd_out <- function(FUN, ..., envir = parent.frame(), tmpfile = tempfile()) {
   if (length(w) == 0) stop("expecting at least one named parameter for file path")
   w <- w[1]
   zstd_file_path <- params[[w]]
-  if (!is.character(zstd_file_path) || length(zstd_file_path) != 1 || is.na(zstd_file_path)) {
-    stop("file path must be a character string of length 1")
-  }
+  .qs2_validate_path(zstd_file_path, "file path")
   if (file.exists(zstd_file_path)) {
     if (file.access(zstd_file_path, 2) != 0) {
       stop("file path not writable: ", zstd_file_path)
@@ -140,6 +153,7 @@ zstd_out <- function(FUN, ..., envir = parent.frame(), tmpfile = tempfile()) {
       stop("output directory does not exist: ", out_dir)
     }
   }
+  .qs2_validate_tmpfile(tmpfile, zstd_file_path, "output file")
   on.exit(unlink(tmpfile), add = TRUE)
   params[[w]] <- tmpfile
   out <- withVisible(do.call(FUN, params, envir = envir))

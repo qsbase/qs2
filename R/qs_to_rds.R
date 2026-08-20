@@ -83,32 +83,42 @@ rds_to_qs <- function(input_file, output_file, compress_level = 3) {
   MAX_BLOCKSIZE <- 1048576L # defined in io/io_common.h
   HEADER_SIZE <- 24 # defined in qx_file_headers.h
 
+  .qs2_validate_path(input_file, "input_file")
+  .qs2_validate_path(output_file, "output_file")
+  input_file <- path.expand(input_file)
+  output_file <- path.expand(output_file)
+  if (!file.exists(input_file)) {
+    stop("input_file does not exist: ", input_file, call. = FALSE)
+  }
+  if (.qs2_existing_paths_same(input_file, output_file)) {
+    stop("input_file and output_file must refer to different files", call. = FALSE)
+  }
+  output_dir <- dirname(output_file)
+  if (!dir.exists(output_dir)) {
+    stop("output directory does not exist: ", output_dir, call. = FALSE)
+  }
   if (!is_gzip_file(input_file)) {
     stop("rds_to_qs currently only supports gzip-compressed RDS input files")
   }
 
-  tmp_output <- tempfile()
+  tmp_output <- tempfile(pattern = ".qs2-", tmpdir = output_dir)
   in_con <- NULL
   out_con <- NULL
-  ok <- FALSE
 
   on.exit({
-    try(unlink(tmp_output), silent = TRUE)
     if (!is.null(in_con)) {
       try(close(in_con), silent = TRUE)
     }
     if (!is.null(out_con)) {
       try(close(out_con), silent = TRUE)
     }
-    if (!ok && file.exists(output_file)) {
-      unlink(output_file)
-    }
+    try(unlink(tmp_output), silent = TRUE)
   }, add = TRUE)
 
   qs_save(NULL, tmp_output, compress_level = compress_level, shuffle = FALSE)
   header_bytes <- readBin(tmp_output, "raw", n = HEADER_SIZE)
   in_con <- gzfile(input_file, "rb")
-  out_con <- file(output_file, "wb")
+  out_con <- file(tmp_output, "wb")
   writeBin(header_bytes, out_con)
   # loop while in_con is not at EOF
   while (TRUE) {
@@ -124,7 +134,9 @@ rds_to_qs <- function(input_file, output_file, compress_level = 3) {
   close(out_con)
   out_con <- NULL
 
-  computed_hash <- internal_compute_qx_hash(output_file)
-  internal_write_qx_hash(output_file, computed_hash)
-  ok <- TRUE
+  computed_hash <- internal_compute_qx_hash(tmp_output)
+  internal_write_qx_hash(tmp_output, computed_hash)
+  if (!isTRUE(file.rename(tmp_output, output_file))) {
+    stop("failed to replace output_file: ", output_file, call. = FALSE)
+  }
 }

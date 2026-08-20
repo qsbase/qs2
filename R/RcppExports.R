@@ -149,11 +149,11 @@ internal_write_qx_hash <- function(file, hash_string) {
     invisible(.Call(`_qs2_internal_write_qx_hash`, file, hash_string))
 }
 
-zstd_compress_file <- function(input_file, output_file, compress_level = qopt("compress_level")) {
-    invisible(.Call(`_qs2_zstd_compress_file`, input_file, output_file, compress_level))
+c_zstd_compress_file <- function(input_file, output_file, compress_level = qopt("compress_level")) {
+    invisible(.Call(`_qs2_c_zstd_compress_file`, input_file, output_file, compress_level))
 }
 
-zstd_decompress_file <- function(input_file, output_file, max_output_bytes = NULL) {
-    invisible(.Call(`_qs2_zstd_decompress_file`, input_file, output_file, max_output_bytes))
+c_zstd_decompress_file <- function(input_file, output_file, max_output_bytes = NULL) {
+    invisible(.Call(`_qs2_c_zstd_decompress_file`, input_file, output_file, max_output_bytes))
 }
 

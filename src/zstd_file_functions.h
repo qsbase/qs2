@@ -10,12 +10,12 @@
 #include <cstring>
 #include <fstream>
 #include <memory>
-#include <Rcpp.h>
 #include <limits>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
+#include <Rcpp.h>
 #include <zstd.h>
 
 #include "io/error_policy.h"
@@ -350,7 +350,7 @@ struct ZstdReader : IReader {
 };
 
 // [[Rcpp::export(rng = false, invisible = true, signature = {input_file, output_file, compress_level = qopt("compress_level")})]]
-SEXP zstd_compress_file(SEXP input_file, SEXP output_file, const int compress_level) {
+SEXP c_zstd_compress_file(SEXP input_file, SEXP output_file, const int compress_level) {
     const char* const input_arg = qs2_as_single_string(input_file, "input_file");
     const char* const output_arg = qs2_as_single_string(output_file, "output_file");
 
@@ -398,7 +398,7 @@ SEXP zstd_compress_file(SEXP input_file, SEXP output_file, const int compress_le
 }
 
 // [[Rcpp::export(rng = false, invisible = true, signature = {input_file, output_file, max_output_bytes = NULL})]]
-SEXP zstd_decompress_file(SEXP input_file, SEXP output_file, SEXP max_output_bytes) {
+SEXP c_zstd_decompress_file(SEXP input_file, SEXP output_file, SEXP max_output_bytes) {
     const char* const input_arg = qs2_as_single_string(input_file, "input_file");
     const char* const output_arg = qs2_as_single_string(output_file, "output_file");
     const std::string input_path = R_ExpandFileName(input_arg);

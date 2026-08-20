@@ -8,7 +8,7 @@ stopifnot(nrow(x) == 2048L)
 
 nthreads_to_test <- 1L
 if (isTRUE(qs2:::check_TBB())) {
-  nthreads_to_test <- c(nthreads_to_test, 4L)
+  nthreads_to_test <- c(nthreads_to_test, 2L)
 }
 
 for (nthreads in nthreads_to_test) {

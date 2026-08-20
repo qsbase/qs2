@@ -1,30 +1,8 @@
-Version 0.2.3 (2026-08-05)
-    * Fix `zstd_compress_file()` silently discarding data: `fflush()`/`fclose()` return values were ignored, so an out-of-space condition surfacing at flush time (the usual case, since stdio buffers) was reported as success. Also free the file handle and compression context when a flush fails, and delete the partial output, matching `zstd_decompress_file()`
-    * Fix `zstd_decompress_file()` silently truncating output: the end-of-frame check could not fire because it also required a state that is never reset
-    * Take string arguments as SEXP rather than `std::string`: Rcpp materializes the latter in the `.Call` wrapper, where an R jump (an error, or a warning under `options(warn = 2)`) skips its destructor. Also rejects `NA_character_` paths, which previously became a file literally named "NA", and avoids copying the input in `base85_decode()` / `base91_decode()`
-    * Determine whether the session encoding is UTF-8 at package load instead of at compile time; the old value was baked in by `configure` and wrong for any binary package whose build machine and user disagreed. Not re-checked per call, so `Sys.setlocale()` mid-session takes effect only after a reload
-    * Reject qdata headers that declare attributes on a NIL object; the attribute records would never be consumed and every later read would be misaligned
-    * (qdata-cpp) Set the block sequence number before the multithreaded reader's decompression error path, which could otherwise forward a duplicate sequence number to `sequencer_node`
-    * (qdata-cpp) Check `XXH3_createState()` for allocation failure, as the zstd contexts already were
-    * Fix `qs_savem()` dropping all named arguments (including `file`) when no unnamed object was supplied, and `qs_cache(clear = TRUE)` matching files such as "dataXqs2" through an unescaped `.` in its pattern
-    * `zstd_compress_bound()`: report an out-of-range size distinctly from a malformed one, and document the `2^53 - 1` limit
-    * (qdata-cpp) Read top-level vector objects without relying on optional copy elision
-    * Fix qdata reads larger than 4 GiB by tracking block progress with 64-bit counters
-    * Close the remaining read and `qx_dump()` unwind gaps so promoted checksum warnings and allocation failures do not skip live C++ owners
-    * Bound geometric qdata string scratch growth to one block and allocate larger requests at their exact size
-    * Detect zstd compression and context-allocation failures instead of writing invalid blocks
-    * (qdata-cpp) Validate save arguments before opening and truncating the destination file
-    * (qdata-cpp) Use adaptive storage for each string vector, keeping sibling vectors' allocations independent
-    * (qdata-cpp) Reject custom nested accessors that return temporary objects before their vector data is written
-    * (qdata-cpp) Report version 1.1.0 in CMake and fail configuration when requested TBB targets cannot be built
+Version 0.3.0 (2026-08-19)
+    * Various IO and error handling fixes and improvements
+    * Determine whether the session encoding is UTF-8 at package load instead of at compile time
+    * Fix `qs_savem()` dropping all named arguments (including `file`) when no unnamed object was supplied
     * Require R 3.6.0, matching the minimum version required by RcppParallel 6.1.1
-    * Alternate A/B benchmark execution order and report paired timing results alongside the minimum-time summary
-    * Error handling: make every stack frame between the unwind boundary and a fallible R call trivially destructible, so an R error no longer skips a C++ destructor. Attribute-name and string scratch buffers in the qdata reader, and the per-object attribute vector in the qdata writer, now live in the (de)serializer instead of in recursion frames; block IO error messages are no longer owning temporaries
-    * Unwind-protect the final R allocation in `qs_serialize()`, `qd_serialize()`, `qx_dump()` and the raw/string returning utilities, so an out-of-memory error there cannot strand the compressed buffer
-    * Catch stream and buffer failures once per block in the single threaded block writer, so a failed write (e.g. full disk) no longer unwinds a C++ exception through R's serializer
-    * `cleanup()` on the block IO objects is now `noexcept`, so a TBB teardown error cannot replace a pending R unwind
-    * Guard the multithreaded writer's per-block buffer allocation and flow graph handoff, and drop the redundant block copy in `push_data()` in favour of the block the writer already owns
-    * Remove the `QIO_MT_DIRECT_MEM_SWITCH` macro in favour of `if constexpr`; its pre-C++17 fallback selected the wrong branch, and C++17 is now required
     * Skip the tail `memcpy` in `blosc_shuffle_raw()` / `blosc_unshuffle_raw()` when there is no remainder; on an empty raw vector it passed a null pointer, which UBSAN flags
     * Depend on RcppParallel (>= 6.1.1)
     * Use the built-in `RcppParallel::isProcessForkedChild()` for the forked-process thread check instead of qs2's own `getpid()`/`parallel::isChild()` heuristic (https://github.com/RcppCore/RcppParallel/pull/266, https://github.com/RcppCore/RcppParallel/issues/243)

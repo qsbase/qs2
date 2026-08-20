@@ -394,27 +394,27 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// zstd_compress_file
-SEXP zstd_compress_file(SEXP input_file, SEXP output_file, const int compress_level);
-RcppExport SEXP _qs2_zstd_compress_file(SEXP input_fileSEXP, SEXP output_fileSEXP, SEXP compress_levelSEXP) {
+// c_zstd_compress_file
+SEXP c_zstd_compress_file(SEXP input_file, SEXP output_file, const int compress_level);
+RcppExport SEXP _qs2_c_zstd_compress_file(SEXP input_fileSEXP, SEXP output_fileSEXP, SEXP compress_levelSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< SEXP >::type input_file(input_fileSEXP);
     Rcpp::traits::input_parameter< SEXP >::type output_file(output_fileSEXP);
     Rcpp::traits::input_parameter< const int >::type compress_level(compress_levelSEXP);
-    rcpp_result_gen = Rcpp::wrap(zstd_compress_file(input_file, output_file, compress_level));
+    rcpp_result_gen = Rcpp::wrap(c_zstd_compress_file(input_file, output_file, compress_level));
     return rcpp_result_gen;
 END_RCPP
 }
-// zstd_decompress_file
-SEXP zstd_decompress_file(SEXP input_file, SEXP output_file, SEXP max_output_bytes);
-RcppExport SEXP _qs2_zstd_decompress_file(SEXP input_fileSEXP, SEXP output_fileSEXP, SEXP max_output_bytesSEXP) {
+// c_zstd_decompress_file
+SEXP c_zstd_decompress_file(SEXP input_file, SEXP output_file, SEXP max_output_bytes);
+RcppExport SEXP _qs2_c_zstd_decompress_file(SEXP input_fileSEXP, SEXP output_fileSEXP, SEXP max_output_bytesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< SEXP >::type input_file(input_fileSEXP);
     Rcpp::traits::input_parameter< SEXP >::type output_file(output_fileSEXP);
     Rcpp::traits::input_parameter< SEXP >::type max_output_bytes(max_output_bytesSEXP);
-    rcpp_result_gen = Rcpp::wrap(zstd_decompress_file(input_file, output_file, max_output_bytes));
+    rcpp_result_gen = Rcpp::wrap(c_zstd_decompress_file(input_file, output_file, max_output_bytes));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -457,8 +457,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_qs2_c_base91_decode", (DL_FUNC) &_qs2_c_base91_decode, 1},
     {"_qs2_internal_compute_qx_hash", (DL_FUNC) &_qs2_internal_compute_qx_hash, 1},
     {"_qs2_internal_write_qx_hash", (DL_FUNC) &_qs2_internal_write_qx_hash, 2},
-    {"_qs2_zstd_compress_file", (DL_FUNC) &_qs2_zstd_compress_file, 3},
-    {"_qs2_zstd_decompress_file", (DL_FUNC) &_qs2_zstd_decompress_file, 3},
+    {"_qs2_c_zstd_compress_file", (DL_FUNC) &_qs2_c_zstd_compress_file, 3},
+    {"_qs2_c_zstd_decompress_file", (DL_FUNC) &_qs2_c_zstd_decompress_file, 3},
     {NULL, NULL, 0}
 };
 

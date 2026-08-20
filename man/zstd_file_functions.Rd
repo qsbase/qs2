@@ -11,11 +11,11 @@ zstd_compress_file(input_file, output_file, compress_level = qopt("compress_leve
 zstd_decompress_file(input_file, output_file, max_output_bytes = NULL)
 }
 \arguments{
-\item{compress_level}{The compression level used.}
-
 \item{input_file}{Path to the input file.}
 
 \item{output_file}{Path to the output file.}
+
+\item{compress_level}{The compression level used.}
 
 \item{max_output_bytes}{Optional maximum number of decompressed output bytes.
 When supplied, decompression stops with an error before writing a chunk that

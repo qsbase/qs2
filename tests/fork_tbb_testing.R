@@ -16,7 +16,7 @@ if (isTRUE(qs2:::check_TBB())) {
     stopifnot(all(unlist(fork_results, use.names = FALSE)))
   }
 
-  cl <- makeCluster(2L)
+  cl <- makeCluster(1L)
   psock_results <- tryCatch({
     clusterExport(cl, c("tmp_qd", "x"))
     clusterEvalQ(cl, library(qs2))

@@ -8,8 +8,9 @@ zstd_compress_bound(size)
 }
 \arguments{
 \item{size}{A single non-negative whole number. Values larger than
-\code{2^31 - 1} are allowed as long as they can still be represented exactly by
-an R numeric value.}
+\code{2^31 - 1} are allowed, up to \code{2^53 - 1}. Beyond that an R numeric no
+longer identifies a single integer, since \code{2^53} and \code{2^53 + 1} are the
+same double.}
 }
 \value{
 A numeric scalar giving the maximum compressed size.
