@@ -1,3 +1,6 @@
+Version 0.3.1 (2026-08-20)
+    * Keep documented `std::string` file-path overloads in `qs2_external.h` alongside new `SEXP` forms
+
 Version 0.3.0 (2026-08-19)
     * Various IO and error handling fixes and improvements
     * Determine whether the session encoding is UTF-8 at package load instead of at compile time

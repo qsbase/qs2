@@ -99,6 +99,7 @@ test-short:
 	Rscript tests/fork_tbb_testing.R
 	Rscript tests/qs_savem_testing.R
 	Rscript tests/utility_testing.R
+	Rscript tests/qs2_external_testing.R
 	Rscript tests/qdata_cpp_external_testing.R
 	Rscript tests/zz_correctness_testing.R
 
@@ -107,5 +108,6 @@ test:
 	Rscript tests/fork_tbb_testing.R
 	Rscript tests/qs_savem_testing.R
 	Rscript tests/utility_testing.R
+	Rscript tests/qs2_external_testing.R
 	Rscript tests/qdata_cpp_external_testing.R
 	QS_EXTENDED_TESTS=1 Rscript tests/zz_correctness_testing.R; unset QS_EXTENDED_TESTS

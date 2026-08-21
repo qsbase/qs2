@@ -108,4 +108,56 @@ inline void qs2_set_use_alt_rep(bool value) {
 }
 #endif
 
+inline SEXP qs_save(SEXP object, const std::string& file, const int compress_level = 3, const bool shuffle = true, const int nthreads = 1) {
+  SEXP file_sexp = PROTECT(Rf_mkString(file.c_str()));
+  SEXP result;
+  try {
+    result = qs_save(object, file_sexp, compress_level, shuffle, nthreads);
+  } catch(...) {
+    UNPROTECT(1);
+    throw;
+  }
+  UNPROTECT(1);
+  return result;
+}
+
+inline SEXP qs_read(const std::string& file, const bool validate_checksum = false, const int nthreads = 1) {
+  SEXP file_sexp = PROTECT(Rf_mkString(file.c_str()));
+  SEXP result;
+  try {
+    result = qs_read(file_sexp, validate_checksum, nthreads);
+  } catch(...) {
+    UNPROTECT(1);
+    throw;
+  }
+  UNPROTECT(1);
+  return result;
+}
+
+inline SEXP qd_save(SEXP object, const std::string& file, const int compress_level = 3, const bool shuffle = true, const bool warn_unsupported_types = true, const int nthreads = 1) {
+  SEXP file_sexp = PROTECT(Rf_mkString(file.c_str()));
+  SEXP result;
+  try {
+    result = qd_save(object, file_sexp, compress_level, shuffle, warn_unsupported_types, nthreads);
+  } catch(...) {
+    UNPROTECT(1);
+    throw;
+  }
+  UNPROTECT(1);
+  return result;
+}
+
+inline SEXP qd_read(const std::string& file, const bool use_alt_rep = false, const bool validate_checksum = false, const int nthreads = 1) {
+  SEXP file_sexp = PROTECT(Rf_mkString(file.c_str()));
+  SEXP result;
+  try {
+    result = qd_read(file_sexp, use_alt_rep, validate_checksum, nthreads);
+  } catch(...) {
+    UNPROTECT(1);
+    throw;
+  }
+  UNPROTECT(1);
+  return result;
+}
+
 #endif // include guard
