@@ -1,0 +1,117 @@
+---
+title: "Converting {qs} to {qs2} with rig"
+author: Benjamin L. Hlina
+date: "2026-09-25"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{using_qs_and_qs2_with_rig}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, knitr-settings, include = FALSE}
+knitr::opts_chunk$set(
+  eval = FALSE,
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Introduction 
+
+This vignette will walk through how to easily convert old `{qs}` file format to `{qs2}` file format using the R Installation Manager ([rig](https://rig.r-lib.org/)) to install R v4.3 which allows the installation and use of both `{qs}` and `{qs2}`. This will first involve installing rig which requires writing some commands in terminal. I do suggest for this conversion using [Positron](https://positron.posit.co/) instead of [RStudio](https://posit.co/products/open-source/rstudio) as doing this work will be more comfortable using Positron. However, if getting Positron installed and set up feels difficult and change is hard everything below can be done in RStudio. 
+
+# Installing and setting up rig
+
+Installation instructions for ([rig](https://rig.r-lib.org/)) depend on the operating system of the computer you are 
+working on and can be found in the [installation guide](https://rig.r-lib.org/install.html) for rig. You will need 
+to select both the operating system and whether to install rig for your home directory or system-wide. Please 
+follow this guide as this installation is quite straightforward with commands needing to be run in terminal. 
+
+Once installed we can use rig again in terminal in either admin or user roles. Currently, user role is newer and may be a bit
+more prone to bugs. 
+
+To use rig in admin mode please follow [admin mode tutorial](https://rig.r-lib.org/tutorial-admin.html). From this tutorial we 
+can install R v4.3 which we will need to open `.qs` files and convert them to `.qs2` files. 
+
+Because admin mode installs as administrative user in all operating systems, rig needs administrator rights, and asks for your computer's password. 
+
+First, we can see what version(s) of R are currently installed using the following command: 
+
+```{bash, rig-list}
+rig list
+```
+
+Next we can see what versions of R are available in rig using
+```{bash, rig-available}
+rig available 
+``` 
+We can then install R v4.3 by using the following: 
+
+```{bash, rig-install-r-4.3}
+rig add 4.3
+```
+
+At this point we could switch the default R version to 4.3 if this was something we desired and can be obtained using: 
+
+```{bash, default-r}
+rig default 4.3
+```
+
+However, you likely have other versions of R (e.g., 4.6) that you are currently using. So, it is probably best to leave this setting alone. 
+ 
+# Installing {qs} and {qs2} 
+
+## Positron 
+
+We can now open a new session in Positron. If we go to the top right portion of the console, we will see a plus sign appear with a down arrow next to it. This down arrow, when clicked, will allow us to start a new R session using different versions. When clicking the down arrow, you will see the current version of R and `Start Another...` as options. Click `Start Another...` which will open a dropdown showing different versions of R to start a session. At this point select R 4.3. This will start a new console using R 4.3. 
+
+Once started we can move to install the packages. 
+
+## RStudio
+
+To use RStudio we need to use the following commands in terminal. First let's look at what versions of R are installed. 
+
+```{bash, rstudio-available-r}
+rig list
+```
+
+The operating system and version of RStudio are important here. On macOS arm64 computers (non-Intel) rig prefers arm64 R, unless an exact version match is only available with x86_64 R. For Windows machines, `rig rstudio` needs RStudio Desktop 2021.09.0+351 or later.
+
+Next, we can launch RStudio using the following for macOS (non-Intel) computers
+
+```{bash, launch-rstudio-with-r4.3-macOS}
+rig rstudio 4.3-arm64
+```
+
+On Windows machines we can use the following: 
+
+```{bash, launch-rstudio-with-r4.3-windows}
+rig rstudio 4.3
+```
+
+Once started we can move to install the packages. 
+
+## Install packages 
+Next, we can install `{qs}` and `{qs2}` using the following commands and follow the prompts: 
+
+```{r, install-qs-qs2}
+pak::pkg_install(c(
+  "url::https://cran.r-project.org/src/contrib/Archive/qs/qs_0.27.3.tar.gz",
+  "qs2"
+))
+```
+
+At this point we can open `.qs` files using the following as an example: 
+
+```{r, open-qs} 
+df <- qs::qread(file = 'path_to_qs_file.qs')
+```
+
+Next, we can save the file as a `.qs2` file using `{qs2}`
+
+```{r, save-qs2}
+qs2::qs_save(object = df, file = 'path_to_save_qs2_file.qs2')
+```
+
+Congratulations! At this point we have successfully converted old `.qs` files to `.qs2` files and can now use them in the most up-to-date version of R and `{qs2}`.  
