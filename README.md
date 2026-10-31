@@ -23,7 +23,19 @@ data <- qs_read("myfile.qs2")
 ```
 
 Use the file extension `qs2` to distinguish it from the original `qs`
-package. It is not compatible with the original `qs` format.
+package. It is not compatible with the original `qs` format. To convert
+old `qs` files, see the vignette [Converting {qs} to {qs2} with
+rig](https://github.com/qsbase/qs2/blob/main/vignettes/using_qs_and_qs2_with_rig.Rmd).
+
+## What’s new in 0.4.0
+
+- Slightly faster saving and reading of numeric data, especially saving
+  on Mac (up to ~5%).
+- `qd_read` returns strings as
+  [charport](https://CRAN.R-project.org/package=charport) ALTREP vectors
+  by default. Reading large character vectors is about 10x faster.
+- A new vignette on converting `qs` files to `qs2` with
+  [rig](https://rig.r-lib.org/).
 
 ## Installation
 
@@ -31,15 +43,21 @@ package. It is not compatible with the original `qs` format.
 install.packages("qs2")
 ```
 
-On x64 Mac or Linux (x86 only), you can gain a little more performance
-with the following configure flag:
+Compiling from source with `-O3` (R defaults to `-O2`) is up to ~5%
+faster. Add these lines to `~/.R/Makevars`:
+
+    CXX17FLAGS += -O3
+    CFLAGS += -O3
+
+Then install with:
 
 ``` r
-remotes::install_cran("qs2", type = "source", configure.args = "--with-simd=AVX2")
+install.packages("qs2", type = "source", configure.args = "--with-zstd-prefer-bundled")
 ```
 
-Multi-threading in `qs2` uses the `Intel Thread Building Blocks`
-framework via the `RcppParallel` package.
+`--with-zstd-prefer-bundled` also compiles the bundled zstd with these
+flags, unless your system zstd is newer. This is the default on macOS,
+where Homebrew builds zstd with `-Os`.
 
 ## Converting qs2 to RDS
 
@@ -139,11 +157,9 @@ qd_save(data, "myfile.qdata")
 data <- qd_read("myfile.qdata")
 ```
 
-There is a `use_alt_rep` parameter that is intended to improve
-performance.
-
-For the upcoming CRAN release, qdata does not use ALTREP but should be
-restored in the release after.
+By default, `qd_read` returns strings as charport ALTREP vectors. This
+makes reading string-heavy data faster. Set `use_alt_rep = FALSE` for
+ordinary character vectors.
 
 # Usage in C/C++
 
@@ -256,9 +272,8 @@ function.
   **Default:** `TRUE`
 
 - **use_alt_rep**  
-  For `qd_read` and `qd_deserialize`, a logical flag requesting ALTREP
-  string reads. This option is temporarily disabled; if `TRUE`, qs2
-  warns and falls back to ordinary character vectors.  
-  **Default:** `FALSE`
+  For `qd_read` and `qd_deserialize`, a logical flag to read strings as
+  charport ALTREP vectors.  
+  **Default:** `TRUE`
 
 ------------------------------------------------------------------------

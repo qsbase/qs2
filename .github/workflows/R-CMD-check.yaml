@@ -9,6 +9,7 @@ on:
     branches: [main, master, dev]
   pull_request:
     branches: [main, master, dev]
+  workflow_dispatch:
 
 name: R-CMD-check
 
@@ -33,6 +34,7 @@ jobs:
           - {name: 'ubuntu-latest (devel, system zstd)',  os: ubuntu-latest,  r: 'devel',   http-user-agent: 'release', install-args: ''}
           - {name: 'ubuntu-latest (release, system zstd)', os: ubuntu-latest, r: 'release', install-args: ''}
           - {name: 'ubuntu-latest (release, bundled zstd)', os: ubuntu-latest, r: 'release', install-args: '--configure-args=--with-zstd-force-compile'}
+          - {name: 'ubuntu-22.04 (release, GCC 11)',      os: ubuntu-22.04,   r: 'release', install-args: ''}
           - {name: 'ubuntu-latest (oldrel-1)',            os: ubuntu-latest,  r: 'oldrel-1', install-args: ''}
           - {name: 'ubuntu-latest (oldrel-2)',            os: ubuntu-latest,  r: 'oldrel-2', install-args: ''}
           - {name: 'ubuntu-latest (oldrel-3)',            os: ubuntu-latest,  r: 'oldrel-3', install-args: ''}

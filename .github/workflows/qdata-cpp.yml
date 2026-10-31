@@ -79,12 +79,12 @@ jobs:
       - name: Install R test packages on Linux
         if: runner.os == 'Linux'
         run: |
-          Rscript -e "install.packages(c('Rcpp', 'RcppParallel', 'stringfish', 'stringi', 'data.table', 'tibble'), Ncpus = max(1L, parallel::detectCores()))"
+          Rscript -e "install.packages(c('Rcpp', 'RcppParallel', 'charport', 'stringi', 'data.table', 'tibble'), Ncpus = max(1L, parallel::detectCores()))"
 
       - name: Install R test packages on macOS and Windows
         if: runner.os != 'Linux'
         run: |
-          Rscript -e "install.packages(c('Rcpp', 'RcppParallel', 'stringfish', 'stringi', 'data.table', 'tibble'), repos = 'https://cloud.r-project.org', Ncpus = max(1L, parallel::detectCores()))"
+          Rscript -e "install.packages(c('Rcpp', 'RcppParallel', 'charport', 'stringi', 'data.table', 'tibble'), repos = 'https://cloud.r-project.org', Ncpus = max(1L, parallel::detectCores()))"
 
       # The C++ tests round trip against the R package, so install qs2 from this
       # checkout to keep both sides on the same file format.
@@ -99,7 +99,7 @@ jobs:
 
       - name: Verify R test packages
         run: |
-          Rscript -e "for (p in c('qs2', 'stringi', 'stringfish')) { cat('loading', p, '... '); library(p, character.only = TRUE); cat(format(packageVersion(p)), 'ok\n') }"
+          Rscript -e "for (p in c('qs2', 'stringi', 'charport')) { cat('loading', p, '... '); library(p, character.only = TRUE); cat(format(packageVersion(p)), 'ok\n') }"
 
       - name: Show Unix toolchain
         if: runner.os != 'Windows'

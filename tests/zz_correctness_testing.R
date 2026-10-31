@@ -3,7 +3,7 @@ total_time <- Sys.time()
 if(require("qs2", quietly=TRUE) &&
    require("dplyr", quietly=TRUE) &&
    require("data.table", quietly=TRUE) &&
-   require("stringfish", quietly=TRUE) &&
+   require("charport", quietly=TRUE) &&
    require("stringi", quietly=TRUE)
 ) {
 
@@ -219,32 +219,23 @@ stopifnot(identical(
   scratch_strings
 ))
 
-# qdata ALTREP option should warn and fall back to ordinary character vectors
+# qdata reads strings into charport ALTREP vectors by default; use_alt_rep = FALSE gives plain vectors.
 tmp <- tempfile(fileext = ".qd")
 x <- c("hello", NA_character_, "world")
-qs2::qd_save(x, tmp)
-warning_msg <- NULL
-restored <- withCallingHandlers(
-  qs2::qd_read(tmp, use_alt_rep = TRUE, validate_checksum = TRUE, nthreads = 1),
-  warning = function(w) {
-    warning_msg <<- conditionMessage(w)
-    invokeRestart("muffleWarning")
-  }
-)
-stopifnot(grepl("temporarily disabled", warning_msg, fixed = TRUE))
-stopifnot(identical(restored, x))
+qs2::qd_save(x, tmp, nthreads = 1)
+restored <- qs2::qd_read(tmp, use_alt_rep = TRUE, validate_checksum = TRUE, nthreads = 1)
+stopifnot(charport::is_charvec(restored))
+stopifnot(identical(enc2utf8(charport::charport_materialize(restored)), enc2utf8(x)))
+stopifnot(isTRUE(qs2::qopt("use_alt_rep")), charport::is_charvec(qs2::qd_read(tmp)))
+plain <- qs2::qd_read(tmp, use_alt_rep = FALSE, validate_checksum = TRUE, nthreads = 1)
+stopifnot(!charport::is_charvec(plain), identical(plain, x))
 
 serialized <- qs2::qd_serialize(x, nthreads = 1)
-warning_msg <- NULL
-restored <- withCallingHandlers(
-  qs2::qd_deserialize(serialized, use_alt_rep = TRUE, validate_checksum = TRUE, nthreads = 1),
-  warning = function(w) {
-    warning_msg <<- conditionMessage(w)
-    invokeRestart("muffleWarning")
-  }
-)
-stopifnot(grepl("temporarily disabled", warning_msg, fixed = TRUE))
-stopifnot(identical(restored, x))
+restored <- qs2::qd_deserialize(serialized, use_alt_rep = TRUE, validate_checksum = TRUE, nthreads = 1)
+stopifnot(charport::is_charvec(restored))
+stopifnot(identical(enc2utf8(charport::charport_materialize(restored)), enc2utf8(x)))
+plain <- qs2::qd_deserialize(serialized, use_alt_rep = FALSE, validate_checksum = TRUE, nthreads = 1)
+stopifnot(!charport::is_charvec(plain), identical(plain, x))
 
 capture_qdata_messages <- function(expr) {
   capture.output(invisible(force(expr)), type = "message")
@@ -342,7 +333,7 @@ for (q in 1:reps) {
   for (tp in test_points_character_vector) {
     for (i in 1:internal_reps) {
       x1 <- c(NA, "", rand_strings(tp))
-      x1 <- stringfish::convert_to_sf(x1)
+      x1 <- charport::as_charvec(x1)
       qs_save_rand(x1)
       time[i] <- Sys.time()
       z <- qs_read_rand()
@@ -354,7 +345,7 @@ for (q in 1:reps) {
         stopifnot(identical(z, x1))
       }
     }
-    printCarriage(sprintf("Stringfish: %s, %s s",tp, signif(mean(time), 4)))
+    printCarriage(sprintf("Charvec: %s, %s s",tp, signif(mean(time), 4)))
   }
   cat("\n")
 
@@ -565,7 +556,7 @@ for (q in 1:reps) {
       x1 <- new.env()
       x1[["a"]] <- 1:max_size
       x1[["b"]] <- runif(max_size)
-      x1[["c"]] <- stringfish::random_strings(1e4, vector_mode = "normal")
+      x1[["c"]] <- rand_strings(1e4)
       time[i] <- Sys.time()
       qs_save_rand(x1)
       z <- qs_read_rand()

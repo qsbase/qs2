@@ -39,7 +39,7 @@ and link against `zstd`. Link against oneTBB when multithreading is enabled.
 ## Testing
 
 The test suite is driven through `Rscript` and requires the `qs2`, `stringi`,
-and `stringfish` packages when `QDATA_BUILD_TESTS=ON`.
+and `charport` packages when `QDATA_BUILD_TESTS=ON`.
 
 Multithreading requires oneTBB 2021.1 or newer (`TBB_INTERFACE_VERSION` 12000
 and up). Classic TBB, through 2020.3, spelled the flow-graph source as

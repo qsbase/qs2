@@ -89,6 +89,10 @@ qd_deserialize <- function(input, use_alt_rep = qopt("use_alt_rep"), validate_ch
     .Call(`_qs2_qd_deserialize`, input, use_alt_rep, validate_checksum, nthreads)
 }
 
+qs2_check_charport_abi <- function() {
+    invisible(.Call(`_qs2_qs2_check_charport_abi`))
+}
+
 qx_dump <- function(file) {
     .Call(`_qs2_qx_dump`, file)
 }

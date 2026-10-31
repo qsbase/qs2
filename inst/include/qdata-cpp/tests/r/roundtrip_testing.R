@@ -6,7 +6,7 @@ memory_roundtrip_exe <- normalizePath(args[[2]], winslash = "/", mustWork = TRUE
 
 stopifnot(requireNamespace("qs2", quietly = TRUE))
 stopifnot(requireNamespace("stringi", quietly = TRUE))
-stopifnot(requireNamespace("stringfish", quietly = TRUE))
+stopifnot(requireNamespace("charport", quietly = TRUE))
 
 
 options(warn = 1)
@@ -55,7 +55,7 @@ set_obj_size <- function(x) {
 string_pool_size <- max(test_points_character_vector)
 cat("building string pool of size", format(string_pool_size, scientific = FALSE, trim = TRUE), "\n")
 string_pool_time <- Sys.time()
-string_pool <- stringfish::convert_to_sf(stringi::stri_rand_strings(string_pool_size, round(rexp(string_pool_size, 1 / 90))))
+string_pool <- charport::as_charvec(stringi::stri_rand_strings(string_pool_size, round(rexp(string_pool_size, 1 / 90))))
 string_pool_time <- Sys.time() - string_pool_time
 cat("string pool built in", format(signif(as.numeric(string_pool_time), 4), trim = TRUE), "seconds\n")
 do_gc()

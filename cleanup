@@ -2,3 +2,5 @@
 
 rm -f config.* src/Makevars src/config.h
 rm -rf autom4te.cache
+# R only cleans the objects of the current Makevars, which may not list the bundled zstd
+rm -f src/*.o src/*.so src/*.dll src/ZSTD/*.o src/libQSZSTD.a

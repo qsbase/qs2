@@ -15,7 +15,7 @@ blosc_shuffle_raw(data, bytesofsize)
 The shuffled vector.
 }
 \description{
-Shuffles a raw vector using BLOSC shuffle routines.
+Shuffles a raw vector with the byte shuffle used by qdata, which has the same layout as Blosc's shuffle filter.
 }
 \examples{
 x <- serialize(1L:1000L, NULL)

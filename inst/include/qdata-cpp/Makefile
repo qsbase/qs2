@@ -46,7 +46,6 @@ get-license-files:
 	@mkdir -p $(LICENSE_DIR)
 	curl -fsSL https://www.gnu.org/licenses/gpl-3.0.txt -o LICENSE
 	curl -fsSL https://raw.githubusercontent.com/Cyan4973/xxHash/dev/LICENSE -o $(LICENSE_DIR)/xxHash-BSD-2-Clause.txt
-	curl -fsSL https://raw.githubusercontent.com/Blosc/c-blosc/main/LICENSE.txt -o $(LICENSE_DIR)/BLOSC-BSD-3-Clause.txt
 
 clean:
 	@if [ -d "$(BUILD_DIR)" ]; then $(CMAKE) --build $(BUILD_DIR) --target clean; fi

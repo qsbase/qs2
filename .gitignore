@@ -33,3 +33,6 @@ context
 context/*
 .claude
 .codex
+AGENTS.md
+CLAUDE.md
+

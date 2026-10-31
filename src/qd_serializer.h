@@ -2,6 +2,7 @@
 #define _QS2_QD_SERIALIZER_H_
 
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -9,6 +10,7 @@
 #include <Rcpp.h>
 #include <R_ext/Utils.h>
 #include <Rversion.h>
+#include <charport.h>
 
 #include "qoptions.h"
 #include "qx_file_headers.h"
@@ -40,19 +42,14 @@ inline void qd_warn_unsupported_type_once(const char* const label, const SEXPTYP
              label, Rf_type2char(type));
 }
 
-inline bool qd_is_ascii(SEXP x) {
-#if (R_VERSION >= R_Version(4, 5, 0))
-  return Rf_charIsASCII(x);
-#else
-  const auto* ptr = reinterpret_cast<const unsigned char*>(CHAR(x));
-  const auto len = static_cast<std::size_t>(Rf_xlength(x));
+inline bool qd_is_ascii(const char* ptr, std::size_t len) {
+  const auto* bytes = reinterpret_cast<const unsigned char*>(ptr);
   for (std::size_t i = 0; i < len; ++i) {
-    if ((ptr[i] & 0x80U) != 0) {
+    if ((bytes[i] & 0x80U) != 0) {
       return false;
     }
   }
   return true;
-#endif
 }
 
 
@@ -65,6 +62,9 @@ struct QdataSerializer {
     std::vector<std::pair<SEXP, uint64_t>> real_sexp;
     std::vector<std::pair<SEXP, uint64_t>> integer_sexp; // and logical
     std::vector<std::pair<SEXP, uint64_t>> raw_sexp;
+    // Keep the active charport borrow in the serializer's owning frame so an
+    // R jump converted by the outer unwind boundary cannot strand its state.
+    charport::Reader string_reader;
 
     // shared scratch, so no recursion frame owns heap across a fallible R call.
     // Each frame holds the slice [base, base + count) and pops it in write_attributes().
@@ -310,6 +310,19 @@ struct QdataSerializer {
         }
     }
 
+    // push_data may retain a whole MAX_BLOCKSIZE-sized input pointer for an
+    // asynchronous compressor. Keep charport views scoped to the current batch
+    // by ensuring every submitted piece takes the writer's copying path.
+    void write_string_data(const char* data, uint32_t length) {
+        constexpr uint32_t piece_size = MAX_BLOCKSIZE - 1;
+        uint32_t offset = 0;
+        while(offset < length) {
+            const uint32_t piece = std::min(piece_size, length - offset);
+            writer.push_data(data + offset, piece);
+            offset += piece;
+        }
+    }
+
     void write_object(SEXP const object) {
         R_CheckStack();
         SEXPTYPE object_type = TYPEOF(object);
@@ -402,32 +415,81 @@ struct QdataSerializer {
         }
     }
     void write_object_data() {
-        for(auto & x : character_sexp) {
+        constexpr R_xlen_t batch_capacity = 256;
+        for(size_t vector_index = 0; vector_index < character_sexp.size();) {
+            const auto& x = character_sexp[vector_index++];
             SEXP object = x.first;
             uint64_t object_length = x.second;
-            for(uint64_t i=0; i<object_length; ++i) {
-                SEXP xi = STRING_ELT(object, i);
-                if(xi == NA_STRING) {
-                    writer.push_pod(string_header_NA);
-                } else {
-                    cetype_t enc = Rf_getCharCE(xi);
-                    uint32_t li = LENGTH(xi);
-                    const char * ci = CHAR(xi);
-                    // STRING_ELT materializes ALTREP-backed strings as needed.
-                    // qs2_get_utf8_locale() is resolved once at package load; see qoptions.h
-                    bool needs_translation = (enc == cetype_t::CE_LATIN1) ||
-                                                ((enc == cetype_t::CE_NATIVE) && !qs2_get_utf8_locale() && !qd_is_ascii(xi));
-                    if(needs_translation) {
-                        // R_alloc'd, so valid until this .Call returns -- which is what lets
-                        // push_data defer the pointer to a compressor thread. Copies accumulate
-                        // over the whole save; a vmaxset() here would free one still in flight.
-                        ci = Rf_translateCharUTF8(xi);
-                        li = strlen(ci);
-                    }
-                    write_string_header(li);
-                    writer.push_data(ci, li);
+            bool grouped = false;
+            // Payloads have no vector delimiters. Batch consecutive ordinary
+            // scalars through one Reader, avoiding a resolver call per list item.
+            // Registered ALTREP inputs keep their own non-materializing reader.
+            if(object_length == 1 && !ALTREP(object)) {
+                size_t end = vector_index;
+                while(end < character_sexp.size() && end - vector_index + 1 < size_t(batch_capacity) &&
+                      character_sexp[end].second == 1 && !ALTREP(character_sexp[end].first)) ++end;
+                const size_t count = end - vector_index + 1;
+                if(count > 1) {
+                    SEXP batch = PROTECT(Rf_allocVector(STRSXP, static_cast<R_xlen_t>(count)));
+                    SET_STRING_ELT(batch, 0, STRING_ELT(object, 0));
+                    for(size_t j = 1; j < count; ++j)
+                        SET_STRING_ELT(batch, static_cast<R_xlen_t>(j), STRING_ELT(character_sexp[vector_index + j - 1].first, 0));
+                    object = batch;
+                    object_length = count;
+                    vector_index = end;
+                    grouped = true;
                 }
             }
+            string_reader.reset(object);
+            const char* ptrs[batch_capacity];
+            int lengths[batch_capacity];
+            cetype_ext_t encodings[batch_capacity];
+            for(uint64_t start = 0; start < object_length;) {
+                const R_xlen_t count = static_cast<R_xlen_t>(
+                    std::min<uint64_t>(batch_capacity, object_length - start));
+                string_reader.views(static_cast<R_xlen_t>(start), count, ptrs, lengths, encodings);
+                for(R_xlen_t j = 0; j < count; ++j) {
+                    const char* data = ptrs[j];
+                    const int length = lengths[j];
+                    const cetype_ext_t encoding = encodings[j];
+                    if(encoding == CETYPE_EXT_NA || data == nullptr || length == NA_INTEGER) {
+                        writer.push_pod(string_header_NA);
+                        continue;
+                    }
+                    if(length < 0) {
+                        throw std::runtime_error("invalid negative string length from charport Reader");
+                    }
+
+                    // Preserve qdata's existing byte policy: Latin-1 is always
+                    // normalized; native text is normalized only outside a
+                    // UTF-8 locale and only when it contains non-ASCII bytes.
+                    const bool needs_translation = encoding == CETYPE_EXT_LATIN1 ||
+                        (encoding == CETYPE_EXT_NATIVE && !qs2_get_utf8_locale() &&
+                         !qd_is_ascii(data, static_cast<std::size_t>(length)));
+                    if(needs_translation) {
+                        const cetype_t base_encoding = encoding == CETYPE_EXT_LATIN1
+                            ? CE_LATIN1 : CE_NATIVE;
+                        SEXP charsxp = PROTECT(Rf_mkCharLenCE(data, length, base_encoding));
+                        try {
+                            const char* utf8 = Rf_translateCharUTF8(charsxp);
+                            const uint32_t utf8_length = static_cast<uint32_t>(std::strlen(utf8));
+                            write_string_header(utf8_length);
+                            write_string_data(utf8, utf8_length);
+                        } catch(...) {
+                            UNPROTECT(1);
+                            throw;
+                        }
+                        UNPROTECT(1);
+                    } else {
+                        const uint32_t stored_length = static_cast<uint32_t>(length);
+                        write_string_header(stored_length);
+                        write_string_data(data, stored_length);
+                    }
+                }
+                start += static_cast<uint64_t>(count);
+            }
+            string_reader = charport::Reader();
+            if(grouped) UNPROTECT(1);
         }
         for(auto & x : complex_sexp) {
             SEXP object = x.first;

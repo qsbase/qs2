@@ -12,14 +12,11 @@ projects.
 - License: BSD 2-Clause
 - Local license text: [LICENSES/xxHash-BSD-2-Clause.txt](LICENSES/xxHash-BSD-2-Clause.txt)
 
-## Blosc shuffle routines
+## Blosc
 
-- Upstream project: <https://github.com/Blosc/c-blosc>
-- Adapted files:
-  - `include/blosc/shuffle_routines.h`
-  - `include/blosc/unshuffle_routines.h`
-- License: BSD 3-Clause
-- Local license text: [LICENSES/BLOSC-BSD-3-Clause.txt](LICENSES/BLOSC-BSD-3-Clause.txt)
+`include/shuffle/byte_shuffle.h` writes the byte-shuffle layout of the Blosc
+shuffle filter (<https://github.com/Blosc/c-blosc>), which earlier versions
+adapted from Blosc's code. It no longer contains Blosc code.
 
 ## Notes
 

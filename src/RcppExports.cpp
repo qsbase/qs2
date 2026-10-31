@@ -242,6 +242,14 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// qs2_check_charport_abi
+void qs2_check_charport_abi();
+RcppExport SEXP _qs2_qs2_check_charport_abi() {
+BEGIN_RCPP
+    qs2_check_charport_abi();
+    return R_NilValue;
+END_RCPP
+}
 // qx_dump
 SEXP qx_dump(SEXP file);
 RcppExport SEXP _qs2_qx_dump(SEXP fileSEXP) {
@@ -442,6 +450,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_qs2_qd_serialize", (DL_FUNC) &_qs2_qd_serialize, 5},
     {"_qs2_qd_read", (DL_FUNC) &_qs2_qd_read, 4},
     {"_qs2_qd_deserialize", (DL_FUNC) &_qs2_qd_deserialize, 4},
+    {"_qs2_qs2_check_charport_abi", (DL_FUNC) &_qs2_qs2_check_charport_abi, 0},
     {"_qs2_qx_dump", (DL_FUNC) &_qs2_qx_dump, 1},
     {"_qs2_check_SIMD", (DL_FUNC) &_qs2_check_SIMD, 0},
     {"_qs2_check_TBB", (DL_FUNC) &_qs2_check_TBB, 0},

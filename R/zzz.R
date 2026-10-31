@@ -12,6 +12,7 @@
   # This used to be baked in at compile time by configure, which gave the wrong
   # answer for any binary package whose build machine and user disagreed.
   qs2_set_utf8_locale(isTRUE(l10n_info()[["UTF-8"]]))
+  qs2_check_charport_abi()
 }
 
 .onAttach <- function(libname, pkgname) {

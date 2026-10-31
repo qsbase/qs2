@@ -160,12 +160,12 @@ if(QDATA_BUILD_TESTS)
     find_program(RSCRIPT_EXECUTABLE Rscript REQUIRED)
     execute_process(
         COMMAND ${RSCRIPT_EXECUTABLE} -e
-                "pkgs <- c('qs2', 'stringi', 'stringfish'); cat(as.integer(all(vapply(pkgs, requireNamespace, logical(1), quietly = TRUE))))"
+                "pkgs <- c('qs2', 'stringi', 'charport'); cat(as.integer(all(vapply(pkgs, requireNamespace, logical(1), quietly = TRUE))))"
         OUTPUT_VARIABLE QDATA_HAS_R_TEST_DEPS
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
     if(NOT QDATA_HAS_R_TEST_DEPS STREQUAL "1")
-        message(FATAL_ERROR "QDATA_BUILD_TESTS=ON requires Rscript with the qs2, stringi, and stringfish packages installed.")
+        message(FATAL_ERROR "QDATA_BUILD_TESTS=ON requires Rscript with the qs2, stringi, and charport packages installed.")
     endif()
 
     add_test(

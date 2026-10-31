@@ -9,7 +9,6 @@
 #' @param seed Integer seed used to make the output reproducible.
 #'
 #' @return A data frame with columns `string`, `numeric`, and `int`.
-#' @importFrom stringfish random_strings
 #' @export
 generate_test_data <- function(nrows, seed = 1L) {
   if (!is.numeric(nrows) || length(nrows) != 1L || is.na(nrows) || nrows < 0 || nrows != floor(nrows)) {
@@ -33,8 +32,11 @@ generate_test_data <- function(nrows, seed = 1L) {
     numeric(0)
   }
 
+  chars <- c(letters, LETTERS, 0:9)
+  string_chars <- matrix(sample(chars, 16L * nrows, replace = TRUE), nrow = nrows)
+
   data.frame(
-    string = random_strings(N = nrows, string_size = 16L, vector_mode = "normal"),
+    string = do.call(paste0, as.data.frame(string_chars)),
     numeric = trend + stats::rnorm(nrows, sd = 0.05),
     int = as.integer(100L + index %/% 8L + sample.int(7L, nrows, replace = TRUE) - 4L),
     stringsAsFactors = FALSE

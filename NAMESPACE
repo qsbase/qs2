@@ -41,5 +41,5 @@ export(qs_cache)
 
 importFrom(Rcpp,evalCpp)
 importFrom(RcppParallel, RcppParallelLibs)
-importFrom(stringfish,random_strings)
+importFrom(charport,charvec)
 useDynLib(qs2, .registration = TRUE)

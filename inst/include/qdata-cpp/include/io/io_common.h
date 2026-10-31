@@ -14,8 +14,7 @@
 #include "../xxhash/xxhash.h"
 #undef XXH_INLINE_ALL
 
-#include "../blosc/shuffle_routines.h"
-#include "../blosc/unshuffle_routines.h"
+#include "../shuffle/byte_shuffle.h"
 
 static constexpr uint32_t MAX_BLOCKSIZE = 1048576UL;
 static constexpr uint32_t BLOCK_RESERVE = 64UL;

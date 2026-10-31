@@ -37,7 +37,7 @@ static bool qs2_shuffle = true;
 static int qs2_nthreads = 1;
 static bool qs2_validate_checksum = false;
 static bool qs2_warn_unsupported_types = true;
-static bool qs2_use_alt_rep = false;
+static bool qs2_use_alt_rep = true;
 
 // Get and set functions for compress_level
 // [[Rcpp::export(rng = false)]]

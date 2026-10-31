@@ -3,6 +3,7 @@
 
 
 #include <Rcpp.h>
+#include "qd_charvec.h"
 #include <R_ext/Utils.h>
 
 #include <Rversion.h>
@@ -17,10 +18,8 @@
 using namespace Rcpp;
 
 
-#if R_VERSION >= R_Version(4, 6, 0)
-
 SEXP get_first_attrib(SEXP object) {
-    return R_mapAttrib(object, [](SEXP, SEXP a, void*) {return a;}, nullptr);
+    return Rf_getAttrib(object, R_SpecSymbol);
 }
 
 struct DelayedAttribAssign {
@@ -50,7 +49,6 @@ struct DelayedAttribAssign {
         }
     }
 };
-#endif
 
 template<typename block_compress_reader>
 struct QdataDeserializer {
@@ -61,11 +59,12 @@ struct QdataDeserializer {
     std::vector<std::pair<SEXP, uint64_t>> integer_sexp; // and logical
     std::vector<std::pair<SEXP, uint64_t>> raw_sexp;
 
-#if R_VERSION >= R_Version(4, 6, 0)
     DelayedAttribAssign delayed_attributes;
-#endif
+    const bool use_alt_rep;
+    qd_charvec::Factory charvecs;
 
-    QdataDeserializer(block_compress_reader & reader) : reader(reader), string_scratch_size(0) {}
+    QdataDeserializer(block_compress_reader & reader, bool use_alt_rep)
+        : reader(reader), use_alt_rep(use_alt_rep), string_scratch_size(0) {}
 
     private:
     static constexpr uint64_t max_r_vector_length = static_cast<uint64_t>(R_XLEN_T_MAX);
@@ -362,12 +361,49 @@ struct QdataDeserializer {
 
     void read_and_assign_attributes(SEXP object, const uint32_t attr_length) {
         if(attr_length == 0) return;
-#if R_VERSION >= R_Version(4, 6, 0)
+#if R_VERSION < R_Version(4, 6, 0)
+        // Preserve the ordinary-reader path on older R. Setting a class reads
+        // its strings, which a charvec only has once read_object_data runs.
+        if(!use_alt_rep) {
+            SEXP aptr = Rf_allocList(static_cast<int>(attr_length));
+            SET_ATTRIB(object, aptr); // assign immediately for protection
+            bool set_class = false;
+            SEXP class_attr = R_NilValue;
+            for(uint32_t i=0; i<attr_length; ++i) {
+                uint32_t string_len;
+                read_string_header(string_len);
+                if(string_len == NA_STRING_LENGTH) {
+                    reader.cleanup_and_throw("Attribute names cannot be NA");
+                }
+                attr_name.resize(string_len);
+                if(string_len > 0) {
+                    reader.get_data(attr_name.data(), string_len);
+                }
+                SET_TAG(aptr, Rf_install(attr_name.c_str()));
+                const bool is_class = std::strcmp(attr_name.c_str(), "class") == 0; // attr_name is clobbered by the recursion below
+                SEXP aobj = read_object();
+                SETCAR(aptr, aobj);
+                aptr = CDR(aptr);
+
+                // setting class name also sets object bit
+                // SET_OBJECT is no longer part of API in R 4.5, so we use a workaround to set the object bit
+                if( is_class && Rf_isString(aobj) && (Rf_xlength(aobj) >= 1) ) {
+                    set_class = true;
+                    class_attr = aobj;
+                }
+            }
+            if(set_class) {
+                Rf_setAttrib(object, R_ClassSymbol, class_attr); // sets the object bit, class names already assigned to attributes in the for loop
+            }
+            return;
+        }
+#endif
         // assign attribute placeholder immediately for protection
         // symbol used doesn't matter as long it is not a specially intrepreted attribute symbol; it is just a placeholder
         // R_SpecSymbol is completely unused at all in r-source code, so it should be safe
-        SEXP aptr = Rf_allocList(static_cast<int>(attr_length));
+        SEXP aptr = PROTECT(Rf_allocList(static_cast<int>(attr_length)));
         Rf_setAttrib(object, R_SpecSymbol, aptr);
+        UNPROTECT(1);
         for(uint32_t i=0; i<attr_length; ++i) {
             uint32_t string_len;
             read_string_header(string_len);
@@ -384,38 +420,6 @@ struct QdataDeserializer {
             aptr = CDR(aptr);
         }
         delayed_attributes.add(object);
-#else
-        SEXP aptr = Rf_allocList(static_cast<int>(attr_length));
-        SET_ATTRIB(object, aptr); // assign immediately for protection
-        bool set_class = false;
-        SEXP class_attr = R_NilValue;
-        for(uint32_t i=0; i<attr_length; ++i) {
-            uint32_t string_len;
-            read_string_header(string_len);
-            if(string_len == NA_STRING_LENGTH) {
-                reader.cleanup_and_throw("Attribute names cannot be NA");
-            }
-            attr_name.resize(string_len);
-            if(string_len > 0) {
-                reader.get_data(attr_name.data(), string_len);
-            }
-            SET_TAG(aptr, Rf_install(attr_name.c_str()));
-            const bool is_class = std::strcmp(attr_name.c_str(), "class") == 0; // attr_name is clobbered by the recursion below
-            SEXP aobj = read_object();
-            SETCAR(aptr, aobj);
-            aptr = CDR(aptr);
-
-            // setting class name also sets object bit
-            // SET_OBJECT is no longer part of API in R 4.5, so we use a workaround to set the object bit
-            if( is_class && Rf_isString(aobj) && (Rf_xlength(aobj) >= 1) ) {
-                set_class = true;
-                class_attr = aobj;
-            }
-        }
-        if(set_class) {
-            Rf_setAttrib(object, R_ClassSymbol, class_attr); // sets the object bit, class names already assigned to attributes in the for loop
-        }
-#endif
     }
 
     SEXP read_object() {
@@ -454,7 +458,8 @@ struct QdataDeserializer {
                 break;
             case qstype::CHARACTER:
             {
-                object = PROTECT(Rf_allocVector(STRSXP, static_cast<R_xlen_t>(object_length)));
+                object = PROTECT(use_alt_rep ? charvecs.create(object_length)
+                                             : Rf_allocVector(STRSXP, static_cast<R_xlen_t>(object_length)));
                 read_and_assign_attributes(object, attr_length);
                 if(object_length > 0) character_sexp.push_back(std::make_pair(object, object_length));
                 break;
@@ -500,6 +505,22 @@ struct QdataDeserializer {
         for(auto & x : character_sexp) {
             SEXP object = x.first;
             uint64_t object_length = x.second;
+            if(use_alt_rep) {
+                qd_charvec::Writer writer(object, object_length);
+                for(uint64_t i = 0; i < object_length; ++i) {
+                    uint32_t string_length;
+                    read_string_header(string_length);
+                    if(string_length == NA_STRING_LENGTH) continue; // charvecs start as NA
+                    if(string_length == 0) {
+                        writer.set_empty(i);
+                        continue;
+                    }
+                    char * dest = writer.reserve(string_length);
+                    reader.get_data(dest, string_length);
+                    writer.set(i, dest, string_length);
+                }
+                continue;
+            }
             for(uint64_t i=0; i<object_length; ++i) {
                 uint32_t string_length;
                 read_string_header(string_length);
@@ -540,9 +561,7 @@ struct QdataDeserializer {
             reader.get_data( reinterpret_cast<char*>(RAW(object)), object_length );
         }
 
-#if R_VERSION >= R_Version(4, 6, 0)
         delayed_attributes.resolve();
-#endif
     }
 };
 

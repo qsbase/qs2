@@ -3,7 +3,10 @@ PACKAGE := $(shell perl -aF: -ne 'print, exit if s/^Package:\s+//' DESCRIPTION)
 VERSION := $(shell perl -aF: -ne 'print, exit if s/^Version:\s+//' DESCRIPTION)
 BUILD   := $(PACKAGE)_$(VERSION).tar.gz
 
-.PHONY: doc build install test test-short vignette $(BUILD)
+.PHONY: doc build compile install test test-short test-qdata-charport vignette $(BUILD)
+
+test-qdata-charport:
+	Rscript tests/qdata_charport_testing.R
 
 check: $(BUILD)
 	R CMD check --as-cran $<
@@ -20,6 +23,14 @@ check-m1: $(BUILD)
 reconf:
 	autoreconf -fi
 
+doc:
+	Rscript -e "roxygen2::roxygenise('.', roclets = 'rd');"
+
+# Compile native code without packaging, examples, vignettes, or tests.
+compile:
+	./configure
+	Rscript -e "Rcpp::compileAttributes('.'); pkgbuild::compile_dll('.', debug = FALSE);"
+
 build:
 	find . -type d -exec chmod 755 {} \;
 	find . -type f -exec chmod 644 {} \;
@@ -31,9 +42,9 @@ build:
 	./cleanup
 	Rscript -e "library(Rcpp); compileAttributes('.');"
 	Rscript -e "devtools::load_all(); roxygen2::roxygenise('.');"
-	find . -iname "*.a" -exec rm {} \;
-	find . -iname "*.o" -exec rm {} \;
-	find . -iname "*.so" -exec rm {} \;
+	find src -iname "*.a" -exec rm {} \;
+	find src -iname "*.o" -exec rm {} \;
+	find src -iname "*.so" -exec rm {} \;
 	R CMD build .
 
 install:
@@ -47,11 +58,11 @@ install:
 	./cleanup
 	Rscript -e "library(Rcpp); compileAttributes('.');"
 	Rscript -e "devtools::load_all(); roxygen2::roxygenise('.');"
-	find . -iname "*.a" -exec rm {} \;
-	find . -iname "*.o" -exec rm {} \;
-	find . -iname "*.so" -exec rm {} \;
+	find src -iname "*.a" -exec rm {} \;
+	find src -iname "*.o" -exec rm {} \;
+	find src -iname "*.so" -exec rm {} \;
 	R CMD build . # --no-build-vignettes
-	R CMD INSTALL $(BUILD) --configure-args="--with-simd=AVX2"
+	R CMD INSTALL $(BUILD)
 
 install-arm:
 	find . -type f -exec chmod 644 {} \;
@@ -64,9 +75,9 @@ install-arm:
 	./cleanup
 	Rscript -e "library(Rcpp); compileAttributes('.');"
 	Rscript -e "devtools::load_all(); roxygen2::roxygenise('.');"
-	find . -iname "*.a" -exec rm {} \;
-	find . -iname "*.o" -exec rm {} \;
-	find . -iname "*.so" -exec rm {} \;
+	find src -iname "*.a" -exec rm {} \;
+	find src -iname "*.o" -exec rm {} \;
+	find src -iname "*.so" -exec rm {} \;
 	R CMD build . # --no-build-vignettes
 	R CMD INSTALL $(BUILD)
 
@@ -82,9 +93,9 @@ install-compile-zstd:
 	./cleanup
 	Rscript -e "library(Rcpp); compileAttributes('.');"
 	Rscript -e "devtools::load_all(); roxygen2::roxygenise('.');"
-	find . -iname "*.a" -exec rm {} \;
-	find . -iname "*.o" -exec rm {} \;
-	find . -iname "*.so" -exec rm {} \;
+	find src -iname "*.a" -exec rm {} \;
+	find src -iname "*.o" -exec rm {} \;
+	find src -iname "*.so" -exec rm {} \;
 	R CMD build . --no-build-vignettes
 	R CMD INSTALL $(BUILD) --configure-args="--with-zstd-force-compile"
 
@@ -95,6 +106,7 @@ vignette:
 	# sed -r -i 's/\((.+)\.png/\(vignettes\/\1\.png/' README.md
 
 test-short:
+	Rscript tests/qdata_charport_testing.R
 	Rscript tests/00_smoke_testing.R
 	Rscript tests/fork_tbb_testing.R
 	Rscript tests/qs_savem_testing.R
@@ -104,6 +116,7 @@ test-short:
 	Rscript tests/zz_correctness_testing.R
 
 test:
+	Rscript tests/qdata_charport_testing.R
 	Rscript tests/00_smoke_testing.R
 	Rscript tests/fork_tbb_testing.R
 	Rscript tests/qs_savem_testing.R

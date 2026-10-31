@@ -30,3 +30,6 @@ README.html
 ^inst/include/qdata-cpp/include/xxhash/patches(/|$)
 .claude
 .codex
+AGENTS.md
+CLAUDE.md
+

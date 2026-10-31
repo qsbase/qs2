@@ -15,7 +15,7 @@ blosc_unshuffle_raw(data, bytesofsize)
 The unshuffled vector.
 }
 \description{
-Un-shuffles a raw vector using BLOSC un-shuffle routines.
+Reverses \code{blosc_shuffle_raw}.
 }
 \examples{
 x <- serialize(1L:1000L, NULL)

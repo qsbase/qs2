@@ -34,11 +34,11 @@ The default settings are:
 \item \code{nthreads}: 1L
 \item \code{validate_checksum}: FALSE
 \item \code{warn_unsupported_types}: TRUE (used only in \code{qd_save})
-\item \code{use_alt_rep}: FALSE (accepted by \code{qd_read} and \code{qd_deserialize}, but temporarily disabled)
+\item \code{use_alt_rep}: TRUE (used by \code{qd_read} and \code{qd_deserialize})
 }
 
-When \code{parameter = "use_alt_rep"} is set to \code{TRUE}, qdata reads currently
-warn and fall back to ordinary character vectors.
+When \code{parameter = "use_alt_rep"} is \code{TRUE}, qdata reads return strings as
+charport ALTREP vectors.
 
 When \code{value} is \code{NULL}, the current value of the specified option is returned.
 Otherwise, the option is set to \code{value} and the new value is returned invisibly.

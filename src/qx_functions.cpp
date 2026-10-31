@@ -61,9 +61,11 @@ MemoryBuffer qd_serialize_impl(SEXP object, const int compress_level, const bool
 SEXP qd_serialize(SEXP object, const int compress_level, const bool shuffle, const bool warn_unsupported_types, int nthreads);
 // [[Rcpp::export(rng = false, signature = {file, use_alt_rep = qopt("use_alt_rep"), validate_checksum = qopt("validate_checksum"), nthreads = qopt("nthreads")})]]
 SEXP qd_read(SEXP file, const bool use_alt_rep, const bool validate_checksum, int nthreads);
-SEXP qd_deserialize_impl(MemoryReader& myFile, const bool validate_checksum, int nthreads);
+SEXP qd_deserialize_impl(MemoryReader& myFile, const bool use_alt_rep, const bool validate_checksum, int nthreads);
 // [[Rcpp::export(rng = false, signature = {input, use_alt_rep = qopt("use_alt_rep"), validate_checksum = qopt("validate_checksum"), nthreads = qopt("nthreads")})]]
 SEXP qd_deserialize(SEXP input, const bool use_alt_rep, const bool validate_checksum, int nthreads);
+// [[Rcpp::export(rng = false, invisible = true)]]
+void qs2_check_charport_abi();
 
 // qx utility functions
 // [[Rcpp::export(rng = false)]]
@@ -108,7 +110,6 @@ void qx_export_functions(DllInfo* dll);
 #define IN_MEMORY_NO_HASH_WARN_MSG "Hash not stored; object returned without checksum validation."
 #define IN_MEMORY_HASH_MISMATCH_WARN_MSG "Hash mismatch after read; object returned but data may be corrupted."
 #define IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG "Input must be a raw vector."
-#define ALTREP_DISABLED_WARN_MSG "use_alt_rep is temporarily disabled for qdata; reading strings as ordinary character vectors."
 
 namespace {
 
@@ -391,12 +392,6 @@ SEXP qs_deserialize(SEXP input, const bool validate_checksum, int nthreads) {
     return qs_deserialize_impl(myFile, validate_checksum, nthreads);
 }
 
-inline void warn_if_qdata_altrep_requested(const bool use_alt_rep) {
-    if (use_alt_rep) {
-        Rf_warning("%s", ALTREP_DISABLED_WARN_MSG);
-    }
-}
-
 #define DO_QD_SAVE(_STREAM_WRITER_, _BASE_CLASS_, _COMPRESSOR_, _HASHER_)                                                                          \
     _BASE_CLASS_<_STREAM_WRITER_, _COMPRESSOR_, _HASHER_, StdErrorPolicy, true> writer(myFile, compress_level);                                   \
     QdataSerializer<_BASE_CLASS_<_STREAM_WRITER_, _COMPRESSOR_, _HASHER_, StdErrorPolicy, true>> serializer(writer, warn_unsupported_types);      \
@@ -484,10 +479,18 @@ SEXP qd_serialize(SEXP object, const int compress_level, const bool shuffle, con
     return alloc_raw(result);
 }
 
+// Called once from .onLoad. qdata moves charport Stores into charvecs and fills
+// them in place, which needs the charport ABI qs2 was built against.
+void qs2_check_charport_abi() {
+    if(!charport::check_abi()) {
+        throw std::runtime_error("qs2 was built against a different charport version; reinstall qs2");
+    }
+}
+
 // DO_QD_READ macro assigns SEXP output
 #define DO_QD_READ(_STREAM_READER_, _BASE_CLASS_, _DECOMPRESSOR_, _RUNTIME_HASH_)                                             \
     _BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, StdErrorPolicy> reader(myFile);                                             \
-    QdataDeserializer<_BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, StdErrorPolicy>> deserializer(reader);                    \
+    QdataDeserializer<_BASE_CLASS_<_STREAM_READER_, _DECOMPRESSOR_, StdErrorPolicy>> deserializer(reader, use_alt_rep);       \
     PROTECT(output = qx_with_unwind_cleanup(reader, [&]() -> SEXP {                                                          \
         return deserializer.read_root_object(_RUNTIME_HASH_);                                                                \
     }));
@@ -496,7 +499,6 @@ SEXP qd_read(SEXP file, const bool use_alt_rep, const bool validate_checksum, in
     const char* const file_path = qs2_as_single_string(file, "file");
     nthreads = normalize_nthreads(nthreads);
 
-    warn_if_qdata_altrep_requested(use_alt_rep);
 
     SEXP output = R_NilValue;
     uint64_t runtime_hash = 0;
@@ -547,7 +549,7 @@ SEXP qd_read(SEXP file, const bool use_alt_rep, const bool validate_checksum, in
     return output;
 }
 
-SEXP qd_deserialize_impl(MemoryReader& myFile, const bool validate_checksum, int nthreads) {
+SEXP qd_deserialize_impl(MemoryReader& myFile, const bool use_alt_rep, const bool validate_checksum, int nthreads) {
     nthreads = normalize_nthreads(nthreads);
 
     bool shuffle;
@@ -593,12 +595,11 @@ SEXP qd_deserialize_impl(MemoryReader& myFile, const bool validate_checksum, int
 }
 
 SEXP qd_deserialize(SEXP input, const bool use_alt_rep, const bool validate_checksum, int nthreads) {
-    warn_if_qdata_altrep_requested(use_alt_rep);
     if (TYPEOF(input) != RAWSXP) {
         throw_error<StdErrorPolicy>(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
     }
     MemoryReader myFile(RAW(input), static_cast<const uint64_t>(Rf_xlength(input)));
-    return qd_deserialize_impl(myFile, validate_checksum, nthreads);
+    return qd_deserialize_impl(myFile, use_alt_rep, validate_checksum, nthreads);
 }
 
 
@@ -664,13 +665,7 @@ SEXP qx_dump(SEXP file) {
 // SEXP: Rcpp::wrap() of a returned std::string allocates, and an allocation
 // failure there would jump past the temporary's destructor.
 SEXP check_SIMD() {
-#if defined(__AVX2__)
-    return alloc_string("AVX2");
-#elif defined(__SSE2__)
-    return alloc_string("SSE2");
-#else
-    return alloc_string("no SIMD");
-#endif
+    return alloc_string(byte_shuffle_kernel());
 }
 
 bool check_TBB() {
@@ -790,7 +785,7 @@ SEXP blosc_shuffle_raw(SEXP const data, int bytesofsize) {
     uint64_t blocksize = Rf_xlength(data);
     uint8_t* xdata = reinterpret_cast<uint8_t*>(RAW(data));
     std::vector<uint8_t> xshuf(blocksize);
-    blosc_shuffle(xdata, xshuf.data(), blocksize, bytesofsize);
+    byte_shuffle(xdata, xshuf.data(), blocksize, bytesofsize);
     uint64_t remainder = blocksize % bytesofsize;
     uint64_t vectorizablebytes = blocksize - remainder;
     // empty input gives xshuf.data() == nullptr, and memcpy's arguments are nonnull
@@ -804,7 +799,7 @@ SEXP blosc_unshuffle_raw(SEXP const data, int bytesofsize) {
     uint64_t blocksize = Rf_xlength(data);
     uint8_t* xdata = reinterpret_cast<uint8_t*>(RAW(data));
     std::vector<uint8_t> xshuf(blocksize);
-    blosc_unshuffle(xdata, xshuf.data(), blocksize, bytesofsize);
+    byte_unshuffle(xdata, xshuf.data(), blocksize, bytesofsize);
     uint64_t remainder = blocksize % bytesofsize;
     uint64_t vectorizablebytes = blocksize - remainder;
     if (remainder) std::memcpy(xshuf.data() + vectorizablebytes, xdata + vectorizablebytes, remainder);

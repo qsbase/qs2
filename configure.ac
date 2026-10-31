@@ -1,4 +1,4 @@
-AC_INIT([qs2],[0.2.2],[traversc@gmail.com])
+AC_INIT([qs2],[0.4.0],[traversc@gmail.com])
 AC_PATH_PROG([PKGCONF],[pkg-config],[],[$PATH:/usr/local/bin:ext/bin:ext:/sw/bin:/opt/bin:/opt/local/bin])
 
 # C++ compiler (from R). CXX_STD is set in src/Makevars(.win), not here.
@@ -13,6 +13,10 @@ AC_ARG_WITH([zstd-force-compile],
             AS_HELP_STRING([--with-zstd-force-compile],[Force compilation of bundled zstd source files]),
             [zstd_force_compile="true"])
 
+AC_ARG_WITH([zstd-prefer-bundled],
+            AS_HELP_STRING([--with-zstd-prefer-bundled],[Compile the bundled zstd unless the system zstd is newer (default on macOS)]),
+            [zstd_prefer_bundled="true"])
+
 AC_ARG_WITH([zstd-include],
             AS_HELP_STRING([--with-zstd-include=INCLUDE_PATH],[the location of zstd header files]),
             [zstd_include_path=$withval])
@@ -26,10 +30,6 @@ using_tbb="auto"
 AC_ARG_WITH([TBB],
             AS_HELP_STRING([--without-TBB],[Disable TBB usage and force RCPP_PARALLEL_USE_TBB=0]),
             [if test "x$withval" = "xno"; then using_tbb="false"; fi])
-
-AC_ARG_WITH([simd],
-            AS_HELP_STRING([--with-simd],[Manually select SIMD support (options: AVX2, SSE2)]),
-            [with_simd=$withval])
 
 # Version-string -> comparable integer
 getVersion()
@@ -47,19 +47,34 @@ ZSTD_LIBS=""
 ZSTD_SHLIB=""
 ZSTD_CLEAN=""
 
+# Homebrew builds zstd with -Os, which is 20-30% slower, so macOS prefers the
+# bundled copy unless the system version is newer
+if test "`uname -s`" = "Darwin"; then
+  zstd_prefer_bundled="true"
+fi
+
 if test xx$zstd_force_compile = "xxtrue"; then
   echo "Compiling zstd from source due to --with-zstd-force-compile"
   COMPILE_ZSTD="true"
-elif test "xx$zstd_include_path" != "xx"; then
+elif test "xx$zstd_include_path" != "xx" || test "xx$zstd_lib_path" != "xx"; then
   echo "Using user-defined zstd install paths"
-    ZSTD_LIBS="-L${zstd_lib_path}"
+  ZSTD_LIBS="-lzstd"
+  ZSTD_INCLUDE_PATH=""
+  if test "xx$zstd_lib_path" != "xx"; then
+    ZSTD_LIBS="-L${zstd_lib_path} -lzstd"
+  fi
+  if test "xx$zstd_include_path" != "xx"; then
     ZSTD_INCLUDE_PATH="-I${zstd_include_path}"
-    COMPILE_ZSTD="false"
+  fi
+  COMPILE_ZSTD="false"
 elif test "xx$PKGCONF" != "xx"; then
   if "${PKGCONF}" --exists libzstd; then
     VERSION_STRING=`${PKGCONF} --modversion libzstd`
     VER=`getVersion ${VERSION_STRING}`
-    if test "${VER}" -ge 100507; then
+    if test xx$zstd_prefer_bundled = "xxtrue" && test "${VER}" -le 100507; then
+      echo "zstd ${VERSION_STRING} library detected but is not newer than bundled version (1.5.7) -- compiling from source"
+      COMPILE_ZSTD="true"
+    elif test "${VER}" -ge 100507; then
       echo "zstd ${VERSION_STRING} library detected -- skipping zstd compilation"
       ZSTD_LIBS=`"${PKGCONF}" --libs libzstd`
       ZSTD_INCLUDE_PATH=`"${PKGCONF}" --cflags-only-I libzstd`
@@ -140,17 +155,6 @@ else
   TBB_FLAG=""
 fi
 
-# SIMD flag (optional manual override)
-SIMD_FLAG=""
-
-if test xx$with_simd = "xxAVX2"; then
-  echo "Using AVX2"
-  SIMD_FLAG="-mavx2"
-elif test xx$with_simd = "xxSSE2"; then
-  echo "Using SSE2"
-  SIMD_FLAG="-msse2"
-fi
-
 # Substitute into src/Makevars
 AC_SUBST([COMPILER_SPECIFIC_LIBS], $COMPILER_SPECIFIC_LIBS)
 AC_SUBST([ZSTD_INCLUDE_PATH], $ZSTD_INCLUDE_PATH)
@@ -158,7 +162,6 @@ AC_SUBST([ZSTD_LIBS], $ZSTD_LIBS)
 AC_SUBST([ZSTD_SHLIB], $ZSTD_SHLIB)
 AC_SUBST([ZSTD_CLEAN], $ZSTD_CLEAN)
 AC_SUBST([TBB_FLAG], $TBB_FLAG)
-AC_SUBST([SIMD_FLAG], $SIMD_FLAG)
 
 AC_CONFIG_FILES([src/Makevars])
 AC_OUTPUT

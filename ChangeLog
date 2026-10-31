@@ -1,3 +1,12 @@
+Version 0.4.0 (2026-10-31)
+    * Rewrite the byte shuffle in portable vector code: several times faster, especially on Mac, and as fast at -O2 as at -O3. The file format is unchanged.
+    * Remove the `--with-simd` configure option; the new shuffle does not need it
+    * qdata reads strings as charport ALTREP vectors by default (`use_alt_rep = TRUE`), and saves strings through charport, including ALTREP strings from other packages
+    * Replace the stringfish dependency with charport; `generate_test_data()` strings differ from earlier versions for the same seed
+    * Fix the link flags missing `-lzstd` when only `--with-zstd-lib` is given
+    * Add `--with-zstd-prefer-bundled`: compile the bundled zstd unless the system zstd is newer. It is the default on macOS, where Homebrew builds zstd with -Os (20-30% slower)
+    * Add a vignette on converting `qs` files to `qs2` with rig (contributed by Benjamin L. Hlina)
+
 Version 0.3.1 (2026-08-20)
     * Keep documented `std::string` file-path overloads in `qs2_external.h` alongside new `SEXP` forms
 

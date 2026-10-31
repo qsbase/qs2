@@ -4,7 +4,7 @@ author: Benjamin L. Hlina
 date: "2026-09-25"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{using_qs_and_qs2_with_rig}
+  %\VignetteIndexEntry{Converting qs to qs2 with rig}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -46,21 +46,33 @@ Next we can see what versions of R are available in rig using
 ```{bash, rig-available}
 rig available 
 ``` 
-We can then install R v4.3 by using the following: 
+We can then install R v4.3.3 by using the following: 
 
 ```{bash, rig-install-r-4.3}
-rig add 4.3
+rig add 4.3.3
 ```
 
-At this point we could switch the default R version to 4.3 if this was something we desired and can be obtained using: 
+At this point we could switch the default R version to 4.3.3 if this was something we desired and can be obtained using: 
 
 ```{bash, default-r}
-rig default 4.3
+rig default 4.3.3
 ```
 
 However, you likely have other versions of R (e.g., 4.6) that you are currently using. So, it is probably best to leave this setting alone. 
  
 # Installing {qs} and {qs2} 
+
+## Terminal
+
+The quickest way to start R 4.3.3 is from terminal with `rig run`, which opens an interactive R console using that version: 
+
+```{bash, rig-run-r4.3.3}
+rig run -r 4.3.3
+```
+
+If you prefer RStudio, `rig rstudio` launches RStudio with a chosen R version instead (see the RStudio section below). 
+
+Once started we can move to install the packages. 
 
 ## Positron 
 
@@ -81,13 +93,13 @@ The operating system and version of RStudio are important here. On macOS arm64 c
 Next, we can launch RStudio using the following for macOS (non-Intel) computers
 
 ```{bash, launch-rstudio-with-r4.3-macOS}
-rig rstudio 4.3-arm64
+rig rstudio 4.3.3-arm64
 ```
 
 On Windows machines we can use the following: 
 
 ```{bash, launch-rstudio-with-r4.3-windows}
-rig rstudio 4.3
+rig rstudio 4.3.3
 ```
 
 Once started we can move to install the packages. 
@@ -97,10 +109,13 @@ Next, we can install `{qs}` and `{qs2}` using the following commands and follow 
 
 ```{r, install-qs-qs2}
 pak::pkg_install(c(
+  "stringfish@0.18.0",
   "url::https://cran.r-project.org/src/contrib/Archive/qs/qs_0.27.3.tar.gz",
   "qs2"
 ))
 ```
+
+`{qs}` does not compile with `{stringfish}` 0.19.0 or later, so we install `{stringfish}` 0.18.0 alongside it. 
 
 At this point we can open `.qs` files using the following as an example: 
 

@@ -75,7 +75,7 @@ struct ZstdShuffleCompressor {
 
             for(int i = 0; i < 4; ++i) {
                 uint32_t block_offset = (srcSize / 4ULL) * i; // integer division, rounds down
-                blosc_shuffle(reinterpret_cast<const uint8_t*>(src + block_offset), reinterpret_cast<uint8_t*>(shuffleblock.get()), SHUFFLE_HEURISTIC_BLOCKSIZE, SHUFFLE_ELEMSIZE);
+                byte_shuffle(reinterpret_cast<const uint8_t*>(src + block_offset), reinterpret_cast<uint8_t*>(shuffleblock.get()), SHUFFLE_HEURISTIC_BLOCKSIZE, SHUFFLE_ELEMSIZE);
                 auto shuf = ZSTD_compressCCtx(cctx, dst, dstCapacity, shuffleblock.get(),
                                                 SHUFFLE_HEURISTIC_BLOCKSIZE, 
                                                 SHUFFLE_HEURISTIC_CL);
@@ -116,7 +116,7 @@ struct ZstdShuffleCompressor {
                 // shuffle compress into new shuffleblock
                 std::unique_ptr<char[]> shuffle_zblock(MAKE_UNIQUE_BLOCK(MAX_ZBLOCKSIZE));
                 uint32_t remainder = srcSize % SHUFFLE_ELEMSIZE;
-                blosc_shuffle(reinterpret_cast<const uint8_t*>(src), reinterpret_cast<uint8_t*>(shuffleblock.get()), srcSize - remainder, SHUFFLE_ELEMSIZE);
+                byte_shuffle(reinterpret_cast<const uint8_t*>(src), reinterpret_cast<uint8_t*>(shuffleblock.get()), srcSize - remainder, SHUFFLE_ELEMSIZE);
                 std::memcpy(shuffleblock.get() + srcSize - remainder, src + srcSize - remainder, remainder);
                 auto output_size_with_shuffle = ZSTD_compressCCtx(cctx, shuffle_zblock.get(), MAX_ZBLOCKSIZE, shuffleblock.get(), srcSize, compress_level);
                 // compress without shuffle into dst
@@ -134,7 +134,7 @@ struct ZstdShuffleCompressor {
                 }
             } else {
                 uint32_t remainder = srcSize % SHUFFLE_ELEMSIZE;
-                blosc_shuffle(reinterpret_cast<const uint8_t*>(src), reinterpret_cast<uint8_t*>(shuffleblock.get()), srcSize - remainder, SHUFFLE_ELEMSIZE);
+                byte_shuffle(reinterpret_cast<const uint8_t*>(src), reinterpret_cast<uint8_t*>(shuffleblock.get()), srcSize - remainder, SHUFFLE_ELEMSIZE);
                 std::memcpy(shuffleblock.get() + srcSize - remainder, src + srcSize - remainder, remainder);
                 auto output_size = ZSTD_compressCCtx(cctx, dst, dstCapacity, shuffleblock.get(), srcSize, compress_level);
                 if(ZSTD_isError(output_size)) {
@@ -199,7 +199,7 @@ struct ZstdShuffleDecompressor {
                 return COMPRESSION_ERROR; // 0 indicates an error
             }
             uint32_t remainder = output_blocksize % SHUFFLE_ELEMSIZE;
-            blosc_unshuffle(reinterpret_cast<uint8_t*>(shuffleblock.get()), reinterpret_cast<uint8_t*>(dst), output_blocksize - remainder, SHUFFLE_ELEMSIZE);
+            byte_unshuffle(reinterpret_cast<uint8_t*>(shuffleblock.get()), reinterpret_cast<uint8_t*>(dst), output_blocksize - remainder, SHUFFLE_ELEMSIZE);
             std::memcpy(dst + output_blocksize - remainder, shuffleblock.get() + output_blocksize - remainder, remainder);
             return output_blocksize;
         } else {

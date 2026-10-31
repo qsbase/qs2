@@ -112,11 +112,7 @@ stopifnot(identical(unserialize(recovered), obj))
 stopifnot(identical(qd$stored_hash, qd$computed_hash))
 
 cat("Testing qs_to_rds and rds_to_qs with large random strings...\n")
-large_strings <- stringfish::random_strings(
-  N = 1e6,
-  string_size = 23,
-  vector_mode = "normal"
-)
+large_strings <- stringi::stri_rand_strings(1e6, 23)
 
 tmp_qs_large <- tempfile(fileext = ".qs2")
 tmp_rds_large <- tempfile(fileext = ".rds")
