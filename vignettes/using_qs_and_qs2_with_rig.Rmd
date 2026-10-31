@@ -38,23 +38,23 @@ Because admin mode installs as administrative user in all operating systems, rig
 
 First, we can see what version(s) of R are currently installed using the following command: 
 
-```{bash, rig-list}
+```{bash, rig-list, eval = FALSE}
 rig list
 ```
 
 Next we can see what versions of R are available in rig using
-```{bash, rig-available}
+```{bash, rig-available, eval = FALSE}
 rig available 
 ``` 
 We can then install R v4.3.3 by using the following: 
 
-```{bash, rig-install-r-4.3}
+```{bash, rig-install-r-4.3, eval = FALSE}
 rig add 4.3.3
 ```
 
 At this point we could switch the default R version to 4.3.3 if this was something we desired and can be obtained using: 
 
-```{bash, default-r}
+```{bash, default-r, eval = FALSE}
 rig default 4.3.3
 ```
 
@@ -66,7 +66,7 @@ However, you likely have other versions of R (e.g., 4.6) that you are currently 
 
 The quickest way to start R 4.3.3 is from terminal with `rig run`, which opens an interactive R console using that version: 
 
-```{bash, rig-run-r4.3.3}
+```{bash, rig-run-r4.3.3, eval = FALSE}
 rig run -r 4.3.3
 ```
 
@@ -84,7 +84,7 @@ Once started we can move to install the packages.
 
 To use RStudio we need to use the following commands in terminal. First let's look at what versions of R are installed. 
 
-```{bash, rstudio-available-r}
+```{bash, rstudio-available-r, eval = FALSE}
 rig list
 ```
 
@@ -92,13 +92,13 @@ The operating system and version of RStudio are important here. On macOS arm64 c
 
 Next, we can launch RStudio using the following for macOS (non-Intel) computers
 
-```{bash, launch-rstudio-with-r4.3-macOS}
+```{bash, launch-rstudio-with-r4.3-macOS, eval = FALSE}
 rig rstudio 4.3.3-arm64
 ```
 
 On Windows machines we can use the following: 
 
-```{bash, launch-rstudio-with-r4.3-windows}
+```{bash, launch-rstudio-with-r4.3-windows, eval = FALSE}
 rig rstudio 4.3.3
 ```
 
@@ -107,7 +107,7 @@ Once started we can move to install the packages.
 ## Install packages 
 Next, we can install `{qs}` and `{qs2}` using the following commands and follow the prompts: 
 
-```{r, install-qs-qs2}
+```{r, install-qs-qs2, eval = FALSE}
 pak::pkg_install(c(
   "stringfish@0.18.0",
   "url::https://cran.r-project.org/src/contrib/Archive/qs/qs_0.27.3.tar.gz",
@@ -119,13 +119,13 @@ pak::pkg_install(c(
 
 At this point we can open `.qs` files using the following as an example: 
 
-```{r, open-qs} 
+```{r, open-qs, eval = FALSE} 
 df <- qs::qread(file = 'path_to_qs_file.qs')
 ```
 
 Next, we can save the file as a `.qs2` file using `{qs2}`
 
-```{r, save-qs2}
+```{r, save-qs2, eval = FALSE}
 qs2::qs_save(object = df, file = 'path_to_save_qs2_file.qs2')
 ```
 
