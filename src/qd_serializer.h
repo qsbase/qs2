@@ -414,31 +414,64 @@ struct QdataSerializer {
                 return;
         }
     }
+    void write_string_view(const char* data, const int length, const cetype_ext_t encoding) {
+        if(encoding == CETYPE_EXT_NA || data == nullptr || length == NA_INTEGER) {
+            writer.push_pod(string_header_NA);
+            return;
+        }
+        if(length < 0) {
+            throw std::runtime_error("invalid negative string length from charport Reader");
+        }
+
+        // Preserve qdata's existing byte policy: Latin-1 is always
+        // normalized; native text is normalized only outside a
+        // UTF-8 locale and only when it contains non-ASCII bytes.
+        const bool needs_translation = encoding == CETYPE_EXT_LATIN1 ||
+            (encoding == CETYPE_EXT_NATIVE && !qs2_get_utf8_locale() &&
+             !qd_is_ascii(data, static_cast<std::size_t>(length)));
+        if(needs_translation) {
+            const cetype_t base_encoding = encoding == CETYPE_EXT_LATIN1
+                ? CE_LATIN1 : CE_NATIVE;
+            SEXP charsxp = PROTECT(Rf_mkCharLenCE(data, length, base_encoding));
+            try {
+                const char* utf8 = Rf_translateCharUTF8(charsxp);
+                const uint32_t utf8_length = static_cast<uint32_t>(std::strlen(utf8));
+                write_string_header(utf8_length);
+                write_string_data(utf8, utf8_length);
+            } catch(...) {
+                UNPROTECT(1);
+                throw;
+            }
+            UNPROTECT(1);
+        } else {
+            const uint32_t stored_length = static_cast<uint32_t>(length);
+            write_string_header(stored_length);
+            write_string_data(data, stored_length);
+        }
+    }
+
     void write_object_data() {
         constexpr R_xlen_t batch_capacity = 256;
-        for(size_t vector_index = 0; vector_index < character_sexp.size();) {
-            const auto& x = character_sexp[vector_index++];
+        for(auto & x : character_sexp) {
             SEXP object = x.first;
             uint64_t object_length = x.second;
-            bool grouped = false;
-            // Payloads have no vector delimiters. Batch consecutive ordinary
-            // scalars through one Reader, avoiding a resolver call per list item.
-            // Registered ALTREP inputs keep their own non-materializing reader.
-            if(object_length == 1 && !ALTREP(object)) {
-                size_t end = vector_index;
-                while(end < character_sexp.size() && end - vector_index + 1 < size_t(batch_capacity) &&
-                      character_sexp[end].second == 1 && !ALTREP(character_sexp[end].first)) ++end;
-                const size_t count = end - vector_index + 1;
-                if(count > 1) {
-                    SEXP batch = PROTECT(Rf_allocVector(STRSXP, static_cast<R_xlen_t>(count)));
-                    SET_STRING_ELT(batch, 0, STRING_ELT(object, 0));
-                    for(size_t j = 1; j < count; ++j)
-                        SET_STRING_ELT(batch, static_cast<R_xlen_t>(j), STRING_ELT(character_sexp[vector_index + j - 1].first, 0));
-                    object = batch;
-                    object_length = count;
-                    vector_index = end;
-                    grouped = true;
+            // Ordinary vectors are read directly. Registered ALTREP inputs keep
+            // their own non-materializing charport reader.
+            if(!ALTREP(object)) {
+                const SEXP * xptr = STRING_PTR_RO(object);
+                for(uint64_t i = 0; i < object_length; ++i) {
+                    const SEXP charsxp = xptr[i];
+                    if(charsxp == NA_STRING) {
+                        writer.push_pod(string_header_NA);
+                        continue;
+                    }
+                    const cetype_t ce = Rf_getCharCE(charsxp);
+                    const cetype_ext_t encoding = ce == CE_UTF8 ? CETYPE_EXT_UTF8 :
+                        ce == CE_LATIN1 ? CETYPE_EXT_LATIN1 :
+                        ce == CE_BYTES ? CETYPE_EXT_BYTES : CETYPE_EXT_NATIVE;
+                    write_string_view(CHAR(charsxp), LENGTH(charsxp), encoding);
                 }
+                continue;
             }
             string_reader.reset(object);
             const char* ptrs[batch_capacity];
@@ -449,47 +482,11 @@ struct QdataSerializer {
                     std::min<uint64_t>(batch_capacity, object_length - start));
                 string_reader.views(static_cast<R_xlen_t>(start), count, ptrs, lengths, encodings);
                 for(R_xlen_t j = 0; j < count; ++j) {
-                    const char* data = ptrs[j];
-                    const int length = lengths[j];
-                    const cetype_ext_t encoding = encodings[j];
-                    if(encoding == CETYPE_EXT_NA || data == nullptr || length == NA_INTEGER) {
-                        writer.push_pod(string_header_NA);
-                        continue;
-                    }
-                    if(length < 0) {
-                        throw std::runtime_error("invalid negative string length from charport Reader");
-                    }
-
-                    // Preserve qdata's existing byte policy: Latin-1 is always
-                    // normalized; native text is normalized only outside a
-                    // UTF-8 locale and only when it contains non-ASCII bytes.
-                    const bool needs_translation = encoding == CETYPE_EXT_LATIN1 ||
-                        (encoding == CETYPE_EXT_NATIVE && !qs2_get_utf8_locale() &&
-                         !qd_is_ascii(data, static_cast<std::size_t>(length)));
-                    if(needs_translation) {
-                        const cetype_t base_encoding = encoding == CETYPE_EXT_LATIN1
-                            ? CE_LATIN1 : CE_NATIVE;
-                        SEXP charsxp = PROTECT(Rf_mkCharLenCE(data, length, base_encoding));
-                        try {
-                            const char* utf8 = Rf_translateCharUTF8(charsxp);
-                            const uint32_t utf8_length = static_cast<uint32_t>(std::strlen(utf8));
-                            write_string_header(utf8_length);
-                            write_string_data(utf8, utf8_length);
-                        } catch(...) {
-                            UNPROTECT(1);
-                            throw;
-                        }
-                        UNPROTECT(1);
-                    } else {
-                        const uint32_t stored_length = static_cast<uint32_t>(length);
-                        write_string_header(stored_length);
-                        write_string_data(data, stored_length);
-                    }
+                    write_string_view(ptrs[j], lengths[j], encodings[j]);
                 }
                 start += static_cast<uint64_t>(count);
             }
             string_reader = charport::Reader();
-            if(grouped) UNPROTECT(1);
         }
         for(auto & x : complex_sexp) {
             SEXP object = x.first;
