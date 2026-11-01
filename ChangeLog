@@ -4,7 +4,9 @@ Version 0.4.0 (2026-10-31)
     * qdata reads strings as charport ALTREP vectors by default (`use_alt_rep = TRUE`), and saves strings through charport, including ALTREP strings from other packages
     * Replace the stringfish dependency with charport; `generate_test_data()` strings differ from earlier versions for the same seed
     * Fix the link flags missing `-lzstd` when only `--with-zstd-lib` is given
-    * Add `--with-zstd-prefer-bundled`: compile the bundled zstd unless the system zstd is newer. It is the default on macOS, where Homebrew builds zstd with -Os (20-30% slower)
+    * Add `--with-zstd-prefer-bundled`: compile the bundled zstd unless the system zstd is newer. It is the default on macOS, where Homebrew builds zstd with -Os (20-30% slower); turn it off with `--without-zstd-prefer-bundled`
+    * Fix `--without-zstd-force-compile` forcing the bundled zstd build
+    * Fix R errors and interrupts skipping C++ cleanup when allocating the unwind token; each call now makes its token before any native state
     * Add a vignette on converting `qs` files to `qs2` with rig (contributed by Benjamin L. Hlina)
 
 Version 0.3.1 (2026-08-20)

@@ -159,7 +159,7 @@ for (input_charvec in c(FALSE, TRUE)) {
   }
 }
 
-# The default reader setting remains ordinary STRSXP vectors.
+# use_alt_rep = FALSE returns ordinary STRSXP vectors.
 plain_file <- tempfile(fileext = ".qd")
 plain_input <- make_character_fixture(FALSE)
 qs2::qd_save(plain_input, plain_file, nthreads = 1L)

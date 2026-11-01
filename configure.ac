@@ -11,11 +11,14 @@ echo "C++ compiler: $PATH_TO_CPP_COMPILER"
 # Configure args
 AC_ARG_WITH([zstd-force-compile],
             AS_HELP_STRING([--with-zstd-force-compile],[Force compilation of bundled zstd source files]),
-            [zstd_force_compile="true"])
+            [zstd_force_compile="$withval"])
 
+# Homebrew builds zstd with -Os, which is 20-30% slower, so macOS prefers the
+# bundled copy unless the system version is newer
 AC_ARG_WITH([zstd-prefer-bundled],
             AS_HELP_STRING([--with-zstd-prefer-bundled],[Compile the bundled zstd unless the system zstd is newer (default on macOS)]),
-            [zstd_prefer_bundled="true"])
+            [zstd_prefer_bundled="$withval"],
+            [if test "`uname -s`" = "Darwin"; then zstd_prefer_bundled="yes"; fi])
 
 AC_ARG_WITH([zstd-include],
             AS_HELP_STRING([--with-zstd-include=INCLUDE_PATH],[the location of zstd header files]),
@@ -47,13 +50,7 @@ ZSTD_LIBS=""
 ZSTD_SHLIB=""
 ZSTD_CLEAN=""
 
-# Homebrew builds zstd with -Os, which is 20-30% slower, so macOS prefers the
-# bundled copy unless the system version is newer
-if test "`uname -s`" = "Darwin"; then
-  zstd_prefer_bundled="true"
-fi
-
-if test xx$zstd_force_compile = "xxtrue"; then
+if test xx$zstd_force_compile = "xxyes"; then
   echo "Compiling zstd from source due to --with-zstd-force-compile"
   COMPILE_ZSTD="true"
 elif test "xx$zstd_include_path" != "xx" || test "xx$zstd_lib_path" != "xx"; then
@@ -71,7 +68,7 @@ elif test "xx$PKGCONF" != "xx"; then
   if "${PKGCONF}" --exists libzstd; then
     VERSION_STRING=`${PKGCONF} --modversion libzstd`
     VER=`getVersion ${VERSION_STRING}`
-    if test xx$zstd_prefer_bundled = "xxtrue" && test "${VER}" -le 100507; then
+    if test xx$zstd_prefer_bundled = "xxyes" && test "${VER}" -le 100507; then
       echo "zstd ${VERSION_STRING} library detected but is not newer than bundled version (1.5.7) -- compiling from source"
       COMPILE_ZSTD="true"
     elif test "${VER}" -ge 100507; then

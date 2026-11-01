@@ -152,7 +152,8 @@ size_t parse_nonnegative_whole_size(SEXP const size, const char* arg_name) {
 }
 
 // The output allocation is the most likely one to fail, because it doubles peak
-// memory. Protect it so the R error cannot skip the source buffer's destructor.
+// memory. Protect it so the R error cannot skip the source buffer's destructor;
+// the caller's qx_unwind_scope must therefore exist before that buffer does.
 SEXP alloc_raw(const std::vector<unsigned char>& bytes) {
     return qx_unwind_protect([&]() -> SEXP {
         SEXP out = Rf_allocVector(RAWSXP, static_cast<R_xlen_t>(bytes.size()));
@@ -210,7 +211,11 @@ SEXP qs_save(SEXP object, SEXP file, const int compress_level, const bool shuffl
         throw_error<StdErrorPolicy>(COMPRESS_LEVEL_ERR_MSG);
     }
 
-    OfStreamWriter myFile(R_ExpandFileName(file_path));
+    // R_ExpandFileName can warn (an error under warn = 2), so it runs before the
+    // scope. It returns a static buffer, valid until the next expansion.
+    const char* const expanded_path = R_ExpandFileName(file_path);
+    qx_unwind_scope unwind;
+    OfStreamWriter myFile(expanded_path);
     if (!myFile.isValid()) {
         throw_error<StdErrorPolicy>(FILE_SAVE_ERR_MSG);
     }
@@ -237,9 +242,8 @@ SEXP qs_save(SEXP object, SEXP file, const int compress_level, const bool shuffl
     return R_NilValue;
 }
 
+// nthreads is normalized by the caller, before its unwind scope
 MemoryBuffer qs_serialize_impl(SEXP object, const int compress_level, const bool shuffle, int nthreads) {
-    nthreads = normalize_nthreads(nthreads);
-
     if (compress_level > ZSTD_maxCLevel() || compress_level < ZSTD_minCLevel()) {
         throw_error<StdErrorPolicy>(COMPRESS_LEVEL_ERR_MSG);
     }
@@ -271,6 +275,8 @@ MemoryBuffer qs_serialize_impl(SEXP object, const int compress_level, const bool
 }
 
 SEXP qs_serialize(SEXP object, const int compress_level, const bool shuffle, int nthreads) {
+    nthreads = normalize_nthreads(nthreads);  // may warn
+    qx_unwind_scope unwind;
     MemoryBuffer result = qs_serialize_impl(object, compress_level, shuffle, nthreads);
     return alloc_raw(result);
 }
@@ -290,11 +296,13 @@ SEXP qs_read(SEXP file, const bool validate_checksum, int nthreads) {
     const char* const file_path = qs2_as_single_string(file, "file");
     nthreads = normalize_nthreads(nthreads);
 
+    const char* const expanded_path = R_ExpandFileName(file_path);
     SEXP output = R_NilValue;
     uint64_t runtime_hash = 0;
     uint64_t stored_hash = 0;
     {
-        IfStreamReader myFile(R_ExpandFileName(file_path));
+        qx_unwind_scope unwind;
+        IfStreamReader myFile(expanded_path);
         if (!myFile.isValid()) {
             throw_error<StdErrorPolicy>(FILE_READ_ERR_MSG);
         }
@@ -357,20 +365,23 @@ SEXP qs_deserialize_impl(MemoryReader& myFile, const bool validate_checksum, int
 
     SEXP output = R_NilValue;
     uint64_t runtime_hash = 0;
-    if (nthreads > 1) {
+    {
+        qx_unwind_scope unwind;
+        if (nthreads > 1) {
 #if RCPP_PARALLEL_USE_TBB != 0
-        tbb::global_control gc(tbb::global_control::parameter::max_allowed_parallelism, nthreads);
-        if (shuffle) {
-            DO_QS_READ(MemoryReader, BlockCompressReaderMT, ZstdShuffleDecompressor, runtime_hash);
-        } else {
-            DO_QS_READ(MemoryReader, BlockCompressReaderMT, ZstdDecompressor, runtime_hash);
-        }
+            tbb::global_control gc(tbb::global_control::parameter::max_allowed_parallelism, nthreads);
+            if (shuffle) {
+                DO_QS_READ(MemoryReader, BlockCompressReaderMT, ZstdShuffleDecompressor, runtime_hash);
+            } else {
+                DO_QS_READ(MemoryReader, BlockCompressReaderMT, ZstdDecompressor, runtime_hash);
+            }
 #endif
-    } else {
-        if (shuffle) {
-            DO_QS_READ(MemoryReader, BlockCompressReader, ZstdShuffleDecompressor, runtime_hash);
         } else {
-            DO_QS_READ(MemoryReader, BlockCompressReader, ZstdDecompressor, runtime_hash);
+            if (shuffle) {
+                DO_QS_READ(MemoryReader, BlockCompressReader, ZstdShuffleDecompressor, runtime_hash);
+            } else {
+                DO_QS_READ(MemoryReader, BlockCompressReader, ZstdDecompressor, runtime_hash);
+            }
         }
     }
     if (!validate_checksum) {
@@ -416,7 +427,9 @@ SEXP qd_save(SEXP object, SEXP file, const int compress_level, const bool shuffl
         throw_error<StdErrorPolicy>(COMPRESS_LEVEL_ERR_MSG);
     }
 
-    OfStreamWriter myFile(R_ExpandFileName(file_path));
+    const char* const expanded_path = R_ExpandFileName(file_path);
+    qx_unwind_scope unwind;
+    OfStreamWriter myFile(expanded_path);
     if (!myFile.isValid()) {
         throw std::runtime_error(FILE_SAVE_ERR_MSG);
     }
@@ -442,9 +455,8 @@ SEXP qd_save(SEXP object, SEXP file, const int compress_level, const bool shuffl
     return R_NilValue;
 }
 
+// nthreads is normalized by the caller, before its unwind scope
 MemoryBuffer qd_serialize_impl(SEXP object, const int compress_level, const bool shuffle, const bool warn_unsupported_types, int nthreads) {
-    nthreads = normalize_nthreads(nthreads);
-
     if (compress_level > ZSTD_maxCLevel() || compress_level < ZSTD_minCLevel()) {
         throw_error<StdErrorPolicy>(COMPRESS_LEVEL_ERR_MSG);
     }
@@ -475,6 +487,8 @@ MemoryBuffer qd_serialize_impl(SEXP object, const int compress_level, const bool
 }
 
 SEXP qd_serialize(SEXP object, const int compress_level, const bool shuffle, const bool warn_unsupported_types, int nthreads) {
+    nthreads = normalize_nthreads(nthreads);  // may warn
+    qx_unwind_scope unwind;
     MemoryBuffer result = qd_serialize_impl(object, compress_level, shuffle, warn_unsupported_types, nthreads);
     return alloc_raw(result);
 }
@@ -499,12 +513,13 @@ SEXP qd_read(SEXP file, const bool use_alt_rep, const bool validate_checksum, in
     const char* const file_path = qs2_as_single_string(file, "file");
     nthreads = normalize_nthreads(nthreads);
 
-
+    const char* const expanded_path = R_ExpandFileName(file_path);
     SEXP output = R_NilValue;
     uint64_t runtime_hash = 0;
     uint64_t stored_hash = 0;
     {
-        IfStreamReader myFile(R_ExpandFileName(file_path));
+        qx_unwind_scope unwind;
+        IfStreamReader myFile(expanded_path);
         if (!myFile.isValid()) {
             throw std::runtime_error(FILE_READ_ERR_MSG);
         }
@@ -567,20 +582,23 @@ SEXP qd_deserialize_impl(MemoryReader& myFile, const bool use_alt_rep, const boo
 
     SEXP output = R_NilValue;
     uint64_t runtime_hash = 0;
-    if (nthreads > 1) {
+    {
+        qx_unwind_scope unwind;
+        if (nthreads > 1) {
 #if RCPP_PARALLEL_USE_TBB != 0
-        tbb::global_control gc(tbb::global_control::parameter::max_allowed_parallelism, nthreads);
-        if (shuffle) {
-            DO_QD_READ(MemoryReader, BlockCompressReaderMT, ZstdShuffleDecompressor, runtime_hash);
-        } else {
-            DO_QD_READ(MemoryReader, BlockCompressReaderMT, ZstdDecompressor, runtime_hash);
-        }
+            tbb::global_control gc(tbb::global_control::parameter::max_allowed_parallelism, nthreads);
+            if (shuffle) {
+                DO_QD_READ(MemoryReader, BlockCompressReaderMT, ZstdShuffleDecompressor, runtime_hash);
+            } else {
+                DO_QD_READ(MemoryReader, BlockCompressReaderMT, ZstdDecompressor, runtime_hash);
+            }
 #endif
-    } else {
-        if (shuffle) {
-            DO_QD_READ(MemoryReader, BlockCompressReader, ZstdShuffleDecompressor, runtime_hash);
         } else {
-            DO_QD_READ(MemoryReader, BlockCompressReader, ZstdDecompressor, runtime_hash);
+            if (shuffle) {
+                DO_QD_READ(MemoryReader, BlockCompressReader, ZstdShuffleDecompressor, runtime_hash);
+            } else {
+                DO_QD_READ(MemoryReader, BlockCompressReader, ZstdDecompressor, runtime_hash);
+            }
         }
     }
     if (!validate_checksum) {
@@ -608,7 +626,9 @@ SEXP qd_deserialize(SEXP input, const bool use_alt_rep, const bool validate_chec
 
 SEXP qx_dump(SEXP file) {
     const char* const file_path = qs2_as_single_string(file, "file");
-    IfStreamReader myFile(R_ExpandFileName(file_path));
+    const char* const expanded_path = R_ExpandFileName(file_path);
+    qx_unwind_scope unwind;
+    IfStreamReader myFile(expanded_path);
     if (!myFile.isValid()) {
         throw std::runtime_error(FILE_READ_ERR_MSG);
     }
@@ -665,6 +685,7 @@ SEXP qx_dump(SEXP file) {
 // SEXP: Rcpp::wrap() of a returned std::string allocates, and an allocation
 // failure there would jump past the temporary's destructor.
 SEXP check_SIMD() {
+    qx_unwind_scope unwind;
     return alloc_string(byte_shuffle_kernel());
 }
 
@@ -675,9 +696,11 @@ bool check_TBB() {
 // [[Rcpp::export(rng = false)]]
 SEXP internal_compute_qx_hash(SEXP file) {
     const char* const file_path = qs2_as_single_string(file, "file");
+    const char* const expanded_path = R_ExpandFileName(file_path);
+    qx_unwind_scope unwind;
     uint64_t hash;
     {
-        IfStreamReader myFile(R_ExpandFileName(file_path));
+        IfStreamReader myFile(expanded_path);
         if (!myFile.isValid()) {
             throw_error<StdErrorPolicy>(FILE_READ_ERR_MSG);
         }
@@ -735,6 +758,7 @@ SEXP zstd_compress_raw(SEXP const data, const int compress_level) {
         throw_error<StdErrorPolicy>(std::string("zstd_compress_raw failed: ") + ZSTD_getErrorName(zbound));
     }
     const char* xdata = reinterpret_cast<const char*>(RAW(data));
+    qx_unwind_scope unwind;
     std::vector<unsigned char> ret(zbound);
     char* retdata = reinterpret_cast<char*>(ret.data());
     size_t zsize = ZSTD_compress(retdata, zbound, xdata, xsize, compress_level);
@@ -784,6 +808,7 @@ SEXP blosc_shuffle_raw(SEXP const data, int bytesofsize) {
     if (bytesofsize != 4 && bytesofsize != 8) throw std::runtime_error("bytesofsize must be 4 or 8");
     uint64_t blocksize = Rf_xlength(data);
     uint8_t* xdata = reinterpret_cast<uint8_t*>(RAW(data));
+    qx_unwind_scope unwind;
     std::vector<uint8_t> xshuf(blocksize);
     byte_shuffle(xdata, xshuf.data(), blocksize, bytesofsize);
     uint64_t remainder = blocksize % bytesofsize;
@@ -798,6 +823,7 @@ SEXP blosc_unshuffle_raw(SEXP const data, int bytesofsize) {
     if (bytesofsize != 4 && bytesofsize != 8) throw std::runtime_error("bytesofsize must be 4 or 8");
     uint64_t blocksize = Rf_xlength(data);
     uint8_t* xdata = reinterpret_cast<uint8_t*>(RAW(data));
+    qx_unwind_scope unwind;
     std::vector<uint8_t> xshuf(blocksize);
     byte_unshuffle(xdata, xshuf.data(), blocksize, bytesofsize);
     uint64_t remainder = blocksize % bytesofsize;
@@ -810,6 +836,7 @@ SEXP xxhash_raw(SEXP const data) {
     if (TYPEOF(data) != RAWSXP) throw std::runtime_error(IN_MEMORY_RAW_VECTOR_INPUT_ERR_MSG);
     uint64_t xsize = Rf_xlength(data);
     uint8_t* xdata = reinterpret_cast<uint8_t*>(RAW(data));
+    qx_unwind_scope unwind;
     xxHashEnv xenv = xxHashEnv();
     xenv.update(xdata, xsize);
     char digest[32];
@@ -823,6 +850,7 @@ SEXP base85_encode(const RawVector& rawdata) {
     size_t size_partial = (size / 4) * 4;
     size_t encoded_size_partial = (size / 4) * 5;
     size_t encoded_size = encoded_size_partial + (size % 4 != 0 ? size % 4 + 1 : 0);
+    qx_unwind_scope unwind;
     std::string encoded_string(encoded_size, '\0');
     uint8_t* encoded = reinterpret_cast<uint8_t*>(encoded_string.data());
 
@@ -927,9 +955,11 @@ RawVector base85_decode(SEXP encoded_string) {
 SEXP c_base91_encode(const RawVector& rawdata) {
     basE91 b = basE91();
     size_t size = Rf_xlength(rawdata);
+    const Rbyte* data = RAW(rawdata);
     size_t outsize = basE91_encode_bound(size);
+    qx_unwind_scope unwind;
     std::string output(outsize, '\0');
-    size_t nb_encoded = basE91_encode_internal(&b, RAW(rawdata), size, const_cast<char*>(output.data()), outsize);
+    size_t nb_encoded = basE91_encode_internal(&b, data, size, const_cast<char*>(output.data()), outsize);
     nb_encoded += basE91_encode_end(&b, const_cast<char*>(output.data()) + nb_encoded, outsize - nb_encoded);
     output.resize(nb_encoded);
     return alloc_string(output.c_str());
@@ -943,6 +973,7 @@ SEXP c_base91_decode(SEXP encoded_string) {
         basE91_decode_value(static_cast<unsigned char>(encoded[i]));
     }
     size_t outsize = basE91_decode_bound(size);
+    qx_unwind_scope unwind;
     std::vector<uint8_t> output(outsize);
     size_t nb_decoded = basE91_decode_internal(&b, encoded, size, output.data(), outsize);
     nb_decoded += basE91_decode_end(&b, output.data() + nb_decoded, outsize - nb_decoded);
