@@ -1,0 +1,136 @@
+# Reverse dependency checks: CRAN qs2 (old) vs this branch (new).
+# Runs code from other packages, so the jobs get no secrets, a read-only
+# token that is not left in .git/config, and no shared cache.
+# macOS: CRAN binaries for dependencies, source tarballs for the checked
+# packages, which is how revdepcheck expects to run.
+on:
+  workflow_dispatch:
+
+name: revdep
+
+permissions:
+  contents: read
+
+concurrency:
+  group: revdep-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  revdep:
+    runs-on: macos-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+
+    env:
+      SHARD: ${{ matrix.shard }}
+      SHARDS: 3
+      # time every check step ("[cpu/elapsed]" in 00check.log)
+      _R_CHECK_TIMINGS_: 0
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+
+      # pinned: the check step seeds revdepcheck's database with an internal function
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: |
+            r-lib/revdepcheck@fe363843c340191f56aaf03514af4301f2ccf5c1
+          needs: check
+          cache: false
+
+      - name: Run revdep checks
+        # below the job limit, so the report and upload steps still run
+        timeout-minutes: 320
+        shell: Rscript {0}
+        run: |
+          i <- as.integer(Sys.getenv("SHARD")); n <- as.integer(Sys.getenv("SHARDS"))
+          revs <- revdepcheck::cran_revdeps("qs2",
+            c("Depends", "Imports", "Suggests", "LinkingTo"), bioc = TRUE)
+          shard <- revs[seq_along(revs) %% n == i %% n]
+          cat("Shard", i, "of", n, "checks", length(shard), "of", length(revs), "packages:\n",
+              paste(shard, collapse = " "), "\n")
+          # an empty database plus revdep_add() makes revdep_check() skip
+          # computing all revdeps and check only this shard
+          pkg <- normalizePath(".")
+          revdepcheck::dir_setup(pkg)
+          revdepcheck:::db_setup(pkg)
+          revdepcheck::revdep_add(pkg, shard)
+          revdepcheck::revdep_check(
+            pkg,
+            num_workers = 3,
+            timeout = as.difftime(20, units = "mins"),
+            bioc = TRUE,
+            cran = TRUE
+          )
+
+      - name: Summarize revdep results
+        if: always()
+        shell: Rscript {0}
+        run: |
+          try(revdepcheck::revdep_report(bioc = TRUE, cran = TRUE), silent = TRUE)
+
+      - name: Print revdep results
+        if: always()
+        shell: bash
+        run: |
+          for path in revdep/README.md revdep/problems.md revdep/failures.md; do
+            echo "===== ${path} ====="
+            if [ -f "${path}" ]; then cat "${path}"; else echo "<missing>"; fi
+            echo
+            {
+              echo "## Shard ${SHARD}: ${path}"
+              echo
+              if [ -f "${path}" ]; then cat "${path}"; else echo "_Missing._"; fi
+              echo
+            } >> "${GITHUB_STEP_SUMMARY}"
+          done
+
+      # reports, check logs and the results database; revdep/library is large
+      - name: Upload revdep results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: revdep-results-${{ matrix.shard }}
+          path: |
+            revdep/*.md
+            revdep/data.sqlite
+            revdep/checks/*/*/*.Rcheck/00check.log
+            revdep/checks/*/*/*.Rcheck/00install.out
+            revdep/checks/*/*/*.Rcheck/tests/*.Rout.fail
+          if-no-files-found: warn
+
+  # one timing table across all shards
+  timings:
+    needs: revdep
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: r-lib/actions/setup-r@v2
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: revdep-results-*
+          path: results
+
+      - name: Report check timings
+        run: |
+          Rscript .github/scripts/revdep_timings.R results
+          cat results/timings.md >> "${GITHUB_STEP_SUMMARY}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: revdep-timings
+          path: results/timings.md
