@@ -145,6 +145,10 @@ c_base91_decode <- function(encoded_string) {
     .Call(`_qs2_c_base91_decode`, encoded_string)
 }
 
+qs2_rawvec_threshold <- function(value = NA_real_) {
+    .Call(`_qs2_qs2_rawvec_threshold`, value)
+}
+
 internal_compute_qx_hash <- function(file) {
     .Call(`_qs2_internal_compute_qx_hash`, file)
 }

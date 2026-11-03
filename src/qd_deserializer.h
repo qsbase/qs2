@@ -4,6 +4,7 @@
 
 #include <Rcpp.h>
 #include "qd_charvec.h"
+#include "qd_rawvec.h"
 #include <R_ext/Utils.h>
 
 #include <Rversion.h>
@@ -62,6 +63,7 @@ struct QdataDeserializer {
     DelayedAttribAssign delayed_attributes;
     const bool use_alt_rep;
     qd_charvec::Factory charvecs;
+    qd_rawvec::Filler rawvecs;
 
     QdataDeserializer(block_compress_reader & reader, bool use_alt_rep)
         : reader(reader), use_alt_rep(use_alt_rep), string_scratch_size(0) {}
@@ -458,8 +460,13 @@ struct QdataDeserializer {
                 break;
             case qstype::CHARACTER:
             {
-                object = PROTECT(use_alt_rep ? charvecs.create(object_length)
-                                             : Rf_allocVector(STRSXP, static_cast<R_xlen_t>(object_length)));
+                if(!use_alt_rep) {
+                    object = PROTECT(Rf_allocVector(STRSXP, static_cast<R_xlen_t>(object_length)));
+                } else if(object_length < qd_rawvec::threshold) {
+                    object = PROTECT(qd_rawvec::create(object_length));
+                } else {
+                    object = PROTECT(charvecs.create(object_length));
+                }
                 read_and_assign_attributes(object, attr_length);
                 if(object_length > 0) character_sexp.push_back(std::make_pair(object, object_length));
                 break;
@@ -505,6 +512,21 @@ struct QdataDeserializer {
         for(auto & x : character_sexp) {
             SEXP object = x.first;
             uint64_t object_length = x.second;
+            if(use_alt_rep && qd_rawvec::is_rawvec(object)) {
+                rawvecs.start(object_length);
+                for(uint64_t i = 0; i < object_length; ++i) {
+                    uint32_t string_length;
+                    read_string_header(string_length);
+                    if(string_length == NA_STRING_LENGTH) continue; // rawvecs start as NA
+                    if(string_length == 0) {
+                        rawvecs.set_empty(i);
+                        continue;
+                    }
+                    reader.get_data(rawvecs.set(i, string_length), string_length);
+                }
+                rawvecs.finish(object);
+                continue;
+            }
             if(use_alt_rep) {
                 qd_charvec::Writer writer(object, object_length);
                 for(uint64_t i = 0; i < object_length; ++i) {
