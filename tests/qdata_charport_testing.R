@@ -48,8 +48,14 @@ normalize_qdata_strings <- function(x) {
   x
 }
 
+is_charpack <- function(x) {
+  identical(charport::charport_info(x)$altrep_class, "charport::charpack")
+}
+
+is_materialized <- function(x) charport::charport_info(x)$is_materialized
+
 materialize_charvecs <- function(x) {
-  if (is.character(x) && charport::is_charvec(x)) {
+  if (is.character(x) && (charport::is_charvec(x) || is_charpack(x))) {
     return(charport::charport_materialize(x))
   }
   if (is.list(x)) {
@@ -121,7 +127,7 @@ for (input_charvec in c(FALSE, TRUE)) {
       memory_out <- qs2::qd_deserialize(memory, use_alt_rep = TRUE,
                                         validate_checksum = TRUE, nthreads = nthreads)
       stopifnot(charport::is_charvec(memory_out$main))
-      stopifnot(charport::is_charvec(memory_out$nested$child))
+      stopifnot(is_charpack(memory_out$nested$child))
       stopifnot(identical(normalize_qdata_strings(
         materialize_charvecs(memory_out)), expected))
 
@@ -130,25 +136,25 @@ for (input_charvec in c(FALSE, TRUE)) {
       file_out <- qs2::qd_read(file, use_alt_rep = TRUE,
                                validate_checksum = TRUE, nthreads = nthreads)
       stopifnot(charport::is_charvec(file_out$main))
-      stopifnot(charport::is_charvec(file_out$nested$child))
+      stopifnot(is_charpack(file_out$nested$child))
       stopifnot(identical(normalize_qdata_strings(
         materialize_charvecs(file_out)), expected))
       unlink(file)
 
-      # Retained nested charvec references must stay valid after parent collection.
+      # Retained nested charpack references must stay valid after parent collection.
       retained <- memory_out$nested$child
       rm(memory_out, file_out)
       invisible(gc())
-      stopifnot(charport::is_charvec(retained))
+      stopifnot(is_charpack(retained))
       stopifnot(identical(normalize_qdata_strings(
         charport::charport_materialize(retained)), expected$nested$child))
 
-      # Re-serialization should consume the lazy charvec without forcing it.
+      # Re-serialization should consume the lazy vectors without forcing them.
       lazy <- qs2::qd_deserialize(memory, use_alt_rep = TRUE,
                                   validate_checksum = TRUE, nthreads = nthreads)
-      stopifnot(!charport::charport_info(lazy$main)$is_materialized)
+      stopifnot(!is_materialized(lazy$main), !is_materialized(lazy$nested$child))
       saved_again <- qs2::qd_serialize(lazy, nthreads = nthreads, shuffle = shuffle)
-      stopifnot(!charport::charport_info(lazy$main)$is_materialized)
+      stopifnot(!is_materialized(lazy$main), !is_materialized(lazy$nested$child))
       decoded_again <- qs2::qd_deserialize(saved_again, use_alt_rep = TRUE,
                                            validate_checksum = TRUE, nthreads = nthreads)
       stopifnot(identical(normalize_qdata_strings(
@@ -168,3 +174,51 @@ stopifnot(!charport::is_charvec(plain_out$main))
 stopifnot(identical(normalize_qdata_strings(plain_out),
                     normalize_qdata_strings(plain_input)))
 unlink(plain_file)
+
+# Vectors of 1 to 256 strings read as charpacks, longer ones as charvecs, and
+# empty ones as ordinary vectors. A charpack whose strings would exceed 1 MiB
+# spills to an ordinary STRSXP held as its materialized state.
+mib <- 1024L * 1024L
+lengths_input <- list(
+  one = "x", at_limit = rep(c("a", NA_character_, "", "\u03bb"), 64L),
+  over_limit = rep("b", 257L), empty = character(0)
+)
+spill_input <- list(
+  fits = c(strrep("f", mib - 1L), "g"),                  # exactly 1 MiB: stays packed
+  first = c(strrep("h", mib + 1L), NA_character_, "", "i"),  # spills at the first string
+  middle = c("j", NA_character_, "", strrep("k", mib), "l", NA_character_)
+)
+attr_input <- list(
+  named = c(a = "x", b = NA_character_, c = ""),
+  matrix = matrix(letters[1:6], 2L, dimnames = list(c("r1", "r2"), c("c1", "c2", "c3"))),
+  factor = factor(c("lo", "hi", "lo", NA)),
+  frame = data.frame(k = c("p", "q"), v = 1:2, stringsAsFactors = FALSE)
+)
+for (nthreads in threads) {
+  out <- qs2::qd_deserialize(qs2::qd_serialize(lengths_input, nthreads = nthreads),
+                             use_alt_rep = TRUE, nthreads = nthreads)
+  stopifnot(is_charpack(out$one), is_charpack(out$at_limit), charport::is_charvec(out$over_limit))
+  stopifnot(!is_materialized(out$one), !is_materialized(out$at_limit))
+  stopifnot(is.na(charport::charport_info(out$empty)$altrep_class))
+  stopifnot(identical(out, lengths_input))
+
+  out <- qs2::qd_deserialize(qs2::qd_serialize(spill_input, nthreads = nthreads),
+                             use_alt_rep = TRUE, nthreads = nthreads)
+  stopifnot(all(vapply(out, is_charpack, logical(1))))
+  stopifnot(!is_materialized(out$fits), is_materialized(out$first), is_materialized(out$middle))
+  stopifnot(identical(out, spill_input))
+
+  out <- qs2::qd_deserialize(qs2::qd_serialize(attr_input, nthreads = nthreads),
+                             use_alt_rep = TRUE, nthreads = nthreads)
+  stopifnot(is_charpack(out$named), is_charpack(out$matrix), is_charpack(out$frame$k))
+  stopifnot(identical(out, attr_input))
+}
+
+# A charpack from qd_read stays packed through qd_save, serialize and saveRDS.
+packed <- qs2::qd_deserialize(qs2::qd_serialize(list(v = c("s", NA_character_, "", "t"))),
+                              use_alt_rep = TRUE)
+again <- qs2::qd_deserialize(qs2::qd_serialize(packed), use_alt_rep = TRUE)
+rds <- unserialize(serialize(packed, NULL))
+# identical() reads the strings, so check the states first
+stopifnot(!is_materialized(packed$v), is_charpack(rds$v), !is_materialized(rds$v))
+stopifnot(identical(again, packed), identical(rds, packed))

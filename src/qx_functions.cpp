@@ -493,20 +493,8 @@ SEXP qd_serialize(SEXP object, const int compress_level, const bool shuffle, con
     return alloc_raw(result);
 }
 
-// Prototype: character vectors shorter than this are read as qs2_rawvec when
-// use_alt_rep is TRUE (0 disables). Returns the previous value; NA leaves it.
-// [[Rcpp::export(rng = false, signature = {value = NA_real_})]]
-double qs2_rawvec_threshold(double value) {
-    const double previous = static_cast<double>(qd_rawvec::threshold);
-    if(!ISNAN(value)) {
-        if(value < 0) throw std::runtime_error("threshold must be >= 0");
-        qd_rawvec::threshold = static_cast<uint64_t>(value);
-    }
-    return previous;
-}
-
-// Called once from .onLoad. qdata moves charport Stores into charvecs and fills
-// them in place, which needs the charport ABI qs2 was built against.
+// Called once from .onLoad. qdata fills charport charvecs and charpacks in
+// place, which needs the charport ABI qs2 was built against.
 void qs2_check_charport_abi() {
     if(!charport::check_abi()) {
         throw std::runtime_error("qs2 was built against a different charport version; reinstall qs2");
@@ -1004,7 +992,6 @@ void qx_export_functions(DllInfo* dll) {
     R_RegisterCCallable("qs2", "qd_read", (DL_FUNC)&qd_read);
     R_RegisterCCallable("qs2", "qd_deserialize", (DL_FUNC)&qd_deserialize);
     register_qdata_cpp_external_callables();
-    qd_rawvec::register_class(dll);
 
     // from qoptions.h
     R_RegisterCCallable("qs2", "qs2_get_compress_level", (DL_FUNC)&qs2_get_compress_level);

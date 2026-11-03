@@ -3,8 +3,7 @@
 
 
 #include <Rcpp.h>
-#include "qd_charvec.h"
-#include "qd_rawvec.h"
+#include "qd_charpack.h"
 #include <R_ext/Utils.h>
 
 #include <Rversion.h>
@@ -62,8 +61,7 @@ struct QdataDeserializer {
 
     DelayedAttribAssign delayed_attributes;
     const bool use_alt_rep;
-    qd_charvec::Factory charvecs;
-    qd_rawvec::Filler rawvecs;
+    qd_charpack::Filler charpacks;
 
     QdataDeserializer(block_compress_reader & reader, bool use_alt_rep)
         : reader(reader), use_alt_rep(use_alt_rep), string_scratch_size(0) {}
@@ -460,12 +458,12 @@ struct QdataDeserializer {
                 break;
             case qstype::CHARACTER:
             {
-                if(!use_alt_rep) {
+                if(!use_alt_rep || object_length == 0) {
                     object = PROTECT(Rf_allocVector(STRSXP, static_cast<R_xlen_t>(object_length)));
-                } else if(object_length < qd_rawvec::threshold) {
-                    object = PROTECT(qd_rawvec::create(object_length));
+                } else if(object_length <= qd_charpack::max_length) {
+                    object = PROTECT(charport::charpack::placeholder());
                 } else {
-                    object = PROTECT(charvecs.create(object_length));
+                    object = PROTECT(charport::charvec::alloc_na(static_cast<R_xlen_t>(object_length)));
                 }
                 read_and_assign_attributes(object, attr_length);
                 if(object_length > 0) character_sexp.push_back(std::make_pair(object, object_length));
@@ -508,59 +506,89 @@ struct QdataDeserializer {
         }
     }
 
+    // Reads the next string, of 0 < string_length bytes, as a CHARSXP.
+    SEXP read_charsxp(uint32_t string_length) {
+        const char * string_ptr = reader.get_ptr(string_length);
+        if(string_ptr == nullptr) {
+            char * string_buf = string_buffer(string_length);
+            reader.get_data(string_buf, string_length);
+            string_ptr = string_buf;
+        }
+        return Rf_mkCharLenCE(string_ptr, static_cast<int>(string_length), CE_UTF8);
+    }
+
+    // Strings from..object_length of an ordinary STRSXP.
+    void read_plain_strings(SEXP object, uint64_t from, uint64_t object_length) {
+        for(uint64_t i=from; i<object_length; ++i) {
+            uint32_t string_length;
+            read_string_header(string_length);
+            if(string_length == NA_STRING_LENGTH) {
+                SET_STRING_ELT(object, i, NA_STRING);
+            } else if(string_length == 0) {
+                SET_STRING_ELT(object, i, R_BlankString);
+            } else {
+                SET_STRING_ELT(object, i, read_charsxp(string_length));
+            }
+        }
+    }
+
+    // Fills a charpack placeholder, or spills to an ordinary STRSXP once the
+    // strings would exceed qd_charpack::max_bytes.
+    void read_charpack_strings(SEXP object, uint64_t object_length) {
+        charpacks.start(object_length);
+        for(uint64_t i = 0; i < object_length; ++i) {
+            uint32_t string_length;
+            read_string_header(string_length);
+            if(string_length == NA_STRING_LENGTH) continue; // lengths start as NA
+            if(string_length == 0) {
+                charpacks.set_empty(i);
+                continue;
+            }
+            if(!charpacks.fits(string_length)) {
+                SEXP strings = charpacks.spill(object, i);
+                SET_STRING_ELT(strings, i, read_charsxp(string_length));
+                read_plain_strings(strings, i + 1, object_length);
+                return;
+            }
+            reader.get_data(charpacks.set(i, string_length), string_length);
+        }
+        charpacks.finish(object);
+    }
+
+    // Fills an NA charvec in place. Nothing has read it since alloc_na.
+    void read_charvec_strings(SEXP object, uint64_t object_length) {
+        charport::charvec::Store * store = charport::charvec::get_store(object);
+        if(store == nullptr) {
+            reader.cleanup_and_throw("something went wrong (charvec was read before it was filled)");
+        }
+        charport::charvec::Writer writer(*store);
+        for(uint64_t i = 0; i < object_length; ++i) {
+            uint32_t string_length;
+            read_string_header(string_length);
+            if(string_length == NA_STRING_LENGTH) continue; // charvecs start as NA
+            if(string_length == 0) {
+                writer.set_empty(i, CETYPE_EXT_ASCII_OR_UTF8);
+                continue;
+            }
+            char * dest = writer.reserve(string_length);
+            reader.get_data(dest, string_length);
+            writer.set(i, dest, string_length, CETYPE_EXT_ASCII_OR_UTF8);
+        }
+    }
+
     void read_object_data() {
         for(auto & x : character_sexp) {
             SEXP object = x.first;
             uint64_t object_length = x.second;
-            if(use_alt_rep && qd_rawvec::is_rawvec(object)) {
-                rawvecs.start(object_length);
-                for(uint64_t i = 0; i < object_length; ++i) {
-                    uint32_t string_length;
-                    read_string_header(string_length);
-                    if(string_length == NA_STRING_LENGTH) continue; // rawvecs start as NA
-                    if(string_length == 0) {
-                        rawvecs.set_empty(i);
-                        continue;
-                    }
-                    reader.get_data(rawvecs.set(i, string_length), string_length);
-                }
-                rawvecs.finish(object);
+            if(use_alt_rep && object_length <= qd_charpack::max_length) {
+                read_charpack_strings(object, object_length);
                 continue;
             }
             if(use_alt_rep) {
-                qd_charvec::Writer writer(object, object_length);
-                for(uint64_t i = 0; i < object_length; ++i) {
-                    uint32_t string_length;
-                    read_string_header(string_length);
-                    if(string_length == NA_STRING_LENGTH) continue; // charvecs start as NA
-                    if(string_length == 0) {
-                        writer.set_empty(i);
-                        continue;
-                    }
-                    char * dest = writer.reserve(string_length);
-                    reader.get_data(dest, string_length);
-                    writer.set(i, dest, string_length);
-                }
+                read_charvec_strings(object, object_length);
                 continue;
             }
-            for(uint64_t i=0; i<object_length; ++i) {
-                uint32_t string_length;
-                read_string_header(string_length);
-                if(string_length == NA_STRING_LENGTH) {
-                    SET_STRING_ELT(object, i, NA_STRING);
-                } else if(string_length == 0) {
-                    SET_STRING_ELT(object, i, R_BlankString);
-                } else {
-                    const char * string_ptr = reader.get_ptr(string_length);
-                    if(string_ptr == nullptr) {
-                        char * string_buf = string_buffer(string_length);
-                        reader.get_data(string_buf, string_length);
-                        SET_STRING_ELT(object, i, Rf_mkCharLenCE(string_buf, static_cast<int>(string_length), CE_UTF8));
-                    } else {
-                        SET_STRING_ELT(object, i, Rf_mkCharLenCE(string_ptr, static_cast<int>(string_length), CE_UTF8));
-                    }
-                }
-            }
+            read_plain_strings(object, 0, object_length);
         }
         for(auto & x : complex_sexp) {
             SEXP object = x.first;

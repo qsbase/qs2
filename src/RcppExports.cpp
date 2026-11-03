@@ -381,16 +381,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// qs2_rawvec_threshold
-double qs2_rawvec_threshold(double value);
-RcppExport SEXP _qs2_qs2_rawvec_threshold(SEXP valueSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< double >::type value(valueSEXP);
-    rcpp_result_gen = Rcpp::wrap(qs2_rawvec_threshold(value));
-    return rcpp_result_gen;
-END_RCPP
-}
 // internal_compute_qx_hash
 SEXP internal_compute_qx_hash(SEXP file);
 RcppExport SEXP _qs2_internal_compute_qx_hash(SEXP fileSEXP) {
@@ -474,7 +464,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_qs2_base85_decode", (DL_FUNC) &_qs2_base85_decode, 1},
     {"_qs2_c_base91_encode", (DL_FUNC) &_qs2_c_base91_encode, 1},
     {"_qs2_c_base91_decode", (DL_FUNC) &_qs2_c_base91_decode, 1},
-    {"_qs2_qs2_rawvec_threshold", (DL_FUNC) &_qs2_qs2_rawvec_threshold, 1},
     {"_qs2_internal_compute_qx_hash", (DL_FUNC) &_qs2_internal_compute_qx_hash, 1},
     {"_qs2_internal_write_qx_hash", (DL_FUNC) &_qs2_internal_write_qx_hash, 2},
     {"_qs2_c_zstd_compress_file", (DL_FUNC) &_qs2_c_zstd_compress_file, 3},

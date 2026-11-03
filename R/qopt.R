@@ -18,7 +18,8 @@
 #'   }
 #'
 #' When \code{parameter = "use_alt_rep"} is \code{TRUE}, qdata reads return strings as
-#' charport ALTREP vectors.
+#' charport ALTREP vectors: \code{charpack} for vectors of up to 256 strings and
+#' \code{charvec} for longer ones.
 #'
 #' When \code{value} is \code{NULL}, the current value of the specified option is returned.
 #' Otherwise, the option is set to \code{value} and the new value is returned invisibly.

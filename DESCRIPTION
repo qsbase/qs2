@@ -19,8 +19,8 @@ LazyData: true
 Biarch: true
 Depends: R (>= 3.6.0)
 Imports:
-    Rcpp, RcppParallel (>= 6.1.1), charport (>= 0.1.1)
-LinkingTo: Rcpp, RcppParallel (>= 6.1.1), charport (>= 0.1.1)
+    Rcpp, RcppParallel (>= 6.1.1), charport (>= 0.2.0)
+LinkingTo: Rcpp, RcppParallel (>= 6.1.1), charport (>= 0.2.0)
 Suggests: knitr, rmarkdown, dplyr, data.table, stringi
 SystemRequirements: GNU make, C++17
 Encoding: UTF-8
