@@ -1,6 +1,7 @@
 Development version
     * qdata reads short character vectors (up to 256 strings) as charport `charpack` vectors when `use_alt_rep = TRUE`, which removes most of the 0.4.0 overhead for objects with many short character vectors; longer vectors stay `charvec`
     * Require charport (>= 0.2.0) and use its public in-place fill API
+    * qdata checks whether native strings are UTF-8 at each save rather than once at load, so a `Sys.setlocale()` partway through a session no longer writes native strings untranslated
 
 Version 0.4.0 (2026-10-31)
     * Rewrite the byte shuffle in portable vector code: several times faster, especially on Mac, and as fast at -O2 as at -O3. The file format is unchanged.

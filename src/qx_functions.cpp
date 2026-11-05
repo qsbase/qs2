@@ -499,6 +499,9 @@ void qs2_check_charport_abi() {
     if(!charport::check_abi()) {
         throw std::runtime_error("qs2 was built against a different charport version; reinstall qs2");
     }
+    // Resolve the callable here, so a missing one fails at load rather than
+    // when a save constructs its serializer.
+    (void)charport::native_is_utf8();
 }
 
 // DO_QD_READ macro assigns SEXP output

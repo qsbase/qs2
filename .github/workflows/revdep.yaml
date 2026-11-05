@@ -67,7 +67,7 @@ jobs:
           revdepcheck::revdep_check(
             pkg,
             num_workers = 3,
-            timeout = as.difftime(20, units = "mins"),
+            timeout = as.difftime(60, units = "mins"),
             bioc = TRUE,
             cran = TRUE
           )
@@ -94,7 +94,8 @@ jobs:
             } >> "${GITHUB_STEP_SUMMARY}"
           done
 
-      # reports, check logs and the results database; revdep/library is large
+      # reports, check logs and the results database; revdep/library is large.
+      # On macOS revdepcheck writes checks to revdep/checks.noindex.
       - name: Upload revdep results
         if: always()
         uses: actions/upload-artifact@v4
@@ -103,9 +104,9 @@ jobs:
           path: |
             revdep/*.md
             revdep/data.sqlite
-            revdep/checks/*/*/*.Rcheck/00check.log
-            revdep/checks/*/*/*.Rcheck/00install.out
-            revdep/checks/*/*/*.Rcheck/tests/*.Rout.fail
+            revdep/checks*/*/*/*.Rcheck/00check.log
+            revdep/checks*/*/*/*.Rcheck/00install.out
+            revdep/checks*/*/*/*.Rcheck/tests/*.Rout.fail
           if-no-files-found: warn
 
   # one timing table across all shards

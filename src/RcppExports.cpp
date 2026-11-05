@@ -10,24 +10,6 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// qs2_get_utf8_locale
-bool qs2_get_utf8_locale();
-RcppExport SEXP _qs2_qs2_get_utf8_locale() {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    rcpp_result_gen = Rcpp::wrap(qs2_get_utf8_locale());
-    return rcpp_result_gen;
-END_RCPP
-}
-// qs2_set_utf8_locale
-void qs2_set_utf8_locale(bool value);
-RcppExport SEXP _qs2_qs2_set_utf8_locale(SEXP valueSEXP) {
-BEGIN_RCPP
-    Rcpp::traits::input_parameter< bool >::type value(valueSEXP);
-    qs2_set_utf8_locale(value);
-    return R_NilValue;
-END_RCPP
-}
 // qs2_get_compress_level
 int qs2_get_compress_level();
 RcppExport SEXP _qs2_qs2_get_compress_level() {
@@ -428,8 +410,6 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_qs2_qs2_get_utf8_locale", (DL_FUNC) &_qs2_qs2_get_utf8_locale, 0},
-    {"_qs2_qs2_set_utf8_locale", (DL_FUNC) &_qs2_qs2_set_utf8_locale, 1},
     {"_qs2_qs2_get_compress_level", (DL_FUNC) &_qs2_qs2_get_compress_level, 0},
     {"_qs2_qs2_set_compress_level", (DL_FUNC) &_qs2_qs2_set_compress_level, 1},
     {"_qs2_qs2_get_shuffle", (DL_FUNC) &_qs2_qs2_get_shuffle, 0},

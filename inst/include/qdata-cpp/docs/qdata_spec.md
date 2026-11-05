@@ -107,6 +107,13 @@ real_vector rvec_moved = get<real_vector>(std::move(obj)); // moves the real_vec
 - `string_ref` exposes `is_na()` and `view()`, and implicitly converts to `std::string_view`.
 - That implicit conversion is lossy for `NA` and yields an empty view.
 
+String bytes are UTF-8 and carry no per-string encoding mark. The R package
+writes each string as the bytes of `enc2utf8(x)`: Latin-1 strings, and native
+strings outside a UTF-8 locale, are converted, while UTF-8, ASCII and `"bytes"`
+strings are written as they are. It reads every non-ASCII string back marked
+UTF-8, so a `"bytes"` string keeps its bytes but not its mark, and a string
+`enc2utf8()` cannot translate keeps whatever that conversion produced.
+
 Each string vector produced by a read has its own storage arena. Small vectors
 use compact slices instead of reserving a large fixed allocation. Keeping one
 vector does not retain the backing data for sibling vectors. Copies of a

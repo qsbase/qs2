@@ -222,3 +222,27 @@ rds <- unserialize(serialize(packed, NULL))
 # identical() reads the strings, so check the states first
 stopifnot(!is_materialized(packed$v), is_charpack(rds$v), !is_materialized(rds$v))
 stopifnot(identical(again, packed), identical(rds, packed))
+
+# qd_save checks the native encoding at each save, so a Sys.setlocale() after
+# qs2 has loaded still translates native strings. Needs a Latin-1 locale; the
+# check is skipped where the platform has none.
+old_ctype <- Sys.getlocale("LC_CTYPE")
+latin1_locales <- c("en_US.ISO-8859-1", "en_US.ISO8859-1", "en_US.iso88591",
+                    "de_DE.ISO-8859-1", "English_United States.1252")
+switched <- FALSE
+for (loc in latin1_locales) {
+  if (nzchar(suppressWarnings(Sys.setlocale("LC_CTYPE", loc))) &&
+      isTRUE(l10n_info()[["Latin-1"]])) {
+    switched <- TRUE
+    break
+  }
+}
+if (switched) {
+  native <- rawToChar(as.raw(c(0xe9, 0x61)))  # unmarked "éa" in Latin-1
+  out <- qs2::qd_deserialize(qs2::qd_serialize(native))
+  stopifnot(identical(charToRaw(out), as.raw(c(0xc3, 0xa9, 0x61))),
+            identical(Encoding(out), "UTF-8"))
+} else {
+  cat("no Latin-1 locale; skipping the mid-session locale check\n")
+}
+invisible(Sys.setlocale("LC_CTYPE", old_ctype))

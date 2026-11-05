@@ -7,7 +7,8 @@ args <- commandArgs(TRUE)
 root <- if (length(args)) args[1] else "revdep"
 logs <- list.files(root, pattern = "^00check\\.log$",
                    recursive = TRUE, full.names = TRUE)
-m <- regmatches(logs, regexec("checks/([^/]+)/(old|new)/", logs))
+# revdepcheck uses checks.noindex/ on macOS
+m <- regmatches(logs, regexec("checks(?:\\.noindex)?/([^/]+)/(old|new)/", logs, perl = TRUE))
 keep <- lengths(m) == 3
 logs <- logs[keep]; m <- m[keep]
 

@@ -57,6 +57,9 @@ template<typename block_compress_writer>
 struct QdataSerializer {
     block_compress_writer & writer;
     const bool warn;
+    // Whether R reads native strings as UTF-8, read once per save so it
+    // follows Sys.setlocale().
+    const bool native_is_utf8;
     std::vector<std::pair<SEXP, uint64_t>> character_sexp;
     std::vector<std::pair<SEXP, uint64_t>> complex_sexp;
     std::vector<std::pair<SEXP, uint64_t>> real_sexp;
@@ -72,7 +75,7 @@ struct QdataSerializer {
     std::vector< std::pair<SEXP, SEXP> > attr_stack;
 
     QdataSerializer(block_compress_writer & writer, const bool warn) :
-    writer(writer), warn(warn) {}
+    writer(writer), warn(warn), native_is_utf8(charport::native_is_utf8()) {}
 
     static bool attr_is_supported(SEXP const attr_value) {
         switch(TYPEOF(attr_value)) {
@@ -423,11 +426,12 @@ struct QdataSerializer {
             throw std::runtime_error("invalid negative string length from charport Reader");
         }
 
-        // Preserve qdata's existing byte policy: Latin-1 is always
-        // normalized; native text is normalized only outside a
-        // UTF-8 locale and only when it contains non-ASCII bytes.
+        // qdata stores the bytes of enc2utf8(x): Latin-1 is always
+        // normalized; native text is normalized only outside a UTF-8
+        // locale and only when it contains non-ASCII bytes; UTF-8, ASCII
+        // and bytes strings are written as they are.
         const bool needs_translation = encoding == CETYPE_EXT_LATIN1 ||
-            (encoding == CETYPE_EXT_NATIVE && !qs2_get_utf8_locale() &&
+            (encoding == CETYPE_EXT_NATIVE && !native_is_utf8 &&
              !qd_is_ascii(data, static_cast<std::size_t>(length)));
         if(needs_translation) {
             const cetype_t base_encoding = encoding == CETYPE_EXT_LATIN1

@@ -122,6 +122,13 @@ NULL
 #'
 #' Saves an object to disk using the `qdata` format.
 #'
+#' @details
+#' Strings are stored as UTF-8, as the bytes of [enc2utf8()] of each string:
+#' Latin-1 strings, and native strings outside a UTF-8 locale, are converted,
+#' while UTF-8, ASCII and `"bytes"` strings are written as they are. [qd_read()]
+#' marks every non-ASCII string as UTF-8, so a `"bytes"` string keeps its bytes
+#' but not its mark.
+#'
 #' @usage qd_save(object, file,
 #'          compress_level = qopt("compress_level"),
 #'          shuffle = qopt("shuffle"),

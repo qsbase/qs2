@@ -34,6 +34,13 @@ No value is returned. The file is written to disk.
 \description{
 Saves an object to disk using the \code{qdata} format.
 }
+\details{
+Strings are stored as UTF-8, as the bytes of \code{\link[=enc2utf8]{enc2utf8()}} of each string:
+Latin-1 strings, and native strings outside a UTF-8 locale, are converted,
+while UTF-8, ASCII and \code{"bytes"} strings are written as they are. \code{\link[=qd_read]{qd_read()}}
+marks every non-ASCII string as UTF-8, so a \code{"bytes"} string keeps its bytes
+but not its mark.
+}
 \examples{
 x <- data.frame(int = sample(1e3, replace=TRUE),
          num = rnorm(1e3),
