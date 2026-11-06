@@ -63,9 +63,12 @@ jobs:
         run: sudo Rscript -e 'source("https://mac.R-project.org/bin/install.R"); install.libs("gettext")'
 
 
+      # charport comes from its GitHub default branch, not CRAN: the two
+      # packages are developed together, and charport's revdep workflow checks
+      # the other direction.
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::rcmdcheck
+          extra-packages: any::rcmdcheck, github::charbase/charport
           needs: check
 
       - if: matrix.config.install-args == ''

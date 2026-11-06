@@ -1,6 +1,7 @@
 # Reverse dependency checks: CRAN qs2 (old) vs this branch (new).
-# Runs code from other packages, so the jobs get no secrets, a read-only
-# token that is not left in .git/config, and no shared cache.
+# Runs code from other packages, so the jobs get no secrets beyond a read-only
+# GITHUB_TOKEN, passed only to the steps that install from GitHub; that token is
+# not left in .git/config, and there is no shared cache.
 # macOS: CRAN binaries for dependencies, source tarballs for the checked
 # packages, which is how revdepcheck expects to run.
 on:
@@ -39,13 +40,36 @@ jobs:
 
       - uses: r-lib/actions/setup-r@v2
 
-      # pinned: the check step seeds revdepcheck's database with an internal function
+      # pinned: the steps below use revdepcheck internals (dir_find, db_setup).
+      # charport comes from its GitHub default branch, not CRAN, as in
+      # R-CMD-check.yaml.
       - uses: r-lib/actions/setup-r-dependencies@v2
+        env:
+          GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
         with:
           extra-packages: |
             r-lib/revdepcheck@fe363843c340191f56aaf03514af4301f2ccf5c1
+            github::charbase/charport
           needs: check
           cache: false
+
+      # revdepcheck installs this branch into its own "new" library with
+      # upgrade = "always" against CRAN, which has an older charport. Seed that
+      # library with GitHub charport first: an installed version ahead of CRAN
+      # is kept, and the checks put the "new" library ahead of each revdep's
+      # CRAN dependencies.
+      - name: Seed the revdep dev library with GitHub charport
+        env:
+          GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+        shell: Rscript {0}
+        run: |
+          pkg <- normalizePath(".")
+          revdepcheck::dir_setup(pkg)
+          new <- revdepcheck:::dir_find(pkg, "new")
+          dir.create(new, recursive = TRUE, showWarnings = FALSE)
+          remotes::install_github("charbase/charport", lib = new,
+            dependencies = FALSE, upgrade = "never", force = TRUE)
+          stopifnot(packageVersion("charport", lib.loc = new) >= "0.2.0")
 
       - name: Run revdep checks
         # below the job limit, so the report and upload steps still run

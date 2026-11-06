@@ -221,20 +221,19 @@ stopifnot(identical(
 
 # qdata reads strings into charport ALTREP vectors by default; use_alt_rep = FALSE gives plain vectors.
 # A vector of up to 256 strings is a charpack.
-is_charpack <- function(v) identical(charport::charport_info(v)$altrep_class, "charport::charpack")
 tmp <- tempfile(fileext = ".qd")
 x <- c("hello", NA_character_, "world")
 qs2::qd_save(x, tmp, nthreads = 1)
 restored <- qs2::qd_read(tmp, use_alt_rep = TRUE, validate_checksum = TRUE, nthreads = 1)
-stopifnot(is_charpack(restored))
+stopifnot(charport::is_charpack(restored))
 stopifnot(identical(enc2utf8(charport::charport_materialize(restored)), enc2utf8(x)))
-stopifnot(isTRUE(qs2::qopt("use_alt_rep")), is_charpack(qs2::qd_read(tmp)))
+stopifnot(isTRUE(qs2::qopt("use_alt_rep")), charport::is_charpack(qs2::qd_read(tmp)))
 plain <- qs2::qd_read(tmp, use_alt_rep = FALSE, validate_checksum = TRUE, nthreads = 1)
 stopifnot(!charport::charport_info(plain)$is_altrep, identical(plain, x))
 
 serialized <- qs2::qd_serialize(x, nthreads = 1)
 restored <- qs2::qd_deserialize(serialized, use_alt_rep = TRUE, validate_checksum = TRUE, nthreads = 1)
-stopifnot(is_charpack(restored))
+stopifnot(charport::is_charpack(restored))
 stopifnot(identical(enc2utf8(charport::charport_materialize(restored)), enc2utf8(x)))
 plain <- qs2::qd_deserialize(serialized, use_alt_rep = FALSE, validate_checksum = TRUE, nthreads = 1)
 stopifnot(!charport::charport_info(plain)$is_altrep, identical(plain, x))
