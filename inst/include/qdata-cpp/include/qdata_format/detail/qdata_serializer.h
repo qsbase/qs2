@@ -512,6 +512,7 @@ inline void save_erased(const std::string& file,
     write_qdata_header(stream, shuffle);
     const auto hash = write_qdata_object(stream, object_ptr, write_fn, compress_level, shuffle, nthreads, max_depth);
     write_qx_hash(stream, hash);
+    stream.close();
 }
 
 inline void serialize_erased_impl(void* const buffer_ctx,

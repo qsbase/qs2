@@ -426,32 +426,50 @@ struct QdataSerializer {
             throw std::runtime_error("invalid negative string length from charport Reader");
         }
 
-        // qdata stores the bytes of enc2utf8(x): Latin-1 is always
-        // normalized; native text is normalized only outside a UTF-8
-        // locale and only when it contains non-ASCII bytes; UTF-8, ASCII
-        // and bytes strings are written as they are.
-        const bool needs_translation = encoding == CETYPE_EXT_LATIN1 ||
-            (encoding == CETYPE_EXT_NATIVE && !native_is_utf8 &&
-             !qd_is_ascii(data, static_cast<std::size_t>(length)));
-        if(needs_translation) {
+        if(needs_translation(data, length, encoding)) {
             const cetype_t base_encoding = encoding == CETYPE_EXT_LATIN1
                 ? CE_LATIN1 : CE_NATIVE;
             SEXP charsxp = PROTECT(Rf_mkCharLenCE(data, length, base_encoding));
             try {
-                const char* utf8 = Rf_translateCharUTF8(charsxp);
-                const uint32_t utf8_length = static_cast<uint32_t>(std::strlen(utf8));
-                write_string_header(utf8_length);
-                write_string_data(utf8, utf8_length);
+                write_translated(charsxp);
             } catch(...) {
                 UNPROTECT(1);
                 throw;
             }
             UNPROTECT(1);
         } else {
-            const uint32_t stored_length = static_cast<uint32_t>(length);
-            write_string_header(stored_length);
-            write_string_data(data, stored_length);
+            write_string_bytes(data, length);
         }
+    }
+
+    // qdata stores the bytes of enc2utf8(x): Latin-1 is always
+    // normalized; native text is normalized only outside a UTF-8
+    // locale and only when it contains non-ASCII bytes; UTF-8, ASCII
+    // and bytes strings are written as they are.
+    bool needs_translation(const char* data, const int length, const cetype_ext_t encoding) const {
+        return encoding == CETYPE_EXT_LATIN1 ||
+            (encoding == CETYPE_EXT_NATIVE && !native_is_utf8 &&
+             !qd_is_ascii(data, static_cast<std::size_t>(length)));
+    }
+
+    void write_string_bytes(const char* data, const int length) {
+        const uint32_t stored_length = static_cast<uint32_t>(length);
+        write_string_header(stored_length);
+        write_string_data(data, stored_length);
+    }
+
+    // Writes the UTF-8 translation of a Latin-1 or native CHARSXP.
+    // translateCharUTF8 returns a buffer from R_alloc, which R frees only when
+    // the .Call returns. vmaxget/vmaxset mark and release it per string, so a
+    // long vector does not hold every translation. An error or exception ends
+    // the call, and R then releases the buffer itself.
+    void write_translated(SEXP charsxp) {
+        const void * const vmax = vmaxget();
+        const char* utf8 = Rf_translateCharUTF8(charsxp);
+        const uint32_t utf8_length = static_cast<uint32_t>(std::strlen(utf8));
+        write_string_header(utf8_length);
+        write_string_data(utf8, utf8_length);
+        vmaxset(vmax);
     }
 
     void write_object_data() {
@@ -473,7 +491,13 @@ struct QdataSerializer {
                     const cetype_ext_t encoding = ce == CE_UTF8 ? CETYPE_EXT_UTF8 :
                         ce == CE_LATIN1 ? CETYPE_EXT_LATIN1 :
                         ce == CE_BYTES ? CETYPE_EXT_BYTES : CETYPE_EXT_NATIVE;
-                    write_string_view(CHAR(charsxp), LENGTH(charsxp), encoding);
+                    const char * const data = CHAR(charsxp);
+                    const int length = LENGTH(charsxp);
+                    if(needs_translation(data, length, encoding)) {
+                        write_translated(charsxp); // already a CHARSXP, no lookup
+                    } else {
+                        write_string_bytes(data, length);
+                    }
                 }
                 continue;
             }

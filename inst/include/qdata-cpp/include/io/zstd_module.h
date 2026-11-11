@@ -4,6 +4,8 @@
 #include "io_common.h"
 #include "xgboost_blockshuffle_model.h"
 
+#include <new>
+
 
 static constexpr uint32_t COMPRESSION_ERROR = 0;
 static constexpr uint32_t SHUFFLE_HEURISTIC_BLOCKSIZE = 32768;
@@ -54,6 +56,9 @@ struct ZstdShuffleCompressor {
 
     std::unique_ptr<char[]> shuffleblock;
     ZSTD_CCtx * cctx;
+    // second output buffer for levels that compress both ways; allocated on
+    // the first block that needs it
+    std::unique_ptr<char[]> shuffle_zblock;
     ZstdShuffleCompressor() :
     shuffleblock(MAKE_UNIQUE_BLOCK(MAX_BLOCKSIZE)),
     cctx(checked_zstd_compression_context(ZSTD_createCCtx())) {}
@@ -113,8 +118,12 @@ struct ZstdShuffleCompressor {
             return COMPRESSION_ERROR;
         } else if(heuristic == USE_HEURISTIC) {
             if(compress_level >= HIGH_COMPRESS_LEVEL_THRESHOLD) { // test both ways
-                // shuffle compress into new shuffleblock
-                std::unique_ptr<char[]> shuffle_zblock(MAKE_UNIQUE_BLOCK(MAX_ZBLOCKSIZE));
+                // shuffle compress into shuffle_zblock. compress() can run under R's
+                // serializer, so an allocation failure is returned, not thrown.
+                if(!shuffle_zblock) {
+                    shuffle_zblock.reset(new (std::nothrow) char[MAX_ZBLOCKSIZE]);
+                    if(!shuffle_zblock) { return COMPRESSION_ERROR; }
+                }
                 uint32_t remainder = srcSize % SHUFFLE_ELEMSIZE;
                 byte_shuffle(reinterpret_cast<const uint8_t*>(src), reinterpret_cast<uint8_t*>(shuffleblock.get()), srcSize - remainder, SHUFFLE_ELEMSIZE);
                 std::memcpy(shuffleblock.get() + srcSize - remainder, src + srcSize - remainder, remainder);

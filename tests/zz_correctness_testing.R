@@ -194,6 +194,32 @@ restored <- withCallingHandlers(
 stopifnot(grepl("hash mismatch", warning_msg, fixed = TRUE))
 stopifnot(identical(restored, x))
 
+# The multithreaded reader reads to the end of the file, so it reports a
+# corrupt block that follows the object
+if (isTRUE(qs2:::check_TBB())) {
+  for (fmt in c("qs2", "qdata")) {
+    tmp_trailing <- tempfile()
+    payload <- runif(3e5)
+    if (fmt == "qs2") qs2::qs_save(payload, tmp_trailing) else qs2::qd_save(payload, tmp_trailing)
+    con <- file(tmp_trailing, "ab")
+    writeBin(as.raw(rep(c(0xff, 0x13, 0x77, 0x01), 8L)), con) # a block size above the maximum
+    close(con)
+    res <- try(suppressWarnings(
+      if (fmt == "qs2") qs2::qs_read(tmp_trailing, nthreads = 2) else qs2::qd_read(tmp_trailing, nthreads = 2)
+    ), silent = TRUE)
+    stopifnot(inherits(res, "try-error"), grepl("decompression error", res, fixed = TRUE))
+    unlink(tmp_trailing)
+  }
+}
+
+# A failed write is an error that names the cause
+if (file.exists("/dev/full")) {
+  for (save_fun in list(qs2::qs_save, qs2::qd_save)) {
+    res <- try(save_fun(1:10, "/dev/full"), silent = TRUE)
+    stopifnot(inherits(res, "try-error"), grepl("Failed to write output", res, fixed = TRUE))
+  }
+}
+
 if (dir.exists("/proc/self/fd")) {
   check_warning_fd_cleanup <- function() {
     old_options <- options(warn = 2)

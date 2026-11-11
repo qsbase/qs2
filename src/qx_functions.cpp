@@ -102,6 +102,7 @@ void qx_export_functions(DllInfo* dll);
 
 #define COMPRESS_LEVEL_ERR_MSG "compress_level must be an integer between " + std::to_string(ZSTD_minCLevel()) + " and " + std::to_string(ZSTD_maxCLevel()) + "."
 #define FILE_SAVE_ERR_MSG (std::string("For file ") + file_path + ": " + "Failed to open for writing. Does the directory exist? Do you have file permissions? Is the file name long? (>255 chars)")
+#define FILE_WRITE_ERR_MSG (std::string("For file ") + file_path + ": Failed to write output, file may be incomplete.")
 #define FILE_READ_ERR_MSG (std::string("For file ") + file_path + ": " + "Failed to open for reading. Does the file exist? Do you have file permissions? Is the file name long? (>255 chars)")
 #define NO_HASH_ERR_MSG (std::string("For file ") + file_path + ": hash not stored, save file may be incomplete.")
 #define HASH_MISMATCH_ERR_MSG (std::string("For file ") + file_path + ": hash mismatch, file may be corrupted.")
@@ -219,26 +220,33 @@ SEXP qs_save(SEXP object, SEXP file, const int compress_level, const bool shuffl
     if (!myFile.isValid()) {
         throw_error<StdErrorPolicy>(FILE_SAVE_ERR_MSG);
     }
-    write_qs2_header(myFile, shuffle);
+    // The stream throws on a failed write. Multithreaded writes, the hash and
+    // the final close reach here as ios_base::failure; name the file for them.
+    try {
+        write_qs2_header(myFile, shuffle);
 
-    uint64_t hash = 0;
-    if (nthreads > 1) {
+        uint64_t hash = 0;
+        if (nthreads > 1) {
 #if RCPP_PARALLEL_USE_TBB
-        tbb::global_control gc(tbb::global_control::parameter::max_allowed_parallelism, nthreads);
-        if (shuffle) {
-            DO_QS_SAVE(OfStreamWriter, BlockCompressWriterMT, ZstdShuffleCompressor, xxHashEnv);
-        } else {
-            DO_QS_SAVE(OfStreamWriter, BlockCompressWriterMT, ZstdCompressor, xxHashEnv);
-        }
+            tbb::global_control gc(tbb::global_control::parameter::max_allowed_parallelism, nthreads);
+            if (shuffle) {
+                DO_QS_SAVE(OfStreamWriter, BlockCompressWriterMT, ZstdShuffleCompressor, xxHashEnv);
+            } else {
+                DO_QS_SAVE(OfStreamWriter, BlockCompressWriterMT, ZstdCompressor, xxHashEnv);
+            }
 #endif
-    } else {
-        if (shuffle) {
-            DO_QS_SAVE(OfStreamWriter, BlockCompressWriter, ZstdShuffleCompressor, xxHashEnv);
         } else {
-            DO_QS_SAVE(OfStreamWriter, BlockCompressWriter, ZstdCompressor, xxHashEnv);
+            if (shuffle) {
+                DO_QS_SAVE(OfStreamWriter, BlockCompressWriter, ZstdShuffleCompressor, xxHashEnv);
+            } else {
+                DO_QS_SAVE(OfStreamWriter, BlockCompressWriter, ZstdCompressor, xxHashEnv);
+            }
         }
+        write_qx_hash(myFile, hash);
+        myFile.close();  // flushes; the destructor would hide a failure
+    } catch (const std::ios_base::failure&) {
+        throw std::runtime_error(FILE_WRITE_ERR_MSG);
     }
-    write_qx_hash(myFile, hash);
     return R_NilValue;
 }
 
@@ -433,25 +441,30 @@ SEXP qd_save(SEXP object, SEXP file, const int compress_level, const bool shuffl
     if (!myFile.isValid()) {
         throw std::runtime_error(FILE_SAVE_ERR_MSG);
     }
-    write_qdata_header(myFile, shuffle);
-    uint64_t hash = 0;
-    if (nthreads > 1) {
+    try {  // see qs_save
+        write_qdata_header(myFile, shuffle);
+        uint64_t hash = 0;
+        if (nthreads > 1) {
 #if RCPP_PARALLEL_USE_TBB
-        tbb::global_control gc(tbb::global_control::parameter::max_allowed_parallelism, nthreads);
-        if (shuffle) {
-            DO_QD_SAVE(OfStreamWriter, BlockCompressWriterMT, ZstdShuffleCompressor, xxHashEnv);
-        } else {
-            DO_QD_SAVE(OfStreamWriter, BlockCompressWriterMT, ZstdCompressor, xxHashEnv);
-        }
+            tbb::global_control gc(tbb::global_control::parameter::max_allowed_parallelism, nthreads);
+            if (shuffle) {
+                DO_QD_SAVE(OfStreamWriter, BlockCompressWriterMT, ZstdShuffleCompressor, xxHashEnv);
+            } else {
+                DO_QD_SAVE(OfStreamWriter, BlockCompressWriterMT, ZstdCompressor, xxHashEnv);
+            }
 #endif
-    } else {
-        if (shuffle) {
-            DO_QD_SAVE(OfStreamWriter, BlockCompressWriter, ZstdShuffleCompressor, xxHashEnv);
         } else {
-            DO_QD_SAVE(OfStreamWriter, BlockCompressWriter, ZstdCompressor, xxHashEnv);
+            if (shuffle) {
+                DO_QD_SAVE(OfStreamWriter, BlockCompressWriter, ZstdShuffleCompressor, xxHashEnv);
+            } else {
+                DO_QD_SAVE(OfStreamWriter, BlockCompressWriter, ZstdCompressor, xxHashEnv);
+            }
         }
+        write_qx_hash(myFile, hash);
+        myFile.close();
+    } catch (const std::ios_base::failure&) {
+        throw std::runtime_error(FILE_WRITE_ERR_MSG);
     }
-    write_qx_hash(myFile, hash);
     return R_NilValue;
 }
 

@@ -51,6 +51,9 @@ struct OfStreamWriter {
     bool isSeekable() const { return true; }
     void seekp(const uint64_t pos) { con.seekp(pos); }
     uint64_t tellp() { return con.tellp(); }
+    // Flush and close once the file is complete. A failure sets failbit and so
+    // throws; the destructor would close too, but silently.
+    void close() { con.close(); }
 };
 
 #endif

@@ -384,7 +384,9 @@ struct BlockCompressReaderMT {
     public:
     void finish() {
         myGraph.wait_for_all();
-        if(tgc.is_group_execution_cancelled()) {
+        // wait_for_all() resets the task group context, so ask the graph,
+        // which records whether the wait ended cancelled
+        if(myGraph.is_cancelled()) {
             throw_error<error_policy>("File read / decompression error");
         }
     }

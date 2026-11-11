@@ -19,7 +19,7 @@ template<typename block_compress_reader>
 int qs_read_in_char(R_inpstream_t stream) {
     char c;
     qs_read_in_bytes<block_compress_reader>(stream, &c, 1);
-    return static_cast<int>(c);
+    return static_cast<int>(static_cast<unsigned char>(c)); // 0..255, as R's own InChar
 }
 
 template<typename block_compress_reader>
