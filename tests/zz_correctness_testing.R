@@ -204,10 +204,23 @@ if (isTRUE(qs2:::check_TBB())) {
     con <- file(tmp_trailing, "ab")
     writeBin(as.raw(rep(c(0xff, 0x13, 0x77, 0x01), 8L)), con) # a block size above the maximum
     close(con)
-    res <- try(suppressWarnings(
-      if (fmt == "qs2") qs2::qs_read(tmp_trailing, nthreads = 2) else qs2::qd_read(tmp_trailing, nthreads = 2)
+    warns <- character(0)
+    res <- try(withCallingHandlers(
+      if (fmt == "qs2") qs2::qs_read(tmp_trailing, nthreads = 2) else qs2::qd_read(tmp_trailing, nthreads = 2),
+      warning = function(w) {
+        warns <<- c(warns, conditionMessage(w))
+        invokeRestart("muffleWarning")
+      }
     ), silent = TRUE)
-    stopifnot(inherits(res, "try-error"), grepl("decompression error", res, fixed = TRUE))
+    if (!inherits(res, "try-error") || !grepl("decompression error", res, fixed = TRUE)) {
+      stop(sprintf(
+        "trailing corrupt block (%s, RcppParallel %s): expected a decompression error, got %s; warnings: [%s]",
+        fmt, utils::packageVersion("RcppParallel"),
+        if (inherits(res, "try-error")) sprintf("error \"%s\"", conditionMessage(attr(res, "condition")))
+        else sprintf("no error (identical to payload: %s)", identical(res, payload)),
+        paste(warns, collapse = " | ")
+      ))
+    }
     unlink(tmp_trailing)
   }
 }

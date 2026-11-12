@@ -545,9 +545,15 @@ struct QdataDeserializer {
                 continue;
             }
             if(!charpacks.fits(string_length)) {
-                SEXP strings = charpacks.spill(object, i);
-                SET_STRING_ELT(strings, i, read_charsxp(string_length));
-                read_plain_strings(strings, i + 1, object_length);
+                // object holds the materialized STRSXP in its ALTREP data2,
+                // so it is already reachable. rchk cannot follow that through
+                // charport's registered C callable, so protect it explicitly.
+                SEXP materialized = PROTECT(charport::charpack::fill_materialized_na(
+                    object, static_cast<R_xlen_t>(object_length)));
+                charpacks.spill(materialized, i);
+                SET_STRING_ELT(materialized, i, read_charsxp(string_length));
+                read_plain_strings(materialized, i + 1, object_length);
+                UNPROTECT(1);
                 return;
             }
             reader.get_data(charpacks.set(i, string_length), string_length);

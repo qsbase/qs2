@@ -85,16 +85,15 @@ public:
                                         slice_ptrs.data(), slice_bytes.data());
     }
 
-    // Materializes x and copies the strings set so far (indices below i) into
-    // it. Returns the STRSXP, which x keeps alive, for the remaining strings.
-    SEXP spill(SEXP x, uint64_t i) {
-        SEXP strings = charport::charpack::fill_materialized_na(x, static_cast<R_xlen_t>(n));
+    // Copies the strings set so far (indices below i) into materialized, the
+    // STRSXP from charport::charpack::fill_materialized_na. The caller must
+    // keep materialized protected.
+    void spill(SEXP materialized, uint64_t i) {
         for(uint64_t j = 0; j < i; ++j) {
             if(lengths[j] == NA_INTEGER) continue;
-            SET_STRING_ELT(strings, j, lengths[j] == 0 ? R_BlankString
-                                                       : Rf_mkCharLenCE(ptrs[j], lengths[j], CE_UTF8));
+            SET_STRING_ELT(materialized, j, lengths[j] == 0 ? R_BlankString
+                                                            : Rf_mkCharLenCE(ptrs[j], lengths[j], CE_UTF8));
         }
-        return strings;
     }
 
 private:
