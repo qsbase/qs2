@@ -3,7 +3,10 @@
 
 #include <Rcpp.h>
 #include <csetjmp>
+#include <cstdio>
 #include <exception>
+#include <ios>
+#include <new>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
@@ -74,20 +77,54 @@ private:
 
 namespace qx_unwind_detail {
 
+// A caught exception is recorded as its kind and message and thrown again as a
+// new exception, not carried in a std::exception_ptr. When libstdc++ and libc++
+// are both loaded (a libc++ build of qs2 under an R that links libstdc++),
+// std::rethrow_exception comes from libc++abi while throw and catch bind to
+// libstdc++, so the rethrown exception only matches catch (...).
+enum class error_kind { none, std_error, io_failure, bad_alloc, unknown };
+
 template <typename operation_type>
 struct call_state {
     operation_type* operation;
-    std::exception_ptr error;
+    error_kind error;
+    char message[4096];  // fixed size: nothing may throw while recording the error
 };
+
+template <typename operation_type>
+inline void record_error(call_state<operation_type>* state, const error_kind kind, const char* message) noexcept {
+    state->error = kind;
+    std::snprintf(state->message, sizeof(state->message), "%s", message);
+}
 
 template <typename operation_type>
 inline SEXP call_body(void* data) {
     call_state<operation_type>* state = static_cast<call_state<operation_type>*>(data);
     try {
         return (*state->operation)();
+    } catch (const std::ios_base::failure& e) {
+        record_error(state, error_kind::io_failure, e.what());  // callers catch it to report write failures
+    } catch (const std::bad_alloc&) {
+        record_error(state, error_kind::bad_alloc, "");
+    } catch (const std::exception& e) {
+        record_error(state, error_kind::std_error, e.what());
     } catch (...) {
-        state->error = std::current_exception();
-        return R_NilValue;
+        record_error(state, error_kind::unknown, "");
+    }
+    return R_NilValue;
+}
+
+template <typename operation_type>
+[[noreturn]] inline void throw_recorded_error(const call_state<operation_type>& state) {
+    switch (state.error) {
+        case error_kind::io_failure:
+            throw std::ios_base::failure(state.message);
+        case error_kind::bad_alloc:
+            throw std::bad_alloc();
+        case error_kind::std_error:
+            throw std::runtime_error(state.message);
+        default:
+            throw std::runtime_error("qs2 internal error: unknown C++ exception");
     }
 }
 
@@ -112,7 +149,7 @@ inline SEXP qx_unwind_protect(operation_type&& operation) {
     static_assert(std::is_trivially_destructible<op_type>::value,
                   "unwind callback must be trivially destructible; an R jump skips its destructor");
     qx_unwind_scope& scope = qx_unwind_scope::current();
-    qx_unwind_detail::call_state<op_type> state{&operation, std::exception_ptr()};
+    qx_unwind_detail::call_state<op_type> state{&operation, qx_unwind_detail::error_kind::none, {}};
     qx_unwind_detail::jump_target target;
     if (setjmp(target.jmpbuf)) {
         scope.active = false;
@@ -123,8 +160,8 @@ inline SEXP qx_unwind_protect(operation_type&& operation) {
     SEXP result = R_UnwindProtect(&qx_unwind_detail::call_body<op_type>, &state,
                                   &qx_unwind_detail::maybe_jump, &target, scope.token);
     scope.active = false;
-    if (state.error) {
-        std::rethrow_exception(state.error);
+    if (state.error != qx_unwind_detail::error_kind::none) {
+        qx_unwind_detail::throw_recorded_error(state);
     }
     return result;
 }

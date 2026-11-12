@@ -204,26 +204,29 @@ if (isTRUE(qs2:::check_TBB())) {
     con <- file(tmp_trailing, "ab")
     writeBin(as.raw(rep(c(0xff, 0x13, 0x77, 0x01), 8L)), con) # a block size above the maximum
     close(con)
-    warns <- character(0)
-    res <- try(withCallingHandlers(
-      if (fmt == "qs2") qs2::qs_read(tmp_trailing, nthreads = 2) else qs2::qd_read(tmp_trailing, nthreads = 2),
-      warning = function(w) {
-        warns <<- c(warns, conditionMessage(w))
-        invokeRestart("muffleWarning")
-      }
+    res <- try(suppressWarnings(
+      if (fmt == "qs2") qs2::qs_read(tmp_trailing, nthreads = 2) else qs2::qd_read(tmp_trailing, nthreads = 2)
     ), silent = TRUE)
-    if (!inherits(res, "try-error") || !grepl("decompression error", res, fixed = TRUE)) {
-      stop(sprintf(
-        "trailing corrupt block (%s, RcppParallel %s): expected a decompression error, got %s; warnings: [%s]",
-        fmt, utils::packageVersion("RcppParallel"),
-        if (inherits(res, "try-error")) sprintf("error \"%s\"", conditionMessage(attr(res, "condition")))
-        else sprintf("no error (identical to payload: %s)", identical(res, payload)),
-        paste(warns, collapse = " | ")
-      ))
-    }
+    stopifnot(inherits(res, "try-error"), grepl("decompression error", res, fixed = TRUE))
     unlink(tmp_trailing)
   }
 }
+
+# A truncated file is an error that names the cause. qdata read errors cross
+# the R boundary as C++ exceptions, so this also checks they keep their message.
+tmp_truncated <- tempfile()
+for (fmt in c("qs2", "qdata")) {
+  if (fmt == "qs2") qs2::qs_save(runif(3e5), tmp_truncated) else qs2::qd_save(runif(3e5), tmp_truncated)
+  bytes <- readBin(tmp_truncated, "raw", file.size(tmp_truncated))
+  writeBin(bytes[seq_len(length(bytes) %/% 2L)], tmp_truncated)
+  for (nt in if (isTRUE(qs2:::check_TBB())) c(1, 2) else 1) {
+    res <- try(suppressWarnings(
+      if (fmt == "qs2") qs2::qs_read(tmp_truncated, nthreads = nt) else qs2::qd_read(tmp_truncated, nthreads = nt)
+    ), silent = TRUE)
+    stopifnot(inherits(res, "try-error"), grepl("Unexpected end of file", res, fixed = TRUE))
+  }
+}
+unlink(tmp_truncated)
 
 # A failed write is an error that names the cause
 if (file.exists("/dev/full")) {
