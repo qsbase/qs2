@@ -5,6 +5,8 @@ Development version
     * `qs_save` and `qd_save` check that the file was completely written and closed, and name the file when a write fails
     * Multithreaded reads report a corrupt block after the object instead of ignoring it
     * Fix qdata read errors reaching R as "c++ exception (unknown reason)" when qs2 is built with libc++ under an R that loads libstdc++
+    * The same fix for multithreaded saves: a write or compression error on a worker thread keeps its message
+    * Multithreaded reads: an allocation failure on a worker thread reports "Out of memory in a worker thread" instead of a read or decompression error, and the read stops at a block that failed to decompress
     * `qd_save` frees the UTF-8 translation of each Latin-1 or non-UTF-8 native string once it is written, instead of keeping all of them until the save ends
 
 Version 0.4.0 (2026-10-31)

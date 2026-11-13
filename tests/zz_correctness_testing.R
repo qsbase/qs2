@@ -233,6 +233,11 @@ if (file.exists("/dev/full")) {
   for (save_fun in list(qs2::qs_save, qs2::qd_save)) {
     res <- try(save_fun(1:10, "/dev/full"), silent = TRUE)
     stopifnot(inherits(res, "try-error"), grepl("Failed to write output", res, fixed = TRUE))
+    # multithreaded, the write fails on a worker thread
+    if (isTRUE(qs2:::check_TBB())) {
+      res <- try(save_fun(runif(3e5), "/dev/full", nthreads = 2), silent = TRUE)
+      stopifnot(inherits(res, "try-error"), grepl("Failed to write output", res, fixed = TRUE))
+    }
   }
 }
 
