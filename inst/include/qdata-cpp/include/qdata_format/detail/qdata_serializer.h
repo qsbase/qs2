@@ -437,10 +437,15 @@ inline std::uint64_t write_multi_thread(StreamWriter& stream,
                                         const std::size_t max_depth) {
     tbb::global_control gc(tbb::global_control::parameter::max_allowed_parallelism, normalized_write_nthreads(nthreads));
     BlockCompressWriterMT<StreamWriter, Compressor, xxHashEnv, StdErrorPolicy, true> block_writer(stream, compress_level);
-    qdata_stream_writer<decltype(block_writer)> stream_writer(block_writer, max_depth);
-    write_fn(stream_writer, object_ptr);
-    stream_writer.flush_payloads();
-    return block_writer.finish();
+    try {
+        qdata_stream_writer<decltype(block_writer)> stream_writer(block_writer, max_depth);
+        write_fn(stream_writer, object_ptr);
+        stream_writer.flush_payloads();
+        return block_writer.finish();
+    } catch(...) {
+        block_writer.cleanup();
+        throw;
+    }
 }
 #endif
 

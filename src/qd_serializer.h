@@ -145,6 +145,7 @@ struct QdataSerializer {
         return ctx.count;
     }
 
+    // Preserve native attribute-name bytes for qdata v1 compatibility. Revisit UTF-8 in v2.
     void write_attributes(const size_t base, const uint32_t count) {
         for(size_t i = base; i < base + count; ++i) {
             SEXP name = attr_stack[i].first;   // copied out: the recursion may reallocate

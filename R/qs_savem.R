@@ -23,11 +23,20 @@
 #' qs_readm(myfile)
 #' exists('x1') && exists('x2') # returns true
 qs_savem <- function (...) {
-  full_call <- as.list(sys.call())[-1]
+  full_call <- as.list(substitute(list(...)))[-1L]
   objects <- list(...)
   unnamed <- which(names(objects) == "")
   unnamed_list <- objects[unnamed]
-  names(unnamed_list) <- sapply(unnamed, function(i) parse(text = full_call[[i]]))
+  names(unnamed_list) <- vapply(unnamed, function(i) {
+    arg <- full_call[[i]]
+    if (is.symbol(arg)) {
+      as.character(arg)
+    } else if (is.character(arg) && length(arg) == 1L && !is.na(arg)) {
+      arg
+    } else {
+      paste(deparse(arg, control = NULL), collapse = " ")
+    }
+  }, character(1))
   # x[-integer(0)] drops everything rather than nothing, which would silently
   # discard the named arguments (including `file`) when nothing is unnamed
   named_list <- if (length(unnamed)) objects[-unnamed] else objects

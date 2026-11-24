@@ -86,10 +86,15 @@ qs_cache <- function(expr, name, envir = parent.frame(), cache_dir = ".cache", c
       if (!dir.exists(cache_dir)) {
         dir.create(cache_dir, recursive = TRUE)
       }
-      object <- eval(expr, envir = envir)
-      qs_save_params$object <- object
-      qs_save_params$file <- file
-      do.call(qs_save, qs_save_params)
+      object <- eval(substitute(expr), envir = envir)
+      tmp_output <- tempfile(pattern = ".qs2-", tmpdir = dirname(file))
+      on.exit(unlink(tmp_output), add = TRUE)
+      qs_save_params["object"] <- list(object)
+      qs_save_params$file <- tmp_output
+      do.call(qs_save, qs_save_params, quote = TRUE)
+      if (!isTRUE(file.rename(tmp_output, file))) {
+        stop("failed to publish cache file: ", file, call. = FALSE)
+      }
       return(object)
     }
   }

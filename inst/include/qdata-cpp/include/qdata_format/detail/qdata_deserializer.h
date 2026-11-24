@@ -285,11 +285,16 @@ template <class StreamReader, class Decompressor>
 inline object read_multi_thread(StreamReader& stream, const int nthreads, const std::size_t max_depth) {
     tbb::global_control gc(tbb::global_control::parameter::max_allowed_parallelism, normalized_read_nthreads(nthreads));
     BlockCompressReaderMT<StreamReader, Decompressor, StdErrorPolicy> block_reader(stream);
-    qdata_deserializer<decltype(block_reader)> stream_reader(block_reader, max_depth);
-    object output;
-    stream_reader.read_object(output);
-    block_reader.finish();
-    return output;
+    try {
+        qdata_deserializer<decltype(block_reader)> stream_reader(block_reader, max_depth);
+        object output;
+        stream_reader.read_object(output);
+        block_reader.finish();
+        return output;
+    } catch(...) {
+        block_reader.cleanup();
+        throw;
+    }
 }
 #endif
 

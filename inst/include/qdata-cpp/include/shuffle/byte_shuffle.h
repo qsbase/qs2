@@ -38,9 +38,10 @@ inline void unshuffle_plain(const uint8_t* const src, uint8_t* const dest, const
 
 typedef uint8_t bv16 __attribute__((vector_size(16)));
 
+// __builtin_memcpy keeps the 16-byte copies inline on GCC 15.2 at -O3 with _FORTIFY_SOURCE=3.
 QS2_SHUFFLE_INLINE bv16 load16(const uint8_t* const p) {
     bv16 v;
-    std::memcpy(&v, p, 16);
+    __builtin_memcpy(&v, p, 16);
     return v;
 }
 
@@ -85,7 +86,7 @@ QS2_SHUFFLE_INLINE void shuffle16(const uint8_t* const src, uint8_t* const dest,
                                   const std::size_t i, std::index_sequence<J...>) {
     bv16 r[K] = {load16(src + i * K + 16 * J)...};
     zip_stages<K, 4>(r);
-    (std::memcpy(dest + J * n + i, &r[J], 16), ...);
+    (__builtin_memcpy(dest + J * n + i, &r[J], 16), ...);
 }
 // the K streams at elements i to i + 15 into elements
 template <std::size_t K, std::size_t... J>
@@ -93,7 +94,7 @@ QS2_SHUFFLE_INLINE void unshuffle16(const uint8_t* const src, uint8_t* const des
                                     const std::size_t i, std::index_sequence<J...>) {
     bv16 r[K] = {load16(src + J * n + i)...};
     zip_stages<K, K == 8 ? 3 : 2>(r);
-    (std::memcpy(dest + i * K + 16 * J, &r[J], 16), ...);
+    (__builtin_memcpy(dest + i * K + 16 * J, &r[J], 16), ...);
 }
 
 // The plain head aligns the 16-byte stores: stream 0 on shuffle, the elements on unshuffle when that is possible.

@@ -115,7 +115,7 @@ zstd_in <- function(FUN, ..., envir = parent.frame(), tmpfile = tempfile(), max_
   on.exit(unlink(tmpfile), add = TRUE)
   zstd_decompress_file(input_path, tmpfile, max_output_bytes = max_output_bytes)
   params[[w]] <- tmpfile
-  do.call(FUN, params, envir = envir)
+  do.call(FUN, params, quote = TRUE, envir = envir)
 }
 
 
@@ -156,7 +156,7 @@ zstd_out <- function(FUN, ..., envir = parent.frame(), tmpfile = tempfile()) {
   .qs2_validate_tmpfile(tmpfile, zstd_file_path, "output file")
   on.exit(unlink(tmpfile), add = TRUE)
   params[[w]] <- tmpfile
-  out <- withVisible(do.call(FUN, params, envir = envir))
+  out <- withVisible(do.call(FUN, params, quote = TRUE, envir = envir))
   zstd_compress_file(tmpfile, zstd_file_path)
   if (out$visible) {
     out$value
