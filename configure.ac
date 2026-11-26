@@ -1,5 +1,5 @@
-AC_INIT([qs2],[0.4.0],[traversc@gmail.com])
-AC_PATH_PROG([PKGCONF],[pkg-config],[],[$PATH:/usr/local/bin:ext/bin:ext:/sw/bin:/opt/bin:/opt/local/bin])
+AC_INIT([qs2],[0.5.0],[traversc@gmail.com])
+AC_PATH_PROG([PKGCONF],[pkg-config],[],[$PATH:/usr/local/bin:/opt/homebrew/bin:ext/bin:ext:/sw/bin:/opt/bin:/opt/local/bin])
 
 # C++ compiler (from R). CXX_STD is set in src/Makevars(.win), not here.
 AC_LANG(C++)
@@ -13,12 +13,9 @@ AC_ARG_WITH([zstd-force-compile],
             AS_HELP_STRING([--with-zstd-force-compile],[Force compilation of bundled zstd source files]),
             [zstd_force_compile="$withval"])
 
-# Homebrew builds zstd with -Os, which is 20-30% slower, so macOS prefers the
-# bundled copy unless the system version is newer
 AC_ARG_WITH([zstd-prefer-bundled],
-            AS_HELP_STRING([--with-zstd-prefer-bundled],[Compile the bundled zstd unless the system zstd is newer (default on macOS)]),
-            [zstd_prefer_bundled="$withval"],
-            [if test "`uname -s`" = "Darwin"; then zstd_prefer_bundled="yes"; fi])
+            AS_HELP_STRING([--with-zstd-prefer-bundled],[Compile the bundled zstd unless the system zstd is newer]),
+            [zstd_prefer_bundled="$withval"])
 
 AC_ARG_WITH([zstd-include],
             AS_HELP_STRING([--with-zstd-include=INCLUDE_PATH],[the location of zstd header files]),
@@ -34,17 +31,8 @@ AC_ARG_WITH([TBB],
             AS_HELP_STRING([--without-TBB],[Disable TBB usage and force RCPP_PARALLEL_USE_TBB=0]),
             [if test "x$withval" = "xno"; then using_tbb="false"; fi])
 
-# Version-string -> comparable integer
-getVersion()
-{
-VERSION_STRING=$1
-MAJOR=`echo $VERSION_STRING | cut -d. -f1`
-MINOR=`echo $VERSION_STRING | cut -d. -f2`
-RELEASE=`echo $VERSION_STRING | cut -d. -f3`
-echo $(($MAJOR*100000+$MINOR*100+$RELEASE))
-}
-
-# zstd: use system lib (pkg-config, >= 1.5.7) unless forced/unavailable -> compile bundled
+# Use a system zstd at least as recent as the bundled library by default.
+ZSTD_BUNDLED_VERSION="1.6.0"
 ZSTD_INCLUDE_PATH=""
 ZSTD_LIBS=""
 ZSTD_SHLIB=""
@@ -66,18 +54,18 @@ elif test "xx$zstd_include_path" != "xx" || test "xx$zstd_lib_path" != "xx"; the
   COMPILE_ZSTD="false"
 elif test "xx$PKGCONF" != "xx"; then
   if "${PKGCONF}" --exists libzstd; then
-    VERSION_STRING=`${PKGCONF} --modversion libzstd`
-    VER=`getVersion ${VERSION_STRING}`
-    if test xx$zstd_prefer_bundled = "xxyes" && test "${VER}" -le 100507; then
-      echo "zstd ${VERSION_STRING} library detected but is not newer than bundled version (1.5.7) -- compiling from source"
+    VERSION_STRING=$("${PKGCONF}" --modversion libzstd)
+    if test "$zstd_prefer_bundled" = "yes" &&
+       "${PKGCONF}" --max-version="$ZSTD_BUNDLED_VERSION" libzstd; then
+      echo "zstd ${VERSION_STRING} library detected but is not newer than bundled version ($ZSTD_BUNDLED_VERSION) -- compiling from source"
       COMPILE_ZSTD="true"
-    elif test "${VER}" -ge 100507; then
+    elif "${PKGCONF}" --atleast-version="$ZSTD_BUNDLED_VERSION" libzstd; then
       echo "zstd ${VERSION_STRING} library detected -- skipping zstd compilation"
       ZSTD_LIBS=`"${PKGCONF}" --libs libzstd`
       ZSTD_INCLUDE_PATH=`"${PKGCONF}" --cflags-only-I libzstd`
       COMPILE_ZSTD="false"
     else
-      echo "zstd ${VERSION_STRING} library detected but is lower than bundled version (1.5.7) -- compiling from source"
+      echo "zstd ${VERSION_STRING} library detected but is lower than bundled version ($ZSTD_BUNDLED_VERSION) -- compiling from source"
       COMPILE_ZSTD="true"
     fi
   else

@@ -2,11 +2,11 @@ Package: qs2
 Type: Package
 Title: Efficient Serialization of R Objects
 Version: 0.5.0
-Date: 2026-11-23
+Date: 2026-11-25
 Authors@R: c(
     person("Travers", "Ching", email = "traversc@gmail.com", role = c("aut", "cre", "cph")),
     person("Yann", "Collet", role = c("ctb", "cph"), comment = "Yann Collet is the author of the bundled zstd"),
-    person("Facebook, Inc.", role = "cph", comment = "Facebook is the copyright holder of the bundled zstd code"),
+    person("Meta Platforms, Inc. and affiliates", role = "cph", comment = "Copyright holder of the bundled zstd code"),
     person("Reichardt", "Tino", role = c("ctb", "cph"), comment = "Contributor/copyright holder of zstd bundled code"),
     person("Skibinski", "Przemyslaw", role = c("ctb", "cph"), comment = "Contributor/copyright holder of zstd bundled code"),
     person("Mori", "Yuta", role = c("ctb", "cph"), comment = "Contributor/copyright holder of zstd bundled code"),
@@ -26,7 +26,7 @@ SystemRequirements: GNU make, C++17
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 VignetteBuilder: knitr
-Copyright: This package includes code from the 'zstd' library owned by Facebook, Inc. and created by Yann Collet.
+Copyright: This package includes code from the 'zstd' library by Yann Collet, copyright Meta Platforms, Inc. and affiliates.
 URL: https://github.com/qsbase/qs2
 BugReports: https://github.com/qsbase/qs2/issues
 Config/roxygen2/version: 8.1.0

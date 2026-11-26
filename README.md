@@ -49,15 +49,15 @@ faster. Add these lines to `~/.R/Makevars`:
     CXX17FLAGS += -O3
     CFLAGS += -O3
 
-Then install with:
+To prefer the bundled zstd with these flags, install with:
 
 ``` r
 install.packages("qs2", type = "source", configure.args = "--with-zstd-prefer-bundled")
 ```
 
-`--with-zstd-prefer-bundled` also compiles the bundled zstd with these
-flags, unless your system zstd is newer. This is the default on macOS,
-where Homebrew builds zstd with `-Os`.
+On Unix-like systems, qs2 uses zstd 1.6.0 or newer when `pkg-config`
+finds it, including Homebrew zstd on macOS. `--with-zstd-prefer-bundled`
+compiles the bundled copy unless a newer system version is available.
 
 ## Converting qs2 to RDS
 
