@@ -31,7 +31,8 @@ Helpers for compressing and decompressing zstd files.
 
 A utility function to compresses a file with zstd.
 
-A utility function to decompresses a zstd file to disk.
+Decompress a Zstd file to disk. An existing output file is replaced only
+after decompression succeeds.
 }
 \examples{
 infile <- tempfile()

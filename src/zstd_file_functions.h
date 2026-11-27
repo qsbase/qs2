@@ -23,26 +23,22 @@
 
 using namespace Rcpp;
 
-static constexpr std::array<uint8_t, 4> ZSTD_MAGIC{{0x28, 0xb5, 0x2f, 0xfd}};
 static constexpr double MAX_SAFE_R_DOUBLE_INTEGER = 9007199254740991.0; // 2^53 - 1
 
-template <size_t N>
-inline void ensure_magic_prefix(const std::string& path,
-                                const std::array<uint8_t, N>& magic,
-                                const char* format_name) {
+inline void ensure_zstd_prefix(const std::string& path) {
     std::ifstream in(path, std::ios::binary);
     if(!in) {
-        throw std::runtime_error(std::string("Failed to open ") + format_name + " file: " + path);
+        throw std::runtime_error("Failed to open zstd file: " + path);
     }
-    std::array<char, N> buf{};
-    in.read(buf.data(), static_cast<std::streamsize>(N));
-    if(in.gcount() < static_cast<std::streamsize>(N)) {
-        throw std::runtime_error(std::string("File too short to be valid ") + format_name + ": " + path);
+    std::array<uint8_t, 4> prefix{};
+    in.read(reinterpret_cast<char*>(prefix.data()), prefix.size());
+    if(in.gcount() < static_cast<std::streamsize>(prefix.size())) {
+        throw std::runtime_error("File too short to be valid zstd: " + path);
     }
-    for(size_t i = 0; i < N; ++i) {
-        if(static_cast<uint8_t>(buf[i]) != magic[i]) {
-            throw std::runtime_error(std::string("File does not appear to be valid ") + format_name + ": " + path);
-        }
+    const uint32_t magic = uint32_t(prefix[0]) | (uint32_t(prefix[1]) << 8) |
+        (uint32_t(prefix[2]) << 16) | (uint32_t(prefix[3]) << 24);
+    if(magic != ZSTD_MAGICNUMBER && (magic & ~uint32_t(0x0f)) != ZSTD_MAGIC_SKIPPABLE_START) {
+        throw std::runtime_error("File does not appear to be valid zstd: " + path);
     }
 }
 
@@ -261,7 +257,7 @@ struct ZstdReader : IReader {
     _outPos(0),
     _outSize(0),
     _pendingFrameBytes(0) {
-        ensure_magic_prefix(path, ZSTD_MAGIC, "zstd");
+        ensure_zstd_prefix(path);
         _f = std::fopen(path.c_str(), "rb");
         if(!_f) {
             throw std::runtime_error("zstd open failed: " + path);

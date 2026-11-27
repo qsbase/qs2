@@ -1,5 +1,5 @@
 # Focused qdata <-> charport coverage. This is a standalone test script, like
-# zz_correctness_testing.R; it deliberately excludes qtable.
+# zz_correctness_testing.R.
 if (!requireNamespace("qs2", quietly = TRUE) ||
     !requireNamespace("charport", quietly = TRUE)) {
   stop("qs2 and charport are required for qdata charport tests")

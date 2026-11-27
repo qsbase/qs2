@@ -38,7 +38,8 @@ zstd_compress_file <- function(input_file, output_file,
 
 #' Zstd file decompression
 #'
-#' A utility function to decompresses a zstd file to disk.
+#' Decompress a Zstd file to disk. An existing output file is replaced only
+#' after decompression succeeds.
 #'
 #' @usage zstd_decompress_file(input_file, output_file, max_output_bytes = NULL)
 #' 
@@ -68,7 +69,16 @@ zstd_decompress_file <- function(input_file, output_file,
   if (.qs2_existing_paths_same(input_file, output_file)) {
     stop("input_file and output_file must refer to different files", call. = FALSE)
   }
-  invisible(c_zstd_decompress_file(input_file, output_file, max_output_bytes))
+
+  output_file <- path.expand(output_file)
+  tmp_output <- tempfile(pattern = ".qs2-", tmpdir = dirname(output_file))
+  on.exit(unlink(tmp_output), add = TRUE)
+
+  c_zstd_decompress_file(input_file, tmp_output, max_output_bytes)
+  if (!isTRUE(file.rename(tmp_output, output_file))) {
+    stop("Failed to replace output file: ", output_file, call. = FALSE)
+  }
+  invisible(NULL)
 }
 
 

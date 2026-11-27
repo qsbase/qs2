@@ -1,8 +1,8 @@
-Version 0.5.0 (2026-11-23)
+Version 0.5.0 (2026-11-26)
     * Update bundled zstd to 1.6.0
     * On macOS, use Homebrew's zstd by default. Homebrew now builds zstd with -O3 (https://github.com/Homebrew/homebrew-core/pull/319465)
     * qdata reads short character vectors (up to 256 strings) as charport `charpack` vectors when `use_alt_rep = TRUE`, which removes most of the 0.4.0 overhead for objects with many short character vectors; longer vectors stay `charvec`
-    * Require charport (>= 0.2.0) and use its public in-place fill API
+    * Require charport (>= 0.3.0)
     * qdata checks whether native strings are UTF-8 at each save rather than once at load, so a `Sys.setlocale()` partway through a session no longer writes native strings untranslated
     * `qs_save` and `qd_save` check that the file was completely written and closed, and name the file when a write fails
     * Multithreaded reads report a corrupt block after the object instead of ignoring it

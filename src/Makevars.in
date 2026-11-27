@@ -15,5 +15,9 @@ $(SHLIB): @ZSTD_SHLIB@
 libQSZSTD.a: $(LIBZSTD)
 	$(AR) rcs libQSZSTD.a $(LIBZSTD)
 
+# Let R's visibility setting apply to zstd's API declarations too.
+$(LIBZSTD): PKG_CPPFLAGS += -DZSTDLIB_VISIBLE= -DZSTDERRORLIB_VISIBLE= -DZDICTLIB_VISIBLE=
+$(LIBZSTD): PKG_CFLAGS += $(C_VISIBILITY)
+
 clean:
 	rm -f $(SHLIB) $(OBJECTS) @ZSTD_CLEAN@

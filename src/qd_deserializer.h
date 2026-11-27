@@ -11,6 +11,7 @@
 #include <cstring>
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "qx_file_headers.h"
 #include "io/io_common.h"
@@ -75,6 +76,7 @@ struct QdataDeserializer {
     std::string attr_name; // must be null terminated for Rf_install
     std::unique_ptr<char[]> string_scratch;
     size_t string_scratch_size;
+    charport::charvec::Builder charvec_builder{0};
 
     char * string_buffer(const size_t size) {
         if(size > string_scratch_size) {
@@ -463,7 +465,7 @@ struct QdataDeserializer {
                 } else if(object_length <= qd_charpack::max_length) {
                     object = PROTECT(charport::charpack::placeholder());
                 } else {
-                    object = PROTECT(charport::charvec::alloc_na(static_cast<R_xlen_t>(object_length)));
+                    object = PROTECT(charport::charvec::placeholder());
                 }
                 read_and_assign_attributes(object, attr_length);
                 if(object_length > 0) character_sexp.push_back(std::make_pair(object, object_length));
@@ -561,25 +563,22 @@ struct QdataDeserializer {
         charpacks.finish(object);
     }
 
-    // Fills an NA charvec in place. Nothing has read it since alloc_na.
     void read_charvec_strings(SEXP object, uint64_t object_length) {
-        charport::charvec::Store * store = charport::charvec::get_store(object);
-        if(store == nullptr) {
-            reader.cleanup_and_throw("something went wrong (charvec was read before it was filled)");
-        }
-        charport::charvec::Writer writer(*store);
-        for(uint64_t i = 0; i < object_length; ++i) {
+        const R_xlen_t n = static_cast<R_xlen_t>(object_length);
+        charvec_builder.reset(n);
+        for(R_xlen_t i = 0; i < n; ++i) {
             uint32_t string_length;
             read_string_header(string_length);
-            if(string_length == NA_STRING_LENGTH) continue; // charvecs start as NA
-            if(string_length == 0) {
-                writer.set_empty(i, CETYPE_EXT_ASCII_OR_UTF8);
+            if(string_length == NA_STRING_LENGTH) {
+                charvec_builder.set_na(i);
                 continue;
             }
-            char * dest = writer.reserve(string_length);
-            reader.get_data(dest, string_length);
-            writer.set(i, dest, string_length, CETYPE_EXT_ASCII_OR_UTF8);
+            char * dest = charvec_builder.reserve(i, string_length, CETYPE_EXT_ASCII_OR_UTF8);
+            if(string_length != 0) {
+                reader.get_data(dest, string_length);
+            }
         }
+        charvec_builder.fill_placeholder(object);
     }
 
     void read_object_data() {

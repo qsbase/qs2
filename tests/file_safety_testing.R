@@ -36,6 +36,21 @@ local({
   stopifnot(errors(zstd_decompress_file(compressed, compressed)))
   stopifnot(identical(read_raw_file(compressed), compressed_bytes))
 
+  sentinel <- as.raw(c(11, 22, 33, 44))
+  decompressed <- new_path()
+  writeBin(sentinel, decompressed)
+  stopifnot(errors(zstd_decompress_file(compressed, decompressed,
+                                        max_output_bytes = 0)))
+  stopifnot(identical(read_raw_file(decompressed), sentinel))
+
+  skippable <- new_path(fileext = ".zst")
+  for (magic in c(0x50, 0x5f)) {
+    frame <- as.raw(c(magic, 0x2a, 0x4d, 0x18, 1, 0, 0, 0, 0x2a))
+    writeBin(c(frame, compressed_bytes), skippable)
+    zstd_decompress_file(skippable, decompressed)
+    stopifnot(identical(read_raw_file(decompressed), payload))
+  }
+
   symlink <- new_path()
   if (isTRUE(suppressWarnings(file.symlink(input, symlink)))) {
     stopifnot(errors(zstd_compress_file(input, symlink, compress_level = 1L)))
@@ -51,7 +66,6 @@ local({
   stopifnot(identical(read_raw_file(rds_input), rds_bytes))
 
   existing_output <- new_path(fileext = ".qs2")
-  sentinel <- as.raw(c(11, 22, 33, 44))
   writeBin(sentinel, existing_output)
   stopifnot(errors(rds_to_qs(rds_input, existing_output,
                              compress_level = 999999L)))
