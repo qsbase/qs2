@@ -1,4 +1,4 @@
-Version 0.5.0 (2026-11-26)
+Version 0.5.0 (2026-11-27)
     * Update bundled zstd to 1.6.0
     * On macOS, use Homebrew's zstd by default. Homebrew now builds zstd with -O3 (https://github.com/Homebrew/homebrew-core/pull/319465)
     * qdata reads short character vectors (up to 256 strings) as charport `charpack` vectors when `use_alt_rep = TRUE`, which removes most of the 0.4.0 overhead for objects with many short character vectors; longer vectors stay `charvec`

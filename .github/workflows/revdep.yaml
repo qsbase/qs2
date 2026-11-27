@@ -53,23 +53,28 @@ jobs:
           needs: check
           cache: false
 
-      # revdepcheck installs this branch into its own "new" library with
-      # upgrade = "always" against CRAN, which has an older charport. Seed that
-      # library with GitHub charport first: an installed version ahead of CRAN
-      # is kept, and the checks put the "new" library ahead of each revdep's
-      # CRAN dependencies.
+      # Seed revdepcheck's "new" library with the same charport commit that
+      # setup installed. A plain source install lets remotes compare charport
+      # by version when it resolves qs2's dependencies.
       - name: Seed the revdep dev library with GitHub charport
-        env:
-          GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
         shell: Rscript {0}
         run: |
           pkg <- normalizePath(".")
           revdepcheck::dir_setup(pkg)
           new <- revdepcheck:::dir_find(pkg, "new")
           dir.create(new, recursive = TRUE, showWarnings = FALSE)
-          remotes::install_github("charbase/charport", lib = new,
-            dependencies = FALSE, upgrade = "never", force = TRUE)
-          stopifnot(packageVersion("charport", lib.loc = new) >= "0.2.0")
+          charport_sha <- packageDescription("charport", fields = "RemoteSha")
+          stopifnot(!is.na(charport_sha), grepl("^[0-9a-f]{40}$", charport_sha))
+          tarball <- tempfile(fileext = ".tar.gz")
+          download.file(
+            paste0("https://codeload.github.com/charbase/charport/tar.gz/", charport_sha),
+            tarball, mode = "wb"
+          )
+          untar(tarball, exdir = tempdir(), tar = "tar")
+          src <- file.path(tempdir(), paste0("charport-", charport_sha))
+          status <- system2(file.path(R.home("bin"), "R"),
+            c("CMD", "INSTALL", "-l", shQuote(new), shQuote(src)))
+          stopifnot(status == 0L, packageVersion("charport", lib.loc = new) >= "0.3.0")
 
       - name: Run revdep checks
         # below the job limit, so the report and upload steps still run

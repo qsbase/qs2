@@ -45,7 +45,7 @@ build:
 	find src -iname "*.a" -exec rm {} \;
 	find src -iname "*.o" -exec rm {} \;
 	find src -iname "*.so" -exec rm {} \;
-	R CMD build .
+	R CMD build --user= .
 
 install:
 	find . -type f -exec chmod 644 {} \;
@@ -61,7 +61,7 @@ install:
 	find src -iname "*.a" -exec rm {} \;
 	find src -iname "*.o" -exec rm {} \;
 	find src -iname "*.so" -exec rm {} \;
-	R CMD build . # --no-build-vignettes
+	R CMD build --user= . # --no-build-vignettes
 	R CMD INSTALL $(BUILD)
 
 install-arm:
